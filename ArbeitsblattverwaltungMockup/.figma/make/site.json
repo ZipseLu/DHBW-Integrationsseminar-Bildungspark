@@ -1,0 +1,10 @@
+{
+  "description": "Creates website mockups from uploaded files, enabling designers and developers to visualize and plan site layouts efficiently.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

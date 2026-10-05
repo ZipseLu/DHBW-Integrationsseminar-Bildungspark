@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Fraunces', serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+:root {
+  --background: #F5F1E8;
+  --foreground: #1A1714;
+  --card: #FDFAF3;
+  --card-foreground: #1A1714;
+  --primary: #1E3A5F;
+  --primary-foreground: #F5F1E8;
+  --secondary: #E8E2D4;
+  --secondary-foreground: #1A1714;
+  --muted: #EBE5D6;
+  --muted-foreground: #6B6354;
+  --accent: #C4632A;
+  --accent-foreground: #FDFAF3;
+  --border: #D5CEBB;
+  --ring: #1E3A5F;
+  --radius: 6px;
+}
+
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+}
