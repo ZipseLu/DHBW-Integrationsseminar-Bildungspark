@@ -1,0 +1,21 @@
+# Dependencies werden im Image installiert, nicht aus dem Host uebernommen
+node_modules
+dist
+build
+.vite
+
+# Lokale Env-Dateien (Secrets bleiben im Host)
+.env
+.env.*
+!.env.example
+
+# Logs & Editor-Dateien
+*.log
+logs
+.DS_Store
+.idea
+.vscode
+
+# Git (nicht noetig im Build-Kontext)
+.git
+.gitignore
