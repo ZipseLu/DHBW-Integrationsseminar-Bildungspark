@@ -1,0 +1,39 @@
+# =============================================================================
+# MySQL-Server-Konfiguration fuer Bildungspark
+#
+# Wird als /etc/mysql/conf.d/bildungspark.cnf geladen (siehe ../Dockerfile).
+# Ueberschreibt also die Image-Defaults.
+#
+# WICHTIG: Kein `default-authentication-plugin` – die Variable wurde in
+# MySQL 8.4 entfernt und laesst den Server beim Start abstuerzen. Standard
+# ist caching_sha2_password, den mysql2 problemlos spricht.
+# =============================================================================
+
+[mysqld]
+
+# --- Zeichensatz -------------------------------------------------------------
+# Arbeitsblatt-Inhalte enthalten deutsche Sonderzeichen (ä ö ü ß) UND
+# Piktogramm-Symbole (Emoji). Beides braucht echtes utf8mb4.
+character-set-server        = utf8mb4
+collation-server            = utf8mb4_unicode_ci
+
+# --- Striktheit --------------------------------------------------------------
+# STRICT_TRANS_TABLES: kein stilles Abschneiden zu langer Werte.
+# So faellt ein zu langer VARCHAR beim INSERT sofort auf, statt spaeter
+# einen kryptischen Fehler zu erzeugen.
+sql_mode = STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE
+
+# --- Zeitzone ---------------------------------------------------------------
+default-time-zone = '+01:00'   # MEZ. Sommerzeit ist '+02:00'.
+
+# --- Performance (Development) ----------------------------------------------
+innodb_flush_log_at_trx_commit = 2   # statt 1: schneller, minimaler Datenverlust
+sync_binlog                     = 0   # Replikation ist im Dev nicht aktiv
+innodb_buffer_pool_size         = 128M
+max_connections                 = 200
+
+# --- Lokale Entwicklung: Root nur von localhost ------------------------------
+bind-address = 0.0.0.0        # noetig, damit der Backend-Container zugreift
+
+[client]
+default-character-set = utf8mb4

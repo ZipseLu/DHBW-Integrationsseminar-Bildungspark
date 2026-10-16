@@ -1,158 +1,297 @@
 # =============================================================================
 # Bildungspark - Arbeitsblattverwaltung
-# Docker Compose Setup (Prototyp / 2-Wochen-Sprint)
+# Monorepo / Docker Compose
 #
-# Schnellstart:
-#   docker compose up                  # Frontend (Dev) + Postgres
-#   docker compose --profile backend up # + Backend-API + Redis
-#   docker compose --profile prod up    # Frontend als Nginx-Build (Demo)
+# Start (Development):
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Start (nur DB + Backend):
+#   docker compose up --build db backend
+#
+# Tests:
+#   docker compose --profile test run --rm backend-test
+#   docker compose --profile test run --rm frontend-test
+#   docker compose --profile test run --rm e2e
+#
+# Produktions-Build (Demo):
+#   docker compose --profile prod up --build frontend-prod
+#
+# Altes React-Mockup weiterlaufen lassen:
+#   docker compose --profile legacy up --build mockup
 #
 # URLs:
-#   Frontend (Dev)   http://localhost:8443
-#   Frontend (Prod)  http://localhost:8080
-#   Backend API      http://localhost:3001
-#   Postgres         localhost:5432  (DB: bildungspark / User: postgres)
-#
-# Hinweis: Variablen kommen aus .env (siehe .env.example).
+#   Frontend (Dev)      http://localhost:5173
+#   Frontend (Prod)     http://localhost:8080
+#   Backend API         http://localhost:3000
+#   Backend Health      http://localhost:3000/api/health
+#   MySQL               localhost:3307
+#   React-Mockup        http://localhost:8443
 # =============================================================================
 
 name: bildungspark
 
+# =============================================================================
+# Services
+# =============================================================================
 services:
   # ---------------------------------------------------------------------------
-  # Frontend - Vite Dev-Server mit Hot Reload (Standardprofil)
+  # MySQL 8 – Primaerdatenbank + Testdatenbank
   # ---------------------------------------------------------------------------
-  frontend:
+  db:
     build:
-      context: ./ArbeitsblattverwaltungMockup
+      # Eigenes Image: die Konfiguration muss mit korrekten Dateirechten
+      # im Image liegen. Als Bind-Mount ignoriert MySQL unter Windows
+      # jede world-writable .cnf (siehe docker/mysql/Dockerfile).
+      context: ./docker/mysql
       dockerfile: Dockerfile
-      target: dev
-    image: bildungspark/frontend:dev
-    container_name: bp-frontend
-    ports:
-      - "${FRONTEND_PORT:-8443}:8443"
+    image: bp/mysql:8.4
+    container_name: bp-mysql
+    restart: unless-stopped
     environment:
-      # Vite lauscht auf 0.0.0.0, damit der Port im Container erreichbar ist
-      FIGMA_DEV_SERVER_HOST: "0.0.0.0"
-      PORT: "8443"
-      # Backend vom Browser aus erreichbar (Host-Port, nicht Container-Name)
-      VITE_API_URL: "${PUBLIC_API_URL:-http://localhost:3001/api}"
-      WATCHPACK_POLLING: "true" # noetig wegen Windows-Bind-Mounts (HMR-Dateiwatching)
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-bildungspark}"
+      MYSQL_USER: "${MYSQL_USER:-bildungspark}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-bildungspark-dev}"
+      TZ: "Europe/Berlin"
     volumes:
-      # Quellcode live einbinden -> Aenderungen sofort sichtbar
-      - ./ArbeitsblattverwaltungMockup:/app
-      # node_modules NICHT vom Host mounten (Windows/Symlink-Probleme mit pnpm)
-      - frontend_node_modules:/app/node_modules
+      - mysql_data:/var/lib/mysql
+      # Init-Skripte laufen NUR beim allerersten Start (leeres Volumen).
+      # Als .sql sind sie von den Dateirechten nicht betroffen.
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysql -h 127.0.0.1 -u root -p"$$MYSQL_ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - bp-net
+
+  # ---------------------------------------------------------------------------
+  # Backend – Express (JavaScript, ESM)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    image: bp/backend:dev
+    container_name: bp-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      # Hostname "db" = Compose-Service, nicht localhost
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: "${MYSQL_DATABASE:-bildungspark}"
+      DB_USER: "${MYSQL_USER:-bildungspark}"
+      DB_PASSWORD: "${MYSQL_PASSWORD:-bildungspark-dev}"
+      DB_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
+      # CORS: im Dev erlauben wir mehrere Ports
+      CORS_ORIGINS: "${PUBLIC_FRONTEND_URL:-http://localhost:5173},http://localhost:8080,http://localhost:8443"
+      # --- KI-Provider ---
+      AI_PROVIDER: "${AI_PROVIDER:-gemini}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
+      AZURE_OPENAI_API_KEY: "${AZURE_OPENAI_API_KEY:-}"
+      AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
+      # --- Sonstiges ---
+      JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
+      TZ: "Europe/Berlin"
+    volumes:
+      - ./apps/backend:/app
+      # Linux-node_modules als Volume: ueberschreibt das Windows-Bind-Mount
+      - backend_node_modules:/app/node_modules
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
     networks:
       - bp-net
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # ---------------------------------------------------------------------------
-  # Frontend - Produktions-Build via Nginx (Profil: prod)
+  # Frontend – Vue 3 + Vite (Dev-Server mit Hot Reload)
   # ---------------------------------------------------------------------------
-  frontend-prod:
+  frontend:
     build:
-      context: ./ArbeitsblattverwaltungMockup
-      dockerfile: Dockerfile
-      target: prod
-    image: bildungspark/frontend:prod
-    container_name: bp-frontend-prod
-    profiles: ["prod"]
-    ports:
-      - "${FRONTEND_PROD_PORT:-8080}:80"
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
+    image: bp/frontend:dev
+    container_name: bp-frontend
+    restart: unless-stopped
     environment:
-      VITE_API_URL: "${PUBLIC_API_URL:-http://localhost:3001/api}"
+      # Erlaubte Hosts fuer den Vite-Dev-Server (LAN-/Team-Zugriff)
+      VITE_ALLOWED_HOSTS: "${VITE_ALLOWED_HOSTS:-true}"
+      # WICHTIG: VITE_API_URL hier NICHT setzen.
+      #
+      # Das Frontend ruft relative URLs ('/api/health'). Im Dev leitet der
+      # Vite-Proxy das an das Backend weiter, im Prod tut das Nginx.
+      # Ein absolutes URL laesst sich nicht gleichzeitig vom Host-Browser
+      # UND vom E2E-Container verwenden – dort waere 'localhost' der
+      # Testcontainer selbst, nicht der Host.
+      #
+      # WICHTIG: Im Container heisst der Backend-Host 'backend', NICHT
+      # 'localhost' – sonst laeuft der Proxy in den eigenen Container
+      # zurueck und liefert 500.
+      VITE_PROXY_TARGET: "http://backend:3000"
+      # Vite polling: noetig wegen Windows-Bind-Mounts (HMR-Dateiwatching)
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./apps/frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
     networks:
       - bp-net
     depends_on:
       - backend
-    restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Backend - Node/Express API (Profil: backend)
-  # Ordner ./backend wird mit Ticket BE-AB-01 erstellt.
+  # Frontend – Produktions-Build via Nginx (Profil: prod)
   # ---------------------------------------------------------------------------
-  backend:
+  frontend-prod:
     build:
-      context: ./backend
+      context: ./apps/frontend
       dockerfile: Dockerfile
-    image: bildungspark/backend:dev
-    container_name: bp-backend
-    profiles: ["backend"]
+      target: prod
+      args:
+        # Absichtlich leer: Nginx uebernimmt den /api-Proxy.
+        # Siehe Kommentar beim Dev-Service.
+        VITE_API_URL: ""
+    image: bp/frontend:prod
+    container_name: bp-frontend-prod
+    profiles: ["prod"]
+    restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${FRONTEND_PROD_PORT:-8080}:80"
+    networks:
+      - bp-net
+    depends_on:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Backend-Tests – Vitest + Supertest gegen die Testdatenbank (Profil: test)
+  #
+  # KEIN Bind-Mount auf /app und KEIN node_modules-Volume.
+  # Die Testlaeufe bekommen den Quellcode aus dem Image. Grund: bei einem
+  # Bind-Mount faellt der erste `npm ci` nach einer neuen Abhaengigkeit nicht
+  # auf, weil das benannte Volume den alten node_modules-Stand verdeckt.
+  # One-Shot-Laeufe bauen sich stattdessen frisch aus dem Lockfile – genau
+  # wie in CI. Durch Buildkit-Caching kostet das nur den COPY-Layer.
+  # ---------------------------------------------------------------------------
+  backend-test:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    image: bp/backend:test
+    container_name: bp-backend-test
+    profiles: ["test"]
     environment:
-      NODE_ENV: development
-      PORT: "3001"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-bildungspark}"
-      JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-in-prod-aendern}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      FRONTEND_URL: "${PUBLIC_FRONTEND_URL:-http://localhost:8443}"
-      CORS_ORIGIN: "${PUBLIC_FRONTEND_URL:-http://localhost:8443}"
-    volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
+      NODE_ENV: test
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: "${MYSQL_TEST_DATABASE:-bildungspark_test}"
+      DB_USER: "${MYSQL_USER:-bildungspark}"
+      DB_PASSWORD: "${MYSQL_PASSWORD:-bildungspark-dev}"
+      CI: "true"
+    command: ["npm", "run", "test:run"]
     networks:
       - bp-net
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Datenbank - PostgreSQL
+  # Frontend-Tests – Vitest + Vue Test Utils (Profil: test)
+  # Gleiche Begruendung wie beim Backend: kein Bind-Mount, frisch aus Image.
   # ---------------------------------------------------------------------------
-  db:
-    image: postgres:16-alpine
-    container_name: bp-db
+  frontend-test:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
+    image: bp/frontend:test
+    container_name: bp-frontend-test
+    profiles: ["test"]
     environment:
-      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
-      POSTGRES_DB: "${POSTGRES_DB:-bildungspark}"
-      # Deutsche Sortierung/Sortierregeln
-      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      # .sql-Dateien hier ablegen -> werden beim ERSTEN Start ausgefuehrt
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-    ports:
-      # Nur fuer lokale Tools (pgAdmin, DBeaver, psql)
-      - "${POSTGRES_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bildungspark}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      CI: "true"
+    command: ["npm", "run", "test:run"]
     networks:
       - bp-net
-    restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Redis - Cache / Sessions / Rate-Limiting (Profil: backend)
+  # End-to-End – Playwright (Profil: test)
+  # Nutzt das offizielle Playwright-Image, damit die Browser mitgeliefert werden.
+  # WICHTIG: Playwright-Version in package.json und image-Tag MUSSEN identisch sein.
   # ---------------------------------------------------------------------------
-  redis:
-    image: redis:7-alpine
-    container_name: bp-redis
-    profiles: ["backend"]
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+  e2e:
+    build:
+      # Eigenes Image auf Basis des Playwright-Images: liefert die Browser
+      # UND installiert @playwright/test aus dem Lockfile.
+      context: ./e2e
+      dockerfile: Dockerfile
+    image: bp/e2e:latest
+    container_name: bp-e2e
+    profiles: ["test"]
+    working_dir: /e2e
+    environment:
+      CI: "true"
+      # Container-Namen, NICHT localhost – die Tests laufen selbst im Netz
+      PLAYWRIGHT_BASE_URL: "http://frontend:5173"
+      PLAYWRIGHT_API_URL: "http://backend:3000"
+      # PWDEBUG=1 öffnet den Inspector
+      PWDEBUG: "${PWDEBUG:-0}"
     volumes:
-      - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      # Nur die Ergebnisordner sind gemountet, damit Report, Screenshots
+      # und Videos auf dem Host landen. Der Quellcode kommt aus dem Image –
+      # ein Bind-Mount auf /e2e wuerde node_modules verdecken.
+      - ./e2e/test-results:/e2e/test-results
+      - ./e2e/playwright-report:/e2e/playwright-report
+    command: ["npx", "playwright", "test"]
     networks:
       - bp-net
-    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Legacy – bestehendes React-Mockup (Profil: legacy)
+  # Nur zum Vergleich / bis die Portierung nach Vue 3 steht.
+  # ---------------------------------------------------------------------------
+  mockup:
+    build:
+      context: ./ArbeitsblattverwaltungMockup
+      dockerfile: Dockerfile
+      target: dev
+    image: bp/mockup:dev
+    container_name: bp-mockup
+    profiles: ["legacy"]
+    environment:
+      FIGMA_DEV_SERVER_HOST: "0.0.0.0"
+      PORT: "8443"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./ArbeitsblattverwaltungMockup:/app
+      - mockup_node_modules:/app/node_modules
+    ports:
+      - "${MOCKUP_PORT:-8443}:8443"
+    networks:
+      - bp-net
 
 # =============================================================================
 # Netzwerk & Volumes
@@ -163,7 +302,7 @@ networks:
     driver: bridge
 
 volumes:
-  frontend_node_modules:
+  mysql_data:
   backend_node_modules:
-  db_data:
-  redis_data:
+  frontend_node_modules:
+  mockup_node_modules:

@@ -1,0 +1,38 @@
+{
+  "name": "bildungspark-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Arbeitsblattverwaltung Bildungspark – Monorepo",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev --prefix apps/backend & npm run dev --prefix apps/frontend",
+    "dev:backend": "npm run dev --prefix apps/backend",
+    "dev:frontend": "npm run dev --prefix apps/frontend",
+
+    "build": "npm run build --prefix apps/frontend",
+
+    "test": "npm run test:run --prefix apps/backend && npm run test:run --prefix apps/frontend",
+    "test:backend": "npm run test:run --prefix apps/backend",
+    "test:frontend": "npm run test:run --prefix apps/frontend",
+    "test:e2e": "npm run test --prefix e2e",
+
+    "e2e:install": "npm run install:browsers --prefix e2e",
+
+    "up": "docker compose up --build",
+    "down": "docker compose down",
+    "reset": "docker compose down -v && docker compose up --build"
+  },
+  "comments": {
+    "workspaces": [
+      "Bewusst KEINE npm-Workspaces-Hoisting: jedes App hat einen eigenen",
+      "node_modules-Ordner und ein eigenes Lockfile. Das ist im Docker-Setup",
+      "deutlich robuster, weil das Linux-node_modules-Volume nicht durch ein",
+      "Windows-Bind-Mount ueberschrieben wird.",
+      "Bei spaeterem Bedarf an Shared-Code: packages/ anlegen und hier",
+      "\"workspaces\": [\"apps/*\", \"packages/*\"] ergaenzen."
+    ]
+  }
+}
