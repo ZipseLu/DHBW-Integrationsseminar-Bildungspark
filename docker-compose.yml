@@ -187,6 +187,13 @@ services:
 
   # ---------------------------------------------------------------------------
   # Backend-Tests – Vitest + Supertest gegen die Testdatenbank (Profil: test)
+  #
+  # KEIN Bind-Mount auf /app und KEIN node_modules-Volume.
+  # Die Testlaeufe bekommen den Quellcode aus dem Image. Grund: bei einem
+  # Bind-Mount faellt der erste `npm ci` nach einer neuen Abhaengigkeit nicht
+  # auf, weil das benannte Volume den alten node_modules-Stand verdeckt.
+  # One-Shot-Laeufe bauen sich stattdessen frisch aus dem Lockfile – genau
+  # wie in CI. Durch Buildkit-Caching kostet das nur den COPY-Layer.
   # ---------------------------------------------------------------------------
   backend-test:
     build:
@@ -203,9 +210,6 @@ services:
       DB_USER: "${MYSQL_USER:-bildungspark}"
       DB_PASSWORD: "${MYSQL_PASSWORD:-bildungspark-dev}"
       CI: "true"
-    volumes:
-      - ./apps/backend:/app
-      - backend_test_node_modules:/app/node_modules
     command: ["npm", "run", "test:run"]
     networks:
       - bp-net
@@ -215,6 +219,7 @@ services:
 
   # ---------------------------------------------------------------------------
   # Frontend-Tests – Vitest + Vue Test Utils (Profil: test)
+  # Gleiche Begruendung wie beim Backend: kein Bind-Mount, frisch aus Image.
   # ---------------------------------------------------------------------------
   frontend-test:
     build:
@@ -225,9 +230,6 @@ services:
     profiles: ["test"]
     environment:
       CI: "true"
-    volumes:
-      - ./apps/frontend:/app
-      - frontend_test_node_modules:/app/node_modules
     command: ["npm", "run", "test:run"]
     networks:
       - bp-net
@@ -255,12 +257,11 @@ services:
       # PWDEBUG=1 öffnet den Inspector
       PWDEBUG: "${PWDEBUG:-0}"
     volumes:
-      # Quellcode live einbinden, damit Tests ohne Rebuild laufen
-      - ./e2e:/e2e
-      # node_modules MUSS aus dem Image kommen. Ohne dieses Volume
-      # verdeckt der Bind-Mount das Linux-node_modules mit den Windows-
-      # Treibern, die im Linux-Container nicht funktionieren.
-      - e2e_node_modules:/e2e/node_modules
+      # Nur die Ergebnisordner sind gemountet, damit Report, Screenshots
+      # und Videos auf dem Host landen. Der Quellcode kommt aus dem Image –
+      # ein Bind-Mount auf /e2e wuerde node_modules verdecken.
+      - ./e2e/test-results:/e2e/test-results
+      - ./e2e/playwright-report:/e2e/playwright-report
     command: ["npx", "playwright", "test"]
     networks:
       - bp-net
@@ -303,8 +304,5 @@ networks:
 volumes:
   mysql_data:
   backend_node_modules:
-  backend_test_node_modules:
   frontend_node_modules:
-  frontend_test_node_modules:
-  e2e_node_modules:
   mockup_node_modules:

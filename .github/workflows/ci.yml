@@ -37,8 +37,17 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: npm ci
 
-      # Bei 'frontend' zusaetzlich: Vue-SFC-Syntax pruefen
-      - name: Build
+      # Das Backend ist reines JavaScript und hat keinen Build-Schritt.
+      # Stattdessen: Syntaxpruefung ueber alle Quelldateien.
+      - name: Syntax pruefen (Backend)
+        if: matrix.app == 'backend'
+        working-directory: apps/${{ matrix.app }}
+        run: npm run check
+
+      # Beim Frontend faengt der Build Vue-SFC- und Templatefehler ab,
+      # die kein Test sonst sieht.
+      - name: Build (Frontend)
+        if: matrix.app == 'frontend'
         working-directory: apps/${{ matrix.app }}
         run: npm run build
 
