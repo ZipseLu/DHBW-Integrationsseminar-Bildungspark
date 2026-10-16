@@ -1,0 +1,2 @@
+# Ablage fuer hochgeladene Originaldokumente (Ticket: Block A / D)
+# Wird im Container als /app/uploads gemountet bzw. im Image angelegt.

@@ -1,0 +1,22 @@
+# Abhaengigkeiten kommen aus dem Image, nicht vom Host
+node_modules
+npm-debug.log*
+
+# Tests laufen als eigener Compose-Service
+coverage
+test-results
+
+# Lokale Umgebungsvariablen (Secrets bleiben auf dem Host)
+.env
+.env.*
+!.env.example
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Logs & Editor
+*.log
+.DS_Store
+.idea
+.vscode
