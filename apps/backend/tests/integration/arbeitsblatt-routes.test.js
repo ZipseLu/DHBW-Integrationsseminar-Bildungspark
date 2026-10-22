@@ -55,6 +55,19 @@ describe('POST /api/ai/arbeitsblatt', () => {
 describe('POST /api/ai/arbeitsblatt/docx', () => {
   const app = createApp()
 
+  it('exportiert ein Mock-Ergebnis mit langem Lernzieltitel (Rueckweg aus dem Frontend)', async () => {
+    const titel =
+      'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben auf Richtigkeit und Vollständigkeit prüfen'
+    const generated = await request(app)
+      .post('/api/ai/arbeitsblatt')
+      .send({ ...REQUEST_T_TEXT, lernziel: { ...REQUEST_T_TEXT.lernziel, titel } })
+    expect(generated.status).toBe(200)
+
+    const response = await request(app).post('/api/ai/arbeitsblatt/docx').send({ worksheet: generated.body.worksheet }).responseType('blob')
+    expect(response.status).toBe(200)
+    expect(Buffer.from(response.body).subarray(0, 2).toString()).toBe('PK')
+  })
+
   it('liefert eine Word-Datei mit richtigem Content-Type und Magic Bytes', async () => {
     const response = await request(app)
       .post('/api/ai/arbeitsblatt/docx')

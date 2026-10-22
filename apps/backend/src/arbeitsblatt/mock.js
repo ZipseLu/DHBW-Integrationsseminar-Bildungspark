@@ -9,6 +9,15 @@
  */
 import { AUFGABEN_ANZAHL, KOMPETENZFORMEL } from './schema.js'
 
+/** Kuerzt lange Lernzieltexte fuer den Titel auf Wortgrenze (Schema: hoechstens 120 Zeichen) */
+export function kurzerTitel(text, max = 100) {
+  const clean = String(text).replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:–-]+$/, '')}…`
+}
+
 /**
  * Aufgabenpool. `anweisung` haelt die Satzlaengen-Regel fuer Stufe T ein
  * (hoechstens 12 Woerter je Satz), `kurz` die Piktogramm-Regel (hoechstens
@@ -93,7 +102,7 @@ export function buildMockWorksheet(input) {
   })
 
   return {
-    titel: lernziel.titel,
+    titel: kurzerTitel(lernziel.titel),
     berufsfeld: lernziel.berufsfeld,
     baustein: lernziel.baustein,
     ausbildungsbaustein: lernziel.ausbildungsbaustein,

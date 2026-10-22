@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
+import { existsSync, readFileSync } from 'node:fs'
 import { ArbeitsblattError, generateArbeitsblatt, parseWorksheet, toArbeitsblattError } from '../../src/arbeitsblatt/generate.js'
+import { buildMockWorksheet, kurzerTitel } from '../../src/arbeitsblatt/mock.js'
 import { PROMPT_VERSION } from '../../src/arbeitsblatt/prompt.js'
+import { WorksheetSchema, formatZodError } from '../../src/arbeitsblatt/schema.js'
+import { validateWorksheet } from '../../src/arbeitsblatt/validator.js'
 import { REQUEST_T_TEXT, WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 
 /** Fake-Provider: liefert nacheinander die uebergebenen Antworten */
@@ -31,6 +35,45 @@ describe('generateArbeitsblatt – Mock-Modus', () => {
     expect(worksheet.aufgaben.length).toBeGreaterThanOrEqual(4)
     expect(worksheet.aufgaben.every((a) => a.piktogramm)).toBe(true)
     expect(worksheet.woerterbuch.length).toBeGreaterThan(0)
+  })
+})
+
+describe('Mock-Arbeitsblatt', () => {
+  const langerTitel =
+    'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben auf Richtigkeit und Vollständigkeit prüfen'
+
+  it('besteht das Arbeitsblatt-Schema auch bei sehr langen Lernzieltiteln (Titel wird gekürzt)', () => {
+    const worksheet = buildMockWorksheet({ ...REQUEST_T_TEXT, lernziel: { ...REQUEST_T_TEXT.lernziel, titel: langerTitel } })
+    const result = WorksheetSchema.safeParse(worksheet)
+    expect(result.success, formatZodError(result.error ?? { issues: [] })).toBe(true)
+    expect(worksheet.titel.length).toBeLessThanOrEqual(120)
+    expect(worksheet.titel.endsWith('…')).toBe(true)
+    expect(worksheet.lernziel).toBe(langerTitel)
+  })
+
+  it('kuerzt auf Wortgrenze und laesst kurze Titel unveraendert', () => {
+    expect(kurzerTitel('Güter entladen')).toBe('Güter entladen')
+    const kurz = kurzerTitel('a'.repeat(10) + ' ' + 'b'.repeat(80) + ' ' + 'c'.repeat(30), 100)
+    expect(kurz).toBe('a'.repeat(10) + ' ' + 'b'.repeat(80) + '…')
+  })
+
+  it.each(['T', 'A', 'F', 'B'])('ist fuer Stufe %s in allen Formaten schemakonform und ohne Validator-Hinweise', (stufe) => {
+    for (const format of ['text', 'piktogramm', 'mathefrei', 'piktogramm-mathefrei']) {
+      const worksheet = buildMockWorksheet({ ...REQUEST_T_TEXT, stufe, format })
+      expect(WorksheetSchema.safeParse(worksheet).success).toBe(true)
+      expect(validateWorksheet(worksheet)).toEqual({ ok: true, hinweise: [] })
+    }
+  })
+
+  // Mit importierten Lehrplaenen (apps/backend/data/lehrplaene.json, lokal) alle 96 Lernziele pruefen
+  const lehrplaeneFile = new URL('../../data/lehrplaene.json', import.meta.url)
+  it.skipIf(!existsSync(lehrplaeneFile))('ist fuer alle importierten Lernziele schemakonform', () => {
+    const { lernziele } = JSON.parse(readFileSync(lehrplaeneFile, 'utf8'))
+    for (const lernziel of lernziele) {
+      const worksheet = buildMockWorksheet({ lernziel, stufe: 'T', format: 'text', sprache: 'Leichte Sprache' })
+      const result = WorksheetSchema.safeParse(worksheet)
+      expect(result.success, `${lernziel.id}: ${formatZodError(result.error ?? { issues: [] })}`).toBe(true)
+    }
   })
 })
 
