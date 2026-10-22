@@ -19,6 +19,65 @@ Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
 ---
 
+## Quick Run: KI-Arbeitsblatt in 5 Minuten (ohne Docker)
+
+Voraussetzung: Node 22 und npm. Alle Befehle im Ordner des Repos.
+
+1. **Branch holen** (solange der Prototyp noch nicht in `main` ist):
+
+   ```bash
+   git fetch && git checkout feature/ki-arbeitsblatt
+   ```
+
+2. **Pakete installieren** (einmalig, je App):
+
+   ```bash
+   cd apps/backend && npm ci && cd ../frontend && npm ci && cd ../..
+   ```
+
+3. **Optional: Gemini-Key eintragen.** Datei `apps/backend/.env` anlegen (landet nicht in Git):
+
+   ```dotenv
+   GEMINI_API_KEY=hier-den-key-einfügen
+   ```
+
+   Kostenloser Key: <https://aistudio.google.com/apikey>. Ohne Key läuft alles im Mock-Modus mit einer festen Beispielantwort.
+
+4. **Backend starten** (Terminal 1, bleibt offen):
+
+   ```bash
+   cd apps/backend && npm run dev
+   ```
+
+5. **Frontend starten** (Terminal 2, bleibt offen):
+
+   ```bash
+   cd apps/frontend && npm run dev
+   ```
+
+6. **Ausprobieren:** <http://localhost:5173> → **KI-Erstellung** → Lernziel wählen (z. B. *Baustein 1 · Güter entladen*) →
+   Stufe **T** → **✦ 1 Variante generieren** → nach 5–20 Sekunden Ergebnis lesen → **📄 .docx** öffnet die Word-Datei.
+
+7. **Beenden:** in beiden Terminals `Ctrl+C`.
+
+Wenn etwas hakt: Tabelle „Wenn etwas schiefgeht“ in [docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md#43-wenn-etwas-schiefgeht).
+
+### So hängt es zusammen
+
+```mermaid
+flowchart LR
+    B["Browser<br/>Seite KI-Erstellung"] -- "Lernziel, Stufe, Format, Sprache" --> S["Backend<br/>Express, Port 3000"]
+    S -- "Prompt + JSON-Schema" --> G["Google Gemini<br/>Sprachmodell"]
+    G -- "Arbeitsblatt als JSON" --> S
+    S -- "Arbeitsblatt + Validator-Hinweise" --> B
+    B -- "Klick auf .docx" --> S
+    S -- "Word-Datei" --> B
+```
+
+Ausführliches Diagramm mit allen Dateien: [docs/prototyp-ki-arbeitsblatt.md, Abschnitt 2](docs/prototyp-ki-arbeitsblatt.md#2-ablauf-in-einfachen-worten).
+
+---
+
 ## Tech Stack
 
 | Bereich | Technologie |

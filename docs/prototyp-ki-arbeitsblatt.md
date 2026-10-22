@@ -24,6 +24,74 @@ Freigabe. Jedes Ergebnis ist ein KI-Entwurf, den eine Lehrkraft prüfen muss (st
 
 ## 2. Ablauf in einfachen Worten
 
+### 2.1 Das einfache Bild
+
+Vier Stationen: Browser, unser Backend, Gemini, Word-Datei. Alles andere sind Details im Backend.
+
+```mermaid
+flowchart LR
+    B["Browser<br/>Seite KI-Erstellung"] -- "Lernziel, Stufe, Format, Sprache" --> S["Backend<br/>Express, Port 3000"]
+    S -- "Prompt + JSON-Schema" --> G["Google Gemini<br/>Sprachmodell"]
+    G -- "Arbeitsblatt als JSON" --> S
+    S -- "Arbeitsblatt + Validator-Hinweise" --> B
+    B -- "Klick auf .docx" --> S
+    S -- "Word-Datei" --> B
+```
+
+### 2.2 Das ausführliche Bild
+
+Jede Station ist eine Datei im Repo (Pfade relativ zu `apps/frontend/src` bzw. `apps/backend/src`).
+Ohne API-Key läuft der Zweig „kein API-Key“ über die Mock-Antwort; der Rest ist identisch.
+
+```mermaid
+flowchart TD
+    subgraph FE["Frontend – apps/frontend (React)"]
+        Form["KiErstellungPage.tsx<br/>Formular: Lernziel, Stufe, Format, Sprache"]
+        Api["lib/api.ts<br/>fetch-Wrapper, einheitlicher ApiError"]
+        Card["GeneratedWorksheetCard.tsx<br/>Anzeige, Validator-Box, Button .docx"]
+    end
+
+    subgraph BE["Backend – apps/backend (Express)"]
+        Route["routes/arbeitsblatt.js<br/>POST /api/ai/arbeitsblatt"]
+        Schema["arbeitsblatt/schema.js<br/>Anfrage prüfen (zod)"]
+        Mock["arbeitsblatt/mock.js<br/>feste Beispielantwort"]
+        Prompt["arbeitsblatt/prompt.js<br/>stabiler Teil: prompts/arbeitsblatt-system.md<br/>variabler Teil: Lernziel, Zielstufe, Format, Wünsche"]
+        Gen["arbeitsblatt/generate.js<br/>Ablauf, 1 Wiederholung bei ungültigem JSON,<br/>Fallback-Modell bei 503, Timeout 60 s"]
+        Prov["ai/provider.js → ai/gemini.js<br/>@google/genai, responseJsonSchema"]
+        Parse["JSON parsen + gegen Schema prüfen"]
+        Val["arbeitsblatt/validator.js<br/>Satzlänge, Aufgabenanzahl, mathefrei,<br/>piktogramm, Verbotsliste → Hinweise"]
+        Docx["arbeitsblatt/docx.js<br/>POST /api/ai/arbeitsblatt/docx"]
+        Lehr["routes/lehrplaene.js<br/>GET /api/lehrplaene"]
+        Data[("data/lehrplaene.json<br/>96 Lernziele, gitignored")]
+    end
+
+    Gemini["Google Gemini<br/>gemini-3.5-flash, Fallback gemini-3.5-flash-lite"]
+    Import["scripts/import-lehrplaene.js<br/>14 Lehrplan-DOCX → JSON"]
+
+    Form --> Api
+    Api -- "JSON-Anfrage" --> Route
+    Route --> Schema
+    Schema -- "ungültig" --> E400["400 mit deutscher Meldung"]
+    Schema -- "kein API-Key" --> Mock
+    Mock --> Val
+    Schema -- "Key vorhanden" --> Prompt
+    Prompt --> Gen
+    Gen --> Prov
+    Prov -- "Prompt + Schema" --> Gemini
+    Gemini -- "JSON" --> Parse
+    Parse -- "ungültig, genau einmal" --> Gen
+    Parse -- "gültig" --> Val
+    Val -- "{ worksheet, meta }" --> Api
+    Api --> Card
+    Card -- "worksheet" --> Docx
+    Docx -- "docx-Datei" --> Card
+    Import --> Data
+    Data --> Lehr
+    Lehr -- "Dropdown-Inhalt" --> Form
+```
+
+### 2.3 Dieselbe Kette als Textskizze (für Terminal und Ausdruck)
+
 ```
 Browser (React, Port 5173)                 Backend (Express, Port 3000)                     Google Gemini
 ──────────────────────────                 ─────────────────────────────                    ─────────────
