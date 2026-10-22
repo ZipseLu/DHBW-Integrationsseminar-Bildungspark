@@ -69,10 +69,9 @@ function sectionHeading(text) {
   return para(run(text, { size: 18, bold: true, color: COLOR_PRIMARY, allCaps: true }), { spacing: { before: 240, after: 80 } })
 }
 
+/** Schreiblinien als Unterstriche – Rahmenlinien benachbarter Absaetze wuerde Word zu einem Kasten verschmelzen */
 function writingLines(count = 3) {
-  return Array.from({ length: count }, () =>
-    para(run(''), { border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER, space: 1 } }, spacing: { before: 200, after: 40 } }),
-  )
+  return Array.from({ length: count }, () => para(run('_'.repeat(78), { color: COLOR_BORDER }), { spacing: { before: 160, after: 40 } }))
 }
 
 function checkboxLines(options) {
