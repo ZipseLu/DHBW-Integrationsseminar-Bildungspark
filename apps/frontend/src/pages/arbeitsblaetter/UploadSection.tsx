@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
 import { FieldLabel, FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
 import { GenerateButton, Spinner, VariantSummary } from '@/components/VariantSummary'
-import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { BERUFSBILD_LAGER, LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { todayIso } from '@/lib/date'
 import { toggleKeepOne } from '@/lib/selection'
 import { useSimulatedTask } from '@/lib/simulation'
@@ -57,10 +57,11 @@ export function UploadSection({ savedBy, onSave }: Props) {
     setLevels([...LEVELS])
     setFormats(['text'])
     transform.reset()
+    // Simulierte Analyse: Thema aus dem Dateinamen, Berufsfeld und Stufe fest vorgegeben
     analyse.start(() => {
       setAnalysis({
         thema: selected.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
-        berufsbild: 'Lagerlogistik',
+        berufsbild: BERUFSBILD_LAGER,
         level: 'F',
       })
     })

@@ -16,17 +16,19 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
-    "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "db:reset": "node scripts/reset.js"
+    "import:lehrplaene": "node scripts/import-lehrplaene.js"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "cors": "^2.8.5",
+    "docx": "^9.13.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
-    "mysql2": "^3.12.0"
+    "mysql2": "^3.12.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.8",

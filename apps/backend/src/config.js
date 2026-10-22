@@ -37,9 +37,16 @@ export const config = {
   ai: {
     // 'gemini' | 'azure' – hier zentral umschalten, wenn die Azure-Phase startet.
     provider: process.env.AI_PROVIDER ?? 'gemini',
+    // Zeitlimit eines Generierungsauftrags in Millisekunden (inkl. Wiederholungsversuch)
+    timeoutMs: int(process.env.AI_TIMEOUT_MS, 60_000),
     gemini: {
       apiKey: process.env.GEMINI_API_KEY ?? '',
-      model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+      // Stand 22.10.2026: 'gemini-2.5-flash' ist fuer neue Keys nicht mehr verfuegbar (404),
+      // 'gemini-flash-latest' und 'gemini-3.8-flash' antworten im Free-Tier haeufig mit 503.
+      // 'gemini-3.5-flash' hat im Test funktioniert. Bei 503 wechselt das Backend einmalig
+      // auf das Fallback-Modell (kleiner, aber meist verfuegbar).
+      model: process.env.GEMINI_MODEL ?? 'gemini-3.5-flash',
+      fallbackModel: process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.5-flash-lite',
     },
     azure: {
       endpoint: process.env.AZURE_OPENAI_ENDPOINT ?? '',

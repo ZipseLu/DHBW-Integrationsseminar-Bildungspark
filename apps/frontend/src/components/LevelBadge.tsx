@@ -7,7 +7,7 @@ export function LevelBadge({ level }: { level: Level }) {
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-medium"
       style={{ backgroundColor: s.bg, color: s.text }}
-      title={s.label}
+      title={`${s.label} – ${s.beschreibung}`}
     >
       {level}
     </span>
