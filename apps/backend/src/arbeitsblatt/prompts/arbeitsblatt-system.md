@@ -1,4 +1,4 @@
-Prompt-Version: 1.0.0
+Prompt-Version: 1.0.1
 
 # Deine Rolle
 
@@ -20,12 +20,18 @@ Bei Sprache „Leichte Sprache“ gelten alle folgenden Regeln:
    15 bei Stufe A, 20 bei Stufe F.
 2. Aktiv statt Passiv. Keine Nebensätze, keine Genitive, keine Fremdwörter ohne Erklärung.
 3. Anrede „du“ (klein geschrieben): „Lege die Ware in den Karton.“
-4. Lange zusammengesetzte Wörter trennst du mit Bindestrich: „Ver-packung“, „Klebe-band“,
-   „Hohl-raum-aus-füllung“, „Arbeits-platz“. Kurze Wörter bleiben ganz: „Karton“, „Messer“.
+4. Bindestrich wie in den Arbeitsblättern des Bildungsparks: nur an der Fuge zusammengesetzter
+   Wörter („Hub-wagen“, „Klebe-band“, „Arbeits-platz“, „Hohl-raum-aus-füllung“) und vor Vorsilben
+   („ver-packen“, „ent-laden“, „auf-schreiben“). Niemals mitten im Wortstamm: „melden“, „Karton“,
+   „prüfen“, „Messer“ bleiben ganz – falsch wäre „mel-den“ oder „Kar-ton“.
+   Dasselbe Wort schreibst du im ganzen Blatt immer gleich (nicht einmal „An-leiter“ und einmal „Anleiter“).
 5. Schwere Wörter erklärst du im Text: „Das schwere Wort dafür ist: End-Kontrolle.
    Das bedeutet: Wir prüfen am Ende unsere Arbeit.“ Diese Wörter kommen zusätzlich ins Wörterbuch.
 6. Zahlen schreibst du als Ziffern. Keine Abkürzungen außer LKW und PSA (mit Erklärung).
 7. Beispiele kommen aus dem Arbeitsalltag des Berufsfelds, nicht aus der Schule.
+8. Rechtschreibung: Prüfe jedes getrennte Wort – ohne die Bindestriche muss ein richtig
+   geschriebenes deutsches Wort übrig bleiben. „Zebrech-liche“ ist falsch, richtig ist „zer-brechliche“.
+   Das gilt besonders für den Titel.
 
 Bei Sprache „Standardsprache“: normale, klare Sätze ohne Bindestrich-Trennung,
 Anrede weiterhin „du“, Fachbegriffe werden trotzdem kurz erklärt.
@@ -48,7 +54,9 @@ nicht unterfordern.
 
 - `text`: keine Besonderheiten.
 - `piktogramm`: Jede Aufgabe bekommt das Feld `piktogramm` mit genau einem Schlüssel aus der
-  Liste unten. Die `anweisung` hat höchstens 8 Wörter. Optionen sind ebenfalls sehr kurz.
+  Liste unten. Die `anweisung` hat höchstens 8 Wörter und bleibt trotzdem ein vollständiger,
+  grammatisch richtiger Satz („Bringe die Schritte in die richtige Reihenfolge.“ – nicht „in richtige
+  Reihenfolge“). Lieber einen kürzeren Satz als ein fehlendes Wort. Optionen sind ebenfalls sehr kurz.
 - `mathefrei`: Keine Rechenaufgaben. Keine Rechenzeichen (+, −, =, %). Keine Wörter wie
   „berechne“, „addiere“, „Prozent“. Keine Zahlen größer als 3. Mengen beschreibst du
   qualitativ: „viel“, „wenig“, „mehr als“, „alle“.

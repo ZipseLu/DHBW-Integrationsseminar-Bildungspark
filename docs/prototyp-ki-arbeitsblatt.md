@@ -179,7 +179,7 @@ oder auf den Mock-Modus wechseln (Plan B).
 1. Datei öffnen: `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md` – normales Markdown, jede Zeile
    wird so an Gemini geschickt. Abschnitte: Rolle, Sprache, Stufen, Formate, Aufgabentypen, Sicherheitsregeln, Beispiel.
 2. Ändern, z. B. eine neue Regel für Leichte Sprache ergänzen oder das Beispiel anpassen.
-3. **Versionsnummer in Zeile 1 erhöhen** (`Prompt-Version: 1.0.1`). Sie wird mit jeder Antwort als `meta.promptVersion`
+3. **Versionsnummer in Zeile 1 erhöhen** (aktuell `Prompt-Version: 1.0.1`, nächste wäre `1.0.2`). Sie wird mit jeder Antwort als `meta.promptVersion`
    zurückgegeben – so sieht man später, mit welchem Prompt ein Blatt entstanden ist.
 4. Tests laufen lassen (ohne Key, ohne Kosten):
 
