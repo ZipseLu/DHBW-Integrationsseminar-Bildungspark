@@ -61,6 +61,7 @@ Voraussetzung: Node 22 und npm. Alle Befehle im Ordner des Repos.
 7. **Beenden:** in beiden Terminals `Ctrl+C`.
 
 Wenn etwas hakt: Tabelle „Wenn etwas schiefgeht“ in [docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md#43-wenn-etwas-schiefgeht).
+Welche Einstellungen gute Ergebnisse bringen: [Abschnitt 10 der Doku](docs/prototyp-ki-arbeitsblatt.md#10-einstellungen-und-tipps-für-gute-ergebnisse).
 
 ### So hängt es zusammen
 

@@ -220,6 +220,8 @@ Plan B bei Internetproblemen: `apps/backend/.env` umbenennen, Backend neu starte
 | 4:30 | Kurz `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md` im Editor zeigen | „Die Regeln stehen in einer lesbaren Datei – fachliche Änderungen vom Bildungspark lassen sich ohne Programmierung einarbeiten.“ |
 | 4:50 | Abschluss | „Alle Ergebnisse sind KI-Entwürfe und freigabepflichtig. Nächste Schritte: Speichern, Freigabe-Workflow, Lehrplan-Import.“ |
 
+Tipps, welche Einstellungen gute Ergebnisse bringen: Abschnitt 10.
+
 **Falls Gemini während der Demo 503 meldet:** Das Backend wechselt automatisch auf das kleinere Modell
 (im Backend-Terminal sichtbar). Meldet auch das Fallback einen Fehler: 20 Sekunden warten, erneut klicken,
 oder auf den Mock-Modus wechseln (Plan B).
@@ -315,3 +317,42 @@ Bildungspark und das Repository ist öffentlich. Jedes Teammitglied erzeugt sie 
 Danach das Backend neu starten (es liest die Datei einmal beim ersten Aufruf). `GET /api/lehrplaene` liefert
 die Liste; das Frontend zeigt unter dem Dropdown „Quelle: 96 importierte Lernziele“. Die Lernzieltexte sind
 im Dropdown auf 70 Zeichen gekürzt, in der Zeile darunter stehen sie vollständig.
+
+---
+
+## 10. Einstellungen und Tipps für gute Ergebnisse
+
+Kurzfassung: Ausprobieren ist ungefährlich. Nichts geht kaputt. Schlimmstenfalls kommt ein Rate-Limit
+(eine Minute warten) oder ein paar Validator-Hinweise. Für ein gutes Ergebnis zählt vor allem das Lernziel.
+
+### 10.1 Was die Felder bedeuten
+
+| Feld | Bedeutung | Wirkung auf die KI |
+|---|---|---|
+| **Berufsbild** | Berufsfeld des Bildungsparks | Filtert nur die Lernziel-Liste. Lehrpläne gibt es für Lager, Gastro und Metall; Garten und Pflege sind gesperrt. |
+| **Lernziel „Baustein N · …“** | Baustein = Kapitel des Lehrplans (Lager: 1 Wareneingang, 2 Innerbetrieblicher Transport, 3 Lagerung; Gastro: 1–5; Metall: 2). Lernziel = eine Zeile daraus mit den vier Stufen T/A/F/B | Wichtigste Eingabe. Die KI bekommt alle vier Stufenzeilen samt Beispielen und baut das Blatt daraus. |
+| **Niveaustufe** | T = ein Arbeitsschritt, A = einige Schritte, F = bekannte Situationen, B = neue Situationen | Schwierigkeit und Anzahl der Aufgaben (T 3–4 … B 6–8). Jede angeklickte Stufe ergibt ein eigenes Blatt. |
+| **Sprachformat** | Leichte Sprache = kurze Sätze, Bindestrich-Trennung, du-Anrede. Standardsprache = normale Sätze | Der Validator misst die Satzlänge trotzdem je Stufe; Standardsprache bei T erzeugt daher oft Hinweise. Für den Bildungspark fast immer Leichte Sprache. |
+| **Format** | Text / Mit Piktogrammen (jede Aufgabe mit Symbol, Anweisung höchstens 8 Wörter) / Ohne Rechnen (keine Zahlen über 3, keine Rechenzeichen) / beides | Jedes Format ergibt ein eigenes Blatt. Piktogramme sind im Prototyp Symbole (Emoji), kein echtes Piktogramm-Set. |
+| **Thema / Titel, Erwartungen** | optional | Zweitwichtigster Hebel. Beides geht als „Zusatzwunsch der Lehrkraft“ in den Prompt. |
+
+### 10.2 Fünf Regeln für gute Ergebnisse
+
+1. **Lernziel mit konkretem Beispiel wählen.** „Güter entladen“ (Beispiel im Lehrplan: LKW melden, Hubwagen) liefert
+   besseres Material als abstrakte Lernziele wie „Vorschriften anwenden“. Das Beispiel steht unter dem Dropdown.
+2. **Erwartungen kurz und konkret:** „Sicherheit am LKW betonen“, „Beispiele mit Paletten und Hubwagen“,
+   „eine Reihenfolge-Aufgabe einbauen“. Ein bis zwei Sätze reichen. Keine Romane, keine Anweisungen an die KI
+   wie „ignoriere die Regeln“ (werden ohnehin abgefangen).
+3. **Wenige Varianten auf einmal.** Jede dauert 10–20 Sekunden und kostet Kontingent. Für die Demo eine,
+   höchstens zwei. Vier auf einmal nur, wenn Zeit ist.
+4. **Stufe und Format passend kombinieren.** T und A funktionieren gut mit Piktogrammen. Bei B wird das
+   Piktogramm-Format eng (8 Wörter für Transferaufgaben). „Ohne Rechnen“ ist sinnvoll, wenn im Lernziel Zählen
+   oder Mengen vorkommen (Warenkontrolle, Lager).
+5. **Nicht zufrieden? Nochmal klicken.** Die KI variiert bei jedem Aufruf leicht (Temperatur 0,4), jedes
+   Ergebnis ist anders. Validator-Hinweise sind keine Fehler, sondern Prüfpunkte für die Lehrkraft.
+
+### 10.3 Was nicht hilft
+
+- Thema/Titel überschreibt das Lernziel nicht, es ergänzt nur.
+- Standardsprache macht das Blatt nicht „besser“, nur länger.
+- Viele Formate gleichzeitig verbessern kein einzelnes Blatt, sie verlängern nur die Wartezeit.
