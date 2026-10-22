@@ -1,11 +1,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 
 /**
  * Komponententests: rendern die App in jsdom und klicken sie durch.
  * Simulierte Wartezeiten sind im Testmodus 0 ms (siehe lib/simulation.ts).
+ * Die KI-Erstellung ruft das Backend auf – hier mit gemocktem fetch
+ * (ausfuehrliche Tests in KiErstellung.spec.tsx).
  */
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 function renderApp() {
   render(<App />)
@@ -98,10 +104,17 @@ describe('Arbeitsblätter', () => {
 
 describe('KI-Erstellung', () => {
   it('generiert Varianten fuer die gewaehlten Niveaus und Formate', async () => {
+    const worksheet = {
+      titel: 'Gabelstapler', berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'T', format: 'text', sprache: 'Leichte Sprache',
+      lernziel: 'Güter entladen', einleitung: 'Text.', aufgaben: [{ nr: 1, typ: 'offen', anweisung: 'Schreibe.' }], woerterbuch: [], hinweisAnleiter: '',
+    }
+    const meta = { provider: 'gemini', model: 'mock', mocked: true, durationMs: 1, promptVersion: '1.0.0', attempts: 0, usage: null, validation: { ok: true, hinweise: [] } }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ worksheet, meta }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
     renderApp()
     navigate('KI-Erstellung')
 
-    fireEvent.change(screen.getByLabelText('THEMA / TITEL'), { target: { value: 'Gabelstapler' } })
+    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
 
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
