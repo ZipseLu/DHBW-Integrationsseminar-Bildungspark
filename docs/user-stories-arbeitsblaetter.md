@@ -5,6 +5,26 @@
 **Bezugsquelle:** `ArbeitsblattverwaltungMockup/src/App.tsx` (3.604 Zeilen)
 **Erstellt:** 12.10.2026
 
+> **Gültigkeit (Stand 22.10.2026).** Dieses Dokument analysiert das Figma-Make-Mockup vom 12.10.
+> und schlägt Tickets vor. Seitdem entschieden bzw. umgesetzt:
+>
+> - **Stack (16.10.):** Backend Node 22 + Express 4 in JavaScript (ESM), MySQL 8.4 über `mysql2`,
+>   npm, GitHub Actions. Die Vorschläge Prisma/PostgreSQL (BE-00, BE-01, Abschnitt 4), `pnpm build`
+>   (DoD) und OpenAI `gpt-4o` (Abschnitt 9) sind damit überholt. Das Schema steht in
+>   `docker/mysql/init/01-init.sql`.
+> - **KI-Anbieter:** Gemini (Anfangsphase) → Azure OpenAI, umschaltbar über `AI_PROVIDER`; ohne
+>   API-Key läuft ein Mock (`apps/backend/src/ai/`).
+> - **Frontend (22.10.):** `apps/frontend` ersetzt das Mockup als Prototyp (Seiten Arbeitsblätter und
+>   KI-Erstellung, Komponenten aufgeteilt). FE-00/FE-03/FE-15/FE-31 sind damit teilweise erledigt,
+>   Routing (React Router) nicht. Das Mockup läuft nur noch als Profil `legacy`.
+> - **Meilenstein:** „Erster Prototyp“ wurde am 13.10. vom 06.10. auf den 23.10. verschoben.
+> - **Niveaustufen:** Die Bezeichnungen „Talent-/Aufbau-/Fach-/Berufsstufe“ (Abschnitt 4) stammen
+>   aus dem Mockup und sind in keiner Unterlage des Bildungsparks belegt – siehe
+>   [fachliche-grundlagen.md](fachliche-grundlagen.md). Ebenso ist „Reinigung & Gebäudepflege“ kein
+>   Berufsfeld des Bildungsparks.
+>
+> Zeilenangaben beziehen sich weiterhin auf `ArbeitsblattverwaltungMockup/src/App.tsx` (Stand 12.10.2026).
+
 ---
 
 ## 1. Ausgangslage — was im Mockup vorliegt
@@ -136,7 +156,7 @@ Diese Punkte fehlen vollständig und müssen **neu** gebaut werden:
 Aus `type Worksheet` (Z. 61–66), `type HistoryEntry` (Z. 78–84) und `type SavedDocument` (Z. 67–76) abgeleitet:
 
 ```ts
-enum Level   { T, A, F, B }                                   // Talent-, Aufbau-, Fach-, Berufsstufe
+enum Level   { T, A, F, B }                                   // Stufen der Lehrpläne; Bezeichnung offen, s. fachliche-grundlagen.md
 enum Format  { TEXT, PIKTOGRAMM, MATHEFREI, PIKTOGRAMM_MATHEFREI }
 enum HistoryAction { ERSTELLT, BEARBEITET, KI_ANGEPASST, FREIGEGEBEN, ARCHIVIERT }
 enum Status  { ENTWURF, FREIGEGEBEN, ARCHIVIERT }
@@ -436,8 +456,8 @@ DoD:      [ ] Formular aus FE-20 angebunden
 
 | # | Frage | Blockiert |
 |---|---|---|
-| 1 | Backend-Stack final bestätigen (Vorschlag: Express + TypeScript + Prisma + PostgreSQL) | BE-00 |
-| 2 | KI-Anbieter für BE-23/BE-25 (Vorschlag: OpenAI, Modell `gpt-4o`) | BE-25 |
+| 1 | ~~Backend-Stack final bestätigen (Vorschlag: Express + TypeScript + Prisma + PostgreSQL)~~ **Entschieden 16.10.:** Express 4 in JavaScript, MySQL 8.4 mit `mysql2` | – |
+| 2 | ~~KI-Anbieter für BE-23/BE-25 (Vorschlag: OpenAI, Modell `gpt-4o`)~~ **Entschieden 16.10.:** Gemini, später Azure OpenAI (`AI_PROVIDER`) | – |
 | 3 | Wird Bearbeiten von Hand (FE-21/22) gezeigt, oder nur KI-generierte Arbeitsblätter? | Sprint-Scope Woche 2 |
 | 4 | Sollen hochgeladene Originale in der Demo sichtbar sein, oder erst nach Upload? (Block D erscheint aktuell nur bei Inhalt) | FE-30 |
 | 5 | Rollenrechte: darf ein Assistent Arbeitsblätter anlegen und freigeben? (Rollen existieren bereits ab Z. 389–394) | BE-03, FE-24 |

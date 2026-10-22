@@ -44,8 +44,8 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: npm run check
 
-      # Beim Frontend faengt der Build Vue-SFC- und Templatefehler ab,
-      # die kein Test sonst sieht.
+      # Beim Frontend faengt der Build (tsc --noEmit + vite build)
+      # Typfehler ab, die kein Test sonst sieht.
       - name: Build (Frontend)
         if: matrix.app == 'frontend'
         working-directory: apps/${{ matrix.app }}

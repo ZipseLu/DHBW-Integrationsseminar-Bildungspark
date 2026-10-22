@@ -2,11 +2,22 @@ import type { Format, HistoryAction, Level, NavItem, Sprache, StaffRole } from '
 
 export const LEVELS: readonly Level[] = ['T', 'A', 'F', 'B']
 
-export const LEVEL_STYLES: Record<Level, { bg: string; text: string; label: string }> = {
-  T: { bg: '#D4EDDA', text: '#1A5C32', label: 'Talentstufe' },
-  A: { bg: '#D0E4F7', text: '#1A3A5C', label: 'Aufbaustufe' },
-  F: { bg: '#FFF3CD', text: '#7A5C00', label: 'Fachstufe' },
-  B: { bg: '#FAD9C8', text: '#7A2E00', label: 'Berufsstufe' },
+/**
+ * Niveaustufen der binnendifferenzierten Lehrplaene des Bildungsparks.
+ *
+ * Belegt sind in den Lehrplaenen nur die Buchstaben T, A, F, B und die
+ * Kompetenzformel je Stufe (`beschreibung`). Die Bezeichnungen folgen dem
+ * Vier-Stufen-Modell der BAG WfbM (taetigkeits-, arbeitsplatz-, berufsfeld-,
+ * berufsbildorientiert), auf das auch das Infoblatt des Bildungsparks verweist
+ * ("taetigkeits- bis berufsbildorientiert"). Die frueheren Mockup-Labels
+ * "Talent-/Aufbau-/Fach-/Berufsstufe" hatten keine Quelle.
+ * Bestaetigung durch den Bildungspark steht aus – siehe docs/fachliche-grundlagen.md.
+ */
+export const LEVEL_STYLES: Record<Level, { bg: string; text: string; label: string; beschreibung: string }> = {
+  T: { bg: '#D4EDDA', text: '#1A5C32', label: 'Tätigkeit', beschreibung: 'Tätigkeitsorientiert: beherrscht einen erlernten Arbeitsschritt' },
+  A: { bg: '#D0E4F7', text: '#1A3A5C', label: 'Arbeitsplatz', beschreibung: 'Arbeitsplatzorientiert: beherrscht einige erlernte Arbeitsschritte' },
+  F: { bg: '#FFF3CD', text: '#7A5C00', label: 'Berufsfeld', beschreibung: 'Berufsfeldorientiert: wendet Erlerntes in bekannten Situationen an' },
+  B: { bg: '#FAD9C8', text: '#7A2E00', label: 'Berufsbild', beschreibung: 'Berufsbildorientiert: wendet Erlerntes in neuen Situationen an' },
 }
 
 export type FormatOption = { id: Format; label: string; icon: string; desc: string }
@@ -30,7 +41,7 @@ export const FORMAT_BADGE_COLORS: Record<Format, { bg: string; color: string }> 
   'piktogramm-mathefrei': { bg: '#FAD9C8', color: '#7A2E00' },
 }
 
-/** Persona-Buchstabe je (Niveau, Format) – entspricht dem 4×4-Raster der Projektkonzeption */
+/** Persona-Buchstabe je (Niveau, Format) – 4×4-Raster aus der Projektkonzeption des Teams (keine Vorgabe des Bildungsparks) */
 export const PERSONA_MAP: Record<Level, Record<Format, string>> = {
   T: { text: 'A', piktogramm: 'B', mathefrei: 'C', 'piktogramm-mathefrei': 'D' },
   A: { text: 'E', piktogramm: 'F', mathefrei: 'G', 'piktogramm-mathefrei': 'H' },
@@ -40,11 +51,23 @@ export const PERSONA_MAP: Record<Level, Record<Format, string>> = {
 
 export const SPRACHEN: readonly Sprache[] = ['Leichte Sprache', 'Standardsprache']
 
+/**
+ * Berufsfelder laut Infoblatt des Bildungsparks ("Der Andere Leistungsanbieter
+ * im Bildungspark"). Binnendifferenzierte Lehrplaene liegen fuer die ersten
+ * drei vor (TQ Fachlagerist, TQ Gastrobereich, TQ Metall).
+ */
+export const BERUFSBILD_LAGER = 'Lagerlogistik, Handel & Versand'
+export const BERUFSBILD_GASTRO = 'Gastronomie & Hauswirtschaft'
+export const BERUFSBILD_METALL = 'Metalltechnik & Montage'
+export const BERUFSBILD_GALA = 'Garten- und Landschaftsbau'
+export const BERUFSBILD_PFLEGE = 'Pflege & unterstützende Tätigkeiten'
+
 export const BERUFSBILDER: readonly string[] = [
-  'Lagerlogistik',
-  'Küche & Gastronomie',
-  'Reinigung & Gebäudepflege',
-  'Metallverarbeitung',
+  BERUFSBILD_LAGER,
+  BERUFSBILD_GASTRO,
+  BERUFSBILD_METALL,
+  BERUFSBILD_GALA,
+  BERUFSBILD_PFLEGE,
 ]
 
 export const ALLE_BERUFSBILDER = 'Alle Berufsbilder'

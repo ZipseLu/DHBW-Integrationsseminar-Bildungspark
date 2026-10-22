@@ -1,4 +1,4 @@
-/** Niveaustufen: Talent-, Aufbau-, Fach- und Berufsstufe */
+/** Niveaustufen T/A/F/B der binnendifferenzierten Lehrplaene (Bezeichnungen: LEVEL_STYLES in data/constants.ts) */
 export type Level = 'T' | 'A' | 'F' | 'B'
 
 /** Barrierefreiheits-Formate eines Arbeitsblatts */

@@ -2,10 +2,18 @@
 
 Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
-> **Status:** Prototyp. Docker, CI und Test-Pipeline stehen.
+> **Status (22.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
 > Das Frontend zeigt die Seiten **Arbeitsblätter** und **KI-Erstellung** mit lokalen
 > Beispieldaten; die übrigen Menüpunkte sind angelegt, aber noch leer.
-> KI-Analyse, Websuche und Varianten-Erzeugung sind im Frontend simuliert.
+> KI-Analyse, Websuche und Varianten-Erzeugung sind im Frontend simuliert; die Buttons
+> „Öffnen“, „PDF“ und „Alle zur Bibliothek hinzufügen“ in den Ergebnislisten haben noch keine Funktion.
+> Das Backend liefert bisher nur `/api/health` und `/api/ai/*` (ohne API-Key im Mock-Modus);
+> das Frontend ruft es noch nicht auf.
+>
+> Die Beispieldaten stammen aus den 14 Lehrplänen des Bildungsparks (TQ Lager, Metall, Gastro).
+> Was fachlich belegt ist und was Annahme bleibt, steht in **[docs/fachliche-grundlagen.md](docs/fachliche-grundlagen.md)** –
+> insbesondere die Bezeichnungen der Stufen T/A/F/B und die Liste der Berufsfelder sind vom
+> Bildungspark noch zu bestätigen.
 
 ---
 
@@ -16,7 +24,7 @@ Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 | Backend | Node.js 22 · Express 4 · JavaScript (ESM) |
 | Datenbank | MySQL 8.4 (utf8mb4) |
 | Frontend | React 19 · TypeScript · Vite 6 · Tailwind CSS 4 |
-| KI | Gemini Flash (später Azure OpenAI) – austauschbar über `AI_PROVIDER` |
+| KI | Gemini 2.5 Flash (später Azure OpenAI) – austauschbar über `AI_PROVIDER`; SDKs sind noch nicht installiert, ohne API-Key läuft ein Mock |
 | Tests Backend | Vitest (Unit) · Supertest (Routen) |
 | Tests Frontend | Vitest · React Testing Library |
 | E2E | Playwright |
@@ -159,6 +167,10 @@ cd e2e           && npm ci && npm run install:browsers && npm run test
 Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 **übersprungen statt rot** – so bleibt `npm test` auch ohne DB nutzbar.
 
+Die E2E-Tests starten das Frontend zwar selbst (`webServer` in `playwright.config.js`),
+brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 – der
+`global-setup` bricht sonst ab. Ohne Docker also vorher `npm run dev:backend` mit lokaler MySQL.
+
 ---
 
 ## Projektstruktur
@@ -188,7 +200,7 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 │       │   ├── main.tsx          Einstieg
 │       │   ├── App.tsx           Navigation und Seitenwahl
 │       │   ├── types.ts          Gemeinsame Typen (Level, Format, Worksheet …)
-│       │   ├── data/             Beispieldaten und Konstanten
+│       │   ├── data/             Beispieldaten (aus den Lehrplänen) und Konstanten
 │       │   ├── lib/              Filter, Word-Export, Datum, Simulation
 │       │   ├── components/       Wiederverwendbare Bausteine (Auswahl, Panels)
 │       │   ├── layout/           Seitenleiste und Kopfzeile
@@ -208,8 +220,10 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 │       ├── init/01-init.sql      Datenbanken + Schema (nur beim 1. Start)
 │       └── conf.d/               utf8mb4, Strict-Mode
 │
-├── ArbeitsblattverwaltungMockup/   Altes React/TS-Mockup (nur --profile legacy)
-├── docs/                            User Stories & Tickets
+├── ArbeitsblattverwaltungMockup/   Altes React/TS-Mockup aus Figma Make (nur --profile legacy)
+├── docs/
+│   ├── fachliche-grundlagen.md      Belegte Fakten, Annahmen, offene Fragen (Quelle für Seeds und Prompts)
+│   └── user-stories-arbeitsblaetter.md   Mockup-Analyse und Ticket-Vorschlag vom 12.10.
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
@@ -300,7 +314,8 @@ Container. Steht in `VITE_PROXY_TARGET` in der `docker-compose.yml`.
 
 ### E2E-Tests finden kein `node_modules`
 
-Das Volume `bildungspark_e2e_node_modules` muss existieren. Prüfen:
+Das E2E-Image installiert `@playwright/test` beim Build (`e2e/Dockerfile`), ein
+Volume gibt es dafür nicht. Nach Änderungen an `e2e/package.json` das Image neu bauen:
 
 ```bash
 docker compose --profile test build e2e
@@ -316,16 +331,21 @@ docker compose down -v && docker compose up --build
 
 ## Noch offen
 
-
 - [ ] Mapper für die Arbeitsblatt-Tabellen (`mysql2` → Repository-Layer)
-- [ ] Auth (JWT) für Dozent/Assistent/Admin
+- [ ] Auth (JWT) für Dozent/Assistent/Admin – `JWT_SECRET` ist bereits in der Konfiguration, wird aber noch nicht benutzt
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
-- [ ] `apps/frontend/package-lock.json` erzeugen und committen (`npm install` im Ordner)
+- [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung, KI-Erstellung)
 - [ ] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen
-- [ ] Playwright-Version in `e2e/package.json` und `docker-compose.yml` synchron halten
+- [ ] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – fehlt bisher in der Navigation
+- [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
+- [ ] Backend-Skripte `db:migrate` und `db:reset` neu anlegen (am 22.10. aus `package.json` entfernt, die Dateien existierten nie); `db:seed` ist ein Platzhalter
+- [ ] KI-SDKs installieren (`@google/genai`, später `@azure/openai`) und Aufrufe gegen echte API testen
+- [ ] Playwright-Version in `e2e/package.json` und `e2e/Dockerfile` synchron halten (aktuell 1.49.1)
 - [ ] `docker/mysql/init` nur für Erstinbetriebnahme; danach Migrationen
+- [ ] Stufenbezeichnungen T/A/F/B und Liste der Berufsfelder vom Bildungspark bestätigen lassen (siehe `docs/fachliche-grundlagen.md`)
+- [ ] `ArbeitsblattverwaltungMockup/src/imports/*.pdf` sind Git-LFS-Zeiger ohne hinterlegte Objekte – LFS einrichten oder Dateien entfernen
 
 ---
 
-*Stack-Anpassung: 16.10.2026*
+*Stack-Anpassung: 16.10.2026 · Bereinigung von Beispieldaten und Dokumentation: 22.10.2026*

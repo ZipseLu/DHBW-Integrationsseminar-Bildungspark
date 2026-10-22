@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { BERUFSBILD_GASTRO, BERUFSBILD_METALL } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { formatHeaderDate, isoWeek, todayIso } from '@/lib/date'
 import { worksheetFileName } from '@/lib/docx'
@@ -32,9 +33,9 @@ describe('filterWorksheets', () => {
   })
 
   it('filtert nach Berufsbild', () => {
-    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, berufsbild: 'Metallverarbeitung' })
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, berufsbild: BERUFSBILD_METALL })
     expect(result.length).toBeGreaterThan(0)
-    expect(result.every((w) => w.berufsbild === 'Metallverarbeitung')).toBe(true)
+    expect(result.every((w) => w.berufsbild === BERUFSBILD_METALL)).toBe(true)
   })
 
   it('sucht ohne Beachtung der Gross-/Kleinschreibung in Titel und Abschnitt', () => {
@@ -43,8 +44,9 @@ describe('filterWorksheets', () => {
   })
 
   it('kombiniert Baustein und Ausbildungsbaustein', () => {
-    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, baustein: 2, ausbildungsbaustein: 'Hygiene' })
-    expect(result.every((w) => w.baustein === 2 && w.ausbildungsbaustein === 'Hygiene')).toBe(true)
+    // TQ Gastro: Hygiene ist Ausbildungsbaustein 5
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, baustein: 5, ausbildungsbaustein: 'Hygiene' })
+    expect(result.every((w) => w.baustein === 5 && w.ausbildungsbaustein === 'Hygiene')).toBe(true)
     expect(result.length).toBeGreaterThan(0)
   })
 
@@ -60,7 +62,17 @@ describe('Filteroptionen', () => {
   })
 
   it('schraenkt Ausbildungsbausteine auf das Berufsbild ein', () => {
-    expect(ausbildungsbausteinOptions(WORKSHEETS, 'Küche & Gastronomie')).toEqual(['Hygiene'])
+    expect(ausbildungsbausteinOptions(WORKSHEETS, BERUFSBILD_METALL)).toEqual(['Fügen von Bauteilen zu Baugruppen'])
+    expect(ausbildungsbausteinOptions(WORKSHEETS, BERUFSBILD_GASTRO)).toEqual([
+      'Grundlagen des Berufsbereichs Küche und Zubereitung',
+      'Service',
+      'Lager/Warenwirtschaft',
+      'Hygiene',
+    ])
+  })
+
+  it('kennt nur Bausteine, die in den Lehrplaenen vorkommen', () => {
+    expect(bausteinOptions(WORKSHEETS)).toEqual([1, 2, 3, 4, 5])
   })
 })
 
@@ -82,7 +94,7 @@ describe('Datum', () => {
 
 describe('worksheetFileName', () => {
   it('erzeugt einen unter Windows gueltigen Dateinamen', () => {
-    const name = worksheetFileName({ ...WORKSHEETS[0], berufsbild: 'Küche & Gastronomie', title: 'Hygiene: Hände/Arme?' })
-    expect(name).toBe('Küche_und_Gastronomie_BS1_Hygiene_HändeArme.docx')
+    const name = worksheetFileName({ ...WORKSHEETS[0], berufsbild: BERUFSBILD_GASTRO, title: 'Hygiene: Hände/Arme?' })
+    expect(name).toBe('Gastronomie_und_Hauswirtschaft_BS1_Hygiene_HändeArme.docx')
   })
 })

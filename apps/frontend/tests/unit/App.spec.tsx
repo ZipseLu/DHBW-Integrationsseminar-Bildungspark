@@ -42,9 +42,9 @@ describe('Navigation', () => {
 describe('Arbeitsblätter', () => {
   it('filtert die Liste ueber die Suche', () => {
     renderApp()
-    fireEvent.change(screen.getByLabelText('Arbeitsblätter durchsuchen'), { target: { value: 'Sanitär' } })
+    fireEvent.change(screen.getByLabelText('Arbeitsblätter durchsuchen'), { target: { value: 'anrichten' } })
     expect(screen.getByText('1 Ergebnisse')).toBeInTheDocument()
-    expect(screen.getByRole('article', { name: 'Sanitärreinigung und Hygiene' })).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Speisen anrichten' })).toBeInTheDocument()
   })
 
   it('zeigt einen Hinweis, wenn nichts gefunden wird', () => {
@@ -102,7 +102,7 @@ describe('KI-Erstellung', () => {
     navigate('KI-Erstellung')
 
     fireEvent.change(screen.getByLabelText('THEMA / TITEL'), { target: { value: 'Gabelstapler' } })
-    fireEvent.click(screen.getByRole('button', { name: /^T\s*Talentstufe$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
 
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
 
