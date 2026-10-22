@@ -10,19 +10,13 @@
  * └─────────────────────────────────────────────────────────────┘
  *
  * BEIDE Provider implementieren dieselbe Signatur:
- *   generateText({ system, prompt, temperature, maxTokens })
- *     -> { text, model, provider, usage }
+ *   generateText({ system, prompt, temperature, maxTokens, jsonMode, jsonSchema, signal, model })
+ *     -> { text, model, provider, usage, mocked, finishReason, blockReason }
  *
- * -------------------------------------------------------------------
- * NOCH OFFEN (bewusst als Scaffold):
- *   1. SDK installieren:
- *        npm i @google/genai                     (Gemini)
- *        npm i @azure/openai                     (Azure)
- *   2. Hier die echten Aufrufe eintragen.
- *
- * Bis dahin gibt der Provider eine deterministische Mock-Antwort zurueck,
- * damit Frontend, Supertest und Playwright ohne API-Key laufen koennen.
- * -------------------------------------------------------------------
+ * Ohne API-Key gibt der Provider eine deterministische Mock-Antwort zurueck,
+ * damit Frontend, Supertest und Playwright ohne Key laufen koennen.
+ * (Die Arbeitsblatt-Generierung hat ihren eigenen, fachlichen Mock –
+ * siehe src/arbeitsblatt/mock.js.)
  */
 import { config } from '../config.js'
 import { callGemini } from './gemini.js'
@@ -30,16 +24,19 @@ import { callAzureOpenAI } from './azure.js'
 
 /**
  * @typedef {Object} GenerateOptions
- * @property {string}  system      System-Prompt (Rolle/Anweisung an das Modell)
- * @property {string}  prompt      User-Prompt (die konkrete Aufgabe)
+ * @property {string}  system       System-Prompt (Rolle/Anweisung an das Modell)
+ * @property {string}  prompt       User-Prompt (die konkrete Aufgabe)
  * @property {number} [temperature=0.7]
  * @property {number} [maxTokens=2048]
  * @property {boolean}[jsonMode]    JSON-Ausgabe erzwingen (fuer strukturierte Daten)
+ * @property {object} [jsonSchema]  JSON-Schema, an das sich die Antwort halten muss (impliziert jsonMode)
+ * @property {AbortSignal} [signal] Abbruch/Timeout von aussen
+ * @property {string} [model]      Modell fuer diesen Aufruf (Default: GEMINI_MODEL); Azure ignoriert das Feld
  */
 
 /**
  * @param {GenerateOptions} options
- * @returns {Promise<{text: string, model: string, provider: string, usage: object|null, mocked: boolean}>}
+ * @returns {Promise<{text: string, model: string, provider: string, usage: object|null, mocked: boolean, finishReason?: string|null, blockReason?: string|null}>}
  */
 export async function generateText(options) {
   const { provider } = config.ai
@@ -80,5 +77,7 @@ function mockResponse({ prompt, system }, provider) {
     provider,
     usage: null,
     mocked: true,
+    finishReason: 'STOP',
+    blockReason: null,
   }
 }

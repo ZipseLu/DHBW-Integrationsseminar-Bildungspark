@@ -9,6 +9,17 @@ export default defineConfig({
     // Ohne laufende DB werden sie uebersprungen statt rot – siehe setup unten.
     include: ['tests/**/*.test.js'],
 
+    // Tests laufen IMMER im Mock-Modus – auch wenn lokal eine .env mit
+    // API-Key liegt. dotenv ueberschreibt bereits gesetzte Variablen nicht,
+    // deshalb reicht es, die Keys hier leer vorzubelegen. So verbraucht kein
+    // Testlauf Gemini-Kontingent und die Ergebnisse bleiben deterministisch.
+    env: {
+      GEMINI_API_KEY: '',
+      AZURE_OPENAI_API_KEY: '',
+      AZURE_OPENAI_ENDPOINT: '',
+      AI_PROVIDER: 'gemini',
+    },
+
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

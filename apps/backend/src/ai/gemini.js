@@ -1,41 +1,62 @@
 /**
- * Gemini-Adapter (Anfangsphase).
+ * Gemini-Adapter.
  *
- * Install:  npm i @google/genai
- * Doku:     https://ai.google.dev/gemini-api/docs
+ * SDK:   @google/genai (npm i @google/genai)
+ * Doku:  https://ai.google.dev/gemini-api/docs
  *
- * DIESE DATEI ENTHALT BIS EINSCHLIESSLICH DEM IMPORT NUR EINE SKIZZE –
- * der Import ist dynamisch, damit der Container auch ohne SDK laeuft.
+ * Strukturierte Ausgabe: Mit `responseMimeType: 'application/json'` und
+ * `responseJsonSchema` MUSS das Modell ein JSON-Objekt liefern, das dem
+ * Schema entspricht (siehe src/arbeitsblatt/schema.js).
+ *
+ * Der Import ist dynamisch und wird erst beim ersten echten Aufruf geladen –
+ * im Mock-Modus (Tests, kein Key) bleibt das SDK ungeladen.
  */
 import { config } from '../config.js'
 
-export async function callGemini({ system, prompt, temperature = 0.7, maxTokens = 2048, jsonMode = false }) {
-  // Dynamischer Import: laedt das SDK nur, wenn es wirklich installiert ist.
-  const { GoogleGenAI } = await import('@google/genai')
+let clientPromise = null
 
-  const client = new GoogleGenAI({ apiKey: config.ai.gemini.apiKey })
+async function getClient() {
+  if (!clientPromise) {
+    clientPromise = import('@google/genai').then(({ GoogleGenAI }) => new GoogleGenAI({ apiKey: config.ai.gemini.apiKey }))
+  }
+  return clientPromise
+}
+
+export async function callGemini({ system, prompt, temperature = 0.7, maxTokens = 2048, jsonMode = false, jsonSchema = null, signal = undefined, model = undefined }) {
+  const client = await getClient()
+  const wantsJson = jsonMode || Boolean(jsonSchema)
+  const usedModel = model || config.ai.gemini.model
 
   const response = await client.models.generateContent({
-    model: config.ai.gemini.model,
+    model: usedModel,
     contents: prompt,
     config: {
       systemInstruction: system,
       temperature,
       maxOutputTokens: maxTokens,
-      ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+      ...(wantsJson ? { responseMimeType: 'application/json' } : {}),
+      ...(jsonSchema ? { responseJsonSchema: jsonSchema } : {}),
+      ...(signal ? { abortSignal: signal } : {}),
     },
   })
 
+  const candidate = response.candidates?.[0]
+  const usage = response.usageMetadata
+
   return {
     text: response.text ?? '',
-    model: config.ai.gemini.model,
+    model: usedModel,
     provider: 'gemini',
-    usage: response.usageMetadata
+    usage: usage
       ? {
-          inputTokens: response.usageMetadata.promptTokenCount,
-          outputTokens: response.usageMetadata.candidatesTokenCount,
+          inputTokens: usage.promptTokenCount ?? null,
+          outputTokens: usage.candidatesTokenCount ?? null,
+          thinkingTokens: usage.thoughtsTokenCount ?? null,
+          totalTokens: usage.totalTokenCount ?? null,
         }
       : null,
     mocked: false,
+    finishReason: candidate?.finishReason ?? null,
+    blockReason: response.promptFeedback?.blockReason ?? null,
   }
 }
