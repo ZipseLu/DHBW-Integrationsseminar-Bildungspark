@@ -1,5 +1,5 @@
 # =============================================================================
-# Multi-Stage Dockerfile fuer das Vue-Frontend
+# Multi-Stage Dockerfile fuer das React-Frontend (Prototyp)
 #   Stage "dev"  – Vite-Dev-Server mit Hot Reload
 #   Stage "prod" – gebautes dist/ + Nginx
 # =============================================================================
@@ -10,7 +10,9 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Mit Lockfile reproduzierbar per `npm ci`. Fehlt package-lock.json noch
+# (direkt nach dem Wechsel auf React), wird einmalig `npm install` genutzt.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # -----------------------------------------------------------------------------
 # Build

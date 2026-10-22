@@ -2,8 +2,10 @@
 
 Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
-> **Status:** Monorepo-Scaffold. Docker, CI und Test-Pipeline stehen.
-> Die Fachlogik (Arbeitsblätter, KI-Erstellung) ist noch nicht implementiert.
+> **Status:** Prototyp. Docker, CI und Test-Pipeline stehen.
+> Das Frontend zeigt die Seiten **Arbeitsblätter** und **KI-Erstellung** mit lokalen
+> Beispieldaten; die übrigen Menüpunkte sind angelegt, aber noch leer.
+> KI-Analyse, Websuche und Varianten-Erzeugung sind im Frontend simuliert.
 
 ---
 
@@ -13,10 +15,10 @@ Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 |---|---|
 | Backend | Node.js 22 · Express 4 · JavaScript (ESM) |
 | Datenbank | MySQL 8.4 (utf8mb4) |
-| Frontend | Vue 3 · Vite 6 · JavaScript |
+| Frontend | React 19 · TypeScript · Vite 6 · Tailwind CSS 4 |
 | KI | Gemini Flash (später Azure OpenAI) – austauschbar über `AI_PROVIDER` |
 | Tests Backend | Vitest (Unit) · Supertest (Routen) |
-| Tests Frontend | Vitest · Vue Test Utils |
+| Tests Frontend | Vitest · React Testing Library |
 | E2E | Playwright |
 | Infrastruktur | Monorepo · Docker Compose · GitHub Actions |
 
@@ -38,8 +40,16 @@ docker compose up --build
 | Backend Health | http://localhost:3000/api/health |
 | MySQL | localhost:3307 |
 
-Das Frontend zeigt beim Laden zwei Kacheln: **Backend-Status** und **KI-Provider**.
-Sind beide grün, steht die komplette Kette (Browser → Vite → Express → MySQL).
+Das Frontend öffnet direkt die Seite **Arbeitsblätter**. Eine Anmeldung gibt es im Prototyp
+noch nicht; angezeigt wird immer die Beispielnutzerin Celine Hager (Administrator).
+
+Ohne Docker reicht für das Frontend allein:
+
+```bash
+cd apps/frontend
+npm install
+npm run dev        # http://localhost:5173
+```
 
 **Erster Start dauert ca. 1–2 Minuten** (MySQL initialisiert, Images werden gebaut).
 
@@ -142,7 +152,7 @@ Schnellster Feedback-Loop, kein Container-Overhead:
 
 ```bash
 cd apps/backend  && npm ci && npm run test:run    # Vitest + Supertest
-cd apps/frontend && npm ci && npm run test:run    # Vitest + Vue Test Utils
+cd apps/frontend && npm ci && npm run test:run    # Vitest + React Testing Library
 cd e2e           && npm ci && npm run install:browsers && npm run test
 ```
 
@@ -173,13 +183,19 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 │   │       ├── unit/             Vitest, ohne DB
 │   │       └── integration/      Supertest + echte MySQL
 │   │
-│   └── frontend/             Vue-3-App
+│   └── frontend/             Prototyp-Frontend (React + TypeScript)
 │       ├── src/
-│       │   ├── main.js
-│       │   ├── App.vue           Scaffold mit Health-Anzeige
-│       │   ├── api.js            API-Client
-│       │   └── style.css         Farbwerte aus dem alten Mockup
-│       └── tests/unit/       Vitest + Vue Test Utils (jsdom)
+│       │   ├── main.tsx          Einstieg
+│       │   ├── App.tsx           Navigation und Seitenwahl
+│       │   ├── types.ts          Gemeinsame Typen (Level, Format, Worksheet …)
+│       │   ├── data/             Beispieldaten und Konstanten
+│       │   ├── lib/              Filter, Word-Export, Datum, Simulation
+│       │   ├── components/       Wiederverwendbare Bausteine (Auswahl, Panels)
+│       │   ├── layout/           Seitenleiste und Kopfzeile
+│       │   └── pages/
+│       │       ├── arbeitsblaetter/  Liste, Upload, Vorschau, Verlauf, Anpassen
+│       │       └── ki-erstellung/    Formular, Websuche, Ergebnis
+│       └── tests/unit/       Vitest + React Testing Library (jsdom)
 │
 ├── e2e/                     Playwright-Tests
 │   ├── playwright.config.js
@@ -266,7 +282,7 @@ Ordnerstruktur:
 ```bash
 docker compose down
 docker volume ls --filter name=bildungspark   # pruefen, was noch da ist
-docker volume rm bildungspark_frontend_node_modules
+docker volume rm bildungspark_frontend_react_node_modules
 docker compose up --build
 ```
 
@@ -303,7 +319,10 @@ docker compose down -v && docker compose up --build
 
 - [ ] Mapper für die Arbeitsblatt-Tabellen (`mysql2` → Repository-Layer)
 - [ ] Auth (JWT) für Dozent/Assistent/Admin
-- [ ] Portierung des React-Mockups nach Vue 3 **oder** Entscheidung für React behalten
+- [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
+- [ ] `apps/frontend/package-lock.json` erzeugen und committen (`npm install` im Ordner)
+- [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung, KI-Erstellung)
+- [ ] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen
 - [ ] Playwright-Version in `e2e/package.json` und `docker-compose.yml` synchron halten
 - [ ] `docker/mysql/init` nur für Erstinbetriebnahme; danach Migrationen
 
