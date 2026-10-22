@@ -1,19 +1,27 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
 import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
 import { BERUFSBILDER, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
-import { ApiError, generateArbeitsblatt, lernzielFromWorksheet, type ArbeitsblattResult } from '@/lib/api'
+import { ApiError, fetchLehrplaene, generateArbeitsblatt, lernzielFromWorksheet, type ArbeitsblattResult, type LernzielInput } from '@/lib/api'
 import { toggleKeepOne, variantenLabel } from '@/lib/selection'
-import type { Format, Level, Sprache, Worksheet } from '@/types'
+import type { Format, Level, Sprache } from '@/types'
 import { GeneratedWorksheetCard } from './GeneratedWorksheetCard'
 import { WebSearchSection } from './WebSearchSection'
 
 const labelClass = 'block text-xs font-mono font-medium mb-1.5'
 const inputStyle = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
 
+/** Ein waehlbares Lernziel: aus dem Lehrplan-Import oder aus den lokalen Beispieldaten */
+type LernzielOption = LernzielInput & { key: string; kurztitel: string }
+
+const kurz = (text: string, max = 70) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
+/** Fallback ohne Import: die 12 Beispiel-Lernziele aus den Lehrplaenen */
+const LOKALE_LERNZIELE: LernzielOption[] = WORKSHEETS.map((w) => ({ ...lernzielFromWorksheet(w), key: `lokal-${w.id}`, kurztitel: w.title }))
+
 /** Eckdaten der letzten Generierung – bleiben stehen, auch wenn das Formular danach geaendert wird */
-type Generated = { thema: string; berufsbild: string; sprache: Sprache; lernziel: Worksheet; total: number }
+type Generated = { thema: string; berufsbild: string; sprache: Sprache; lernziel: LernzielOption; total: number }
 
 type Progress = { current: number; total: number; label: string }
 
@@ -29,7 +37,9 @@ export function KiErstellungPage() {
   const [thema, setThema] = useState('')
   const [erwartungen, setErwartungen] = useState('')
   const [berufsbild, setBerufsbild] = useState(BERUFSBILDER[0])
-  const [lernzielId, setLernzielId] = useState<number | null>(null)
+  const [lernzielKey, setLernzielKey] = useState<string | null>(null)
+  const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
+  const [katalogQuelle, setKatalogQuelle] = useState<'beispiele' | 'import'>('beispiele')
   const [sprache, setSprache] = useState<Sprache>('Leichte Sprache')
   const [levels, setLevels] = useState<Level[]>(['A'])
   const [formats, setFormats] = useState<Format[]>(['text'])
@@ -39,9 +49,26 @@ export function KiErstellungPage() {
   const [error, setError] = useState<GenerationError | null>(null)
   const [generated, setGenerated] = useState<Generated | null>(null)
 
-  // Lernziele des gewaehlten Berufsbilds (Katalog aus den Lehrplaenen des Bildungsparks)
-  const lernziele = WORKSHEETS.filter((w) => w.berufsbild === berufsbild)
-  const lernziel = lernziele.find((w) => w.id === lernzielId) ?? lernziele[0] ?? null
+  // Importierte Lehrplaene laden (GET /api/lehrplaene); ohne Import bleiben die Beispiel-Lernziele
+  useEffect(() => {
+    let active = true
+    fetchLehrplaene()
+      .then((liste) => {
+        if (!active || liste.length === 0) return
+        setKatalog(liste.map((l) => ({ ...l, key: `lehrplan-${l.id}`, kurztitel: kurz(l.titel) })))
+        setKatalogQuelle('import')
+      })
+      .catch(() => {
+        // Backend nicht erreichbar oder Fehler -> Beispiel-Lernziele bleiben
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Lernziele des gewaehlten Berufsbilds
+  const lernziele = katalog.filter((l) => l.berufsfeld === berufsbild)
+  const lernziel = lernziele.find((l) => l.key === lernzielKey) ?? lernziele[0] ?? null
   const running = progress !== null
 
   async function handleSubmit(event: FormEvent) {
@@ -50,7 +77,7 @@ export function KiErstellungPage() {
 
     const variants = levels.flatMap((level) => formats.map((format) => ({ level, format })))
     const snapshot: Generated = { thema: thema.trim(), berufsbild, sprache, lernziel, total: variants.length }
-    const request = lernzielFromWorksheet(lernziel)
+    const { key: _key, kurztitel: _kurztitel, ...request } = lernziel
     const trimmedErwartungen = erwartungen.trim()
 
     setResults([])
@@ -105,7 +132,7 @@ export function KiErstellungPage() {
                 value={berufsbild}
                 onChange={(e) => {
                   setBerufsbild(e.target.value)
-                  setLernzielId(null)
+                  setLernzielKey(null)
                 }}
                 className="w-full px-3 py-2.5 rounded text-sm outline-none"
                 style={inputStyle}
@@ -121,16 +148,16 @@ export function KiErstellungPage() {
               </label>
               <select
                 id="ki-lernziel"
-                value={lernziel?.id ?? ''}
-                onChange={(e) => setLernzielId(Number(e.target.value))}
+                value={lernziel?.key ?? ''}
+                onChange={(e) => setLernzielKey(e.target.value)}
                 disabled={lernziele.length === 0}
                 className="w-full px-3 py-2.5 rounded text-sm outline-none disabled:opacity-50"
                 style={inputStyle}
               >
                 {lernziele.length === 0 && <option value="">– keine Lehrpläne hinterlegt –</option>}
-                {lernziele.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    Baustein {w.baustein} · {w.title}
+                {lernziele.map((l) => (
+                  <option key={l.key} value={l.key}>
+                    Baustein {l.baustein} · {l.kurztitel}
                   </option>
                 ))}
               </select>
@@ -139,7 +166,11 @@ export function KiErstellungPage() {
 
           {lernziel ? (
             <div className="text-xs -mt-2" style={{ color: 'var(--muted-foreground)' }}>
-              Lehrplan: {lernziel.ausbildungsbaustein} · Lernziel: {lernziel.abschnitt.titel}
+              Lehrplan: {lernziel.ausbildungsbaustein} · Lernziel: {lernziel.titel}
+              <span className="opacity-70">
+                {' '}
+                · Quelle: {katalogQuelle === 'import' ? `${katalog.length} importierte Lernziele` : `${katalog.length} Beispiel-Lernziele (Import mit npm run import:lehrplaene)`}
+              </span>
             </div>
           ) : (
             <div className="text-xs -mt-2 px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
@@ -218,7 +249,7 @@ export function KiErstellungPage() {
           >
             {lernziel && (
               <div style={{ color: 'var(--foreground)' }}>
-                Lernziel: <span style={{ color: 'var(--muted-foreground)' }}>{lernziel.title}</span>
+                Lernziel: <span style={{ color: 'var(--muted-foreground)' }}>{lernziel.kurztitel}</span>
               </div>
             )}
             {trimmedErwartungen && (
@@ -287,7 +318,7 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
           {status}
         </div>
         <div className="text-xs font-mono mt-0.5" style={{ color: '#2A7A4B' }}>
-          „{generated.thema || generated.lernziel.title}" · {generated.berufsbild} · {generated.sprache}
+          „{generated.thema || generated.lernziel.kurztitel}" · {generated.berufsbild} · {generated.sprache}
         </div>
       </div>
 

@@ -100,9 +100,15 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 | `POST /api/ai/arbeitsblatt` | `{ lernziel, stufe, format, sprache, thema?, erwartungen? }` → `{ worksheet, meta }` |
 | `POST /api/ai/arbeitsblatt/docx` | `{ worksheet }` → Word-Datei |
 
+| `GET /api/lehrplaene` | Importierte Lernziele der Lehrpläne (leer, solange `npm run import:lehrplaene` nicht gelaufen ist) |
+
 Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
 Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
 Der Prompt selbst liegt lesbar in `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md`.
+
+Optional lädt `npm run import:lehrplaene` (in `apps/backend`) alle 96 Lernziele aus den 14 Lehrplan-DOCX
+des Bildungsparks nach `apps/backend/data/lehrplaene.json` (gitignored); das Dropdown im Frontend nutzt sie
+dann statt der 12 Beispiel-Lernziele.
 
 ---
 
@@ -215,10 +221,13 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 │   │   │   │   ├── validator.js  Heuristiken (Satzlänge, Aufgabenanzahl, Formate, Verbotsliste)
 │   │   │   │   ├── mock.js       Beispiel-Arbeitsblatt ohne API-Key
 │   │   │   │   └── docx.js       Word-Export
+│   │   │   ├── lehrplan/
+│   │   │   │   └── parser.js     DOCX-Parser der Lehrpläne (für scripts/import-lehrplaene.js)
 │   │   │   └── routes/
 │   │   │       ├── health.js     GET /api/health
 │   │   │       ├── ai.js         GET /api/ai/status, POST /api/ai/generate
-│   │   │       └── arbeitsblatt.js  POST /api/ai/arbeitsblatt, POST /api/ai/arbeitsblatt/docx
+│   │   │       ├── arbeitsblatt.js  POST /api/ai/arbeitsblatt, POST /api/ai/arbeitsblatt/docx
+│   │   │       └── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
 │   │       ├── integration/      Supertest (+ echte MySQL für db.test.js)
@@ -374,7 +383,7 @@ docker compose down -v && docker compose up --build
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
 - [ ] Generierte Arbeitsblätter speichern (MySQL), bearbeiten und freigeben – siehe docs/prototyp-ki-arbeitsblatt.md, Abschnitt 6
-- [ ] Lehrplan-Import (96 Lernziele aus den 14 DOCX) statt der 12 Beispiel-Lernziele im Frontend
+- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
 - [ ] `docker-compose.yml`: Default `GEMINI_MODEL` steht noch auf `gemini-2.5-flash` (für neue Keys nicht mehr verfügbar); solange `.env` aus `.env.example` kopiert wird, greift der dortige Wert
 - [ ] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen
 - [ ] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – fehlt bisher in der Navigation

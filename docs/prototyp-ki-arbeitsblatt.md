@@ -168,7 +168,7 @@ oder auf den Mock-Modus wechseln (Plan B).
 | Echte Piktogramm-Bilder | kein Set vom Bildungspark | Whitelist in `schema.js` auf Bilddateien abbilden (Prompt bleibt gleich) |
 | Azure OpenAI | kein Zugang; Adapter nur strukturell vorbereitet | `npm i @azure/openai`, `AI_PROVIDER=azure`, Test |
 | Upload-Analyse (PDF → Lernziel) | Frontend simuliert | Dokumentanalyse als eigener Endpunkt (Konzept AP4, Kap. 8) |
-| Lehrplan-Import (96 Lernziele) | Frontend nutzt 12 Beispiel-Lernziele aus `apps/frontend/src/data/worksheets.ts` | Import-Skript DOCX → JSON, `GET /api/lehrplaene` |
+| Lehrplan-Pflege im Browser | Import nur per Skript (Abschnitt 9) | Seite „Lehrpläne“ (Projektauftrag Teilziel 3) |
 | Websuche | im Frontend simuliert | später, kein Teil von AP4 |
 | Bearbeiten des Ergebnisses | nur Anzeige + Download | Felder editierbar machen, dann speichern |
 
@@ -216,7 +216,34 @@ variablen Teil eingesetzt), Validator-Grenzen und Verbotsliste (`validator.js`),
 | `apps/backend/tests/` | 112 Backend-Tests (Schema, Validator, Prompt, Ablauf mit Fake-Provider, Routen, DOCX) |
 | `apps/frontend/tests/unit/KiErstellung.spec.tsx` | Frontend-Tests mit gemocktem Backend |
 
+| `apps/backend/scripts/import-lehrplaene.js` | Liest die 14 Lehrplan-DOCX und schreibt `apps/backend/data/lehrplaene.json` (Abschnitt 9) |
+| `apps/backend/src/lehrplan/parser.js` | DOCX-/XML-Parser der Lehrpläne (ohne Zusatzpakete) |
+| `apps/backend/src/routes/lehrplaene.js` | `GET /api/lehrplaene` – die importierten Lernziele |
+
 **Gemessen am 22.10.2026** (Free-Tier-Key, Lernziel „Güter entladen“): Stufe T/Text 8–9 s, 3 300 Tokens;
 Stufe B/Piktogramm+Mathefrei 9 s, 3 600 Tokens; `gemini-3.5-flash` antwortete mehrfach mit 503, der Fallback
 auf `gemini-3.5-flash-lite` griff automatisch. `gemini-2.5-flash` (Teamentscheidung vom 16.10.) ist für neue
 Keys nicht mehr verfügbar (HTTP 404).
+
+---
+
+## 9. Alle 96 Lernziele aus den Lehrplänen laden (optional)
+
+Ohne Import bietet das Dropdown „Lernziel aus dem Lehrplan“ die 12 Beispiel-Lernziele aus
+`apps/frontend/src/data/worksheets.ts` an. Mit Import stehen alle **96 Lernziele** der 14 Lehrplan-Dokumente
+zur Wahl (Lager 16, Metall 19, Gastro 61).
+
+```bash
+cd apps/backend
+npm run import:lehrplaene                       # Ordner ../context/WG__Unterlagen_BIldungspark neben dem Repo
+npm run import:lehrplaene -- "/Pfad/zum/Ordner"  # oder: Ordner als Argument bzw. LEHRPLAN_DIR
+```
+
+Das Skript meldet je Datei die Anzahl der Lernziele und die Baustein-Nummer (sie stammt aus der Zeile
+„Ausbildungs-baustein N“, weil die Kopfzeile in 10 von 14 Dateien falsch ist) und schreibt
+`apps/backend/data/lehrplaene.json`. **Diese Datei liegt in `.gitignore`** – die Lehrpläne gehören dem
+Bildungspark und das Repository ist öffentlich. Jedes Teammitglied erzeugt sie lokal.
+
+Danach das Backend neu starten (es liest die Datei einmal beim ersten Aufruf). `GET /api/lehrplaene` liefert
+die Liste; das Frontend zeigt unter dem Dropdown „Quelle: 96 importierte Lernziele“. Die Lernzieltexte sind
+im Dropdown auf 70 Zeichen gekürzt, in der Zeile darunter stehen sie vollständig.

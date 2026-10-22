@@ -127,6 +127,19 @@ export function lernzielFromWorksheet(w: Worksheet): LernzielInput {
   }
 }
 
+/** Ein Lernziel aus den importierten Lehrplaenen (GET /api/lehrplaene) */
+export type LehrplanLernziel = LernzielInput & { id: number; abschnitt: number | null; tq?: string | null; quelle?: string }
+
+/**
+ * GET /api/lehrplaene – importierte Lernziele (96, wenn `npm run import:lehrplaene` gelaufen ist).
+ * Leere Liste, wenn noch nichts importiert wurde.
+ */
+export async function fetchLehrplaene(): Promise<LehrplanLernziel[]> {
+  const response = await apiFetch('/api/lehrplaene')
+  const body = (await response.json()) as { lernziele?: unknown }
+  return Array.isArray(body.lernziele) ? (body.lernziele as LehrplanLernziel[]) : []
+}
+
 /** POST /api/ai/arbeitsblatt – erzeugt ein Arbeitsblatt (mit Gemini oder im Mock-Modus) */
 export async function generateArbeitsblatt(request: ArbeitsblattRequest): Promise<ArbeitsblattResult> {
   const response = await postJson('/api/ai/arbeitsblatt', request)

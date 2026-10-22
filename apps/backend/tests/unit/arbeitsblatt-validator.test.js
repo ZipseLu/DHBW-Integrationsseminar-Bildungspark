@@ -54,6 +54,16 @@ describe('validateWorksheet', () => {
     expect(hinweise.some((h) => h.includes('Satz mit'))).toBe(erwartetHinweis)
   })
 
+  it('misst Optionen einzeln und trennt Zuordnen-Paare an "|"', () => {
+    const paare = ['LKW | Ein großes Auto für schwere Waren', 'Ent-laden | Ware aus dem LKW holen', 'Anleiter | Dein Chef oder Ausbilder']
+    const { hinweise } = validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { typ: 'zuordnen', optionen: paare }), aufgabe(2), aufgabe(3)] }))
+    expect(hinweise).toEqual([])
+    const zuLang = ['Eins zwei drei vier fünf sechs sieben acht neun zehn elf zwölf dreizehn.', 'kurz']
+    const { hinweise: optionHinweise } = validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { typ: 'ankreuzen', optionen: zuLang }), aufgabe(2), aufgabe(3)] }))
+    expect(optionHinweise).toHaveLength(1)
+    expect(optionHinweise[0]).toContain('Aufgabe 1 (Option): Satz mit 13 Wörtern, Stufe T erlaubt höchstens 12')
+  })
+
   it('prueft die Satzlaenge auch in Aufgaben, Optionen und Woerterbuch, aber nicht im Anleiter-Hinweis', () => {
     const lang = 'Dieser Satz hat ganz bewusst deutlich mehr als zwölf Wörter und ist deshalb zu lang.'
     expect(validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { anweisung: lang }), aufgabe(2), aufgabe(3)] })).hinweise.join()).toContain('Aufgabe 1')

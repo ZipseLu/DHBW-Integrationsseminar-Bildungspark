@@ -60,9 +60,28 @@ function openKiErstellung() {
 
 let fetchMock: ReturnType<typeof vi.fn>
 
+type Handlers = {
+  generate?: (body: Record<string, unknown>) => Response | Promise<Response>
+  docx?: () => Response
+  lehrplaene?: () => Response
+}
+
+/** Gemocktes Backend: beantwortet die drei Endpunkte, die die Seite aufruft */
+function mockBackend(handlers: Handlers = {}) {
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url === '/api/lehrplaene') return handlers.lehrplaene?.() ?? jsonResponse({ anzahl: 0, lernziele: [] })
+    if (url === '/api/ai/arbeitsblatt/docx') return handlers.docx?.() ?? jsonResponse({ error: 'nicht_gemockt', message: 'kein docx-Mock' }, 500)
+    if (url === '/api/ai/arbeitsblatt') return handlers.generate ? handlers.generate(JSON.parse(String(init?.body))) : jsonResponse(RESULT)
+    return jsonResponse({ error: 'not_found', message: url }, 404)
+  })
+}
+
+const generateCalls = () => fetchMock.mock.calls.filter((call) => call[0] === '/api/ai/arbeitsblatt')
+
 beforeEach(() => {
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
+  mockBackend()
 })
 
 afterEach(() => {
@@ -85,6 +104,22 @@ describe('KI-Erstellung – Formular', () => {
     expect(within(select).getAllByRole('option')).toHaveLength(3)
   })
 
+  it('nutzt die importierten Lehrplaene, wenn das Backend welche liefert', async () => {
+    const lernziel = (id: number, titel: string) => ({ id, berufsfeld: 'Metalltechnik & Montage', baustein: 2, abschnitt: 1, ausbildungsbaustein: 'Fügen', titel, niveaus: RESULT.worksheet.aufgaben && { T: { kompetenz: 'k', beispiel: '' }, A: { kompetenz: 'k', beispiel: '' }, F: { kompetenz: 'k', beispiel: '' }, B: { kompetenz: 'k', beispiel: '' } } })
+    mockBackend({ lehrplaene: () => jsonResponse({ anzahl: 2, lernziele: [lernziel(1, 'Teile nach Montageplan heraussuchen'), lernziel(2, 'Ein sehr langer Lernzieltitel, der im Dropdown gekürzt werden muss, weil er sonst die Auswahl sprengt')] }) })
+    openKiErstellung()
+
+    // Der Import enthaelt nur Metall – erst dort wird die Quelle sichtbar
+    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Metalltechnik & Montage' } })
+    expect(await screen.findByText(/Quelle: 2 importierte Lernziele/)).toBeInTheDocument()
+    const options = within(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN')).getAllByRole('option').map((o) => o.textContent)
+    expect(options[0]).toBe('Baustein 2 · Teile nach Montageplan heraussuchen')
+    expect(options[1]).toMatch(/^Baustein 2 · Ein sehr langer Lernzieltitel.*…$/)
+    // Lager hat im Import nichts -> gesperrt, obwohl lokale Beispiele existieren wuerden
+    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
+    expect(screen.getByRole('button', { name: /Generieren nicht möglich/ })).toBeDisabled()
+  })
+
   it('sperrt das Generieren fuer Berufsfelder ohne Lehrplan', () => {
     openKiErstellung()
     fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Garten- und Landschaftsbau' } })
@@ -97,13 +132,12 @@ describe('KI-Erstellung – Formular', () => {
 
 describe('KI-Erstellung – Generierung', () => {
   it('ruft das Backend je Variante nacheinander auf und zeigt die Ergebnisse', async () => {
-    fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body)) as { stufe: 'T' | 'A' }
-      return jsonResponse({ ...RESULT, worksheet: { ...RESULT.worksheet, stufe: body.stufe, titel: `Blatt ${body.stufe}` } })
+    mockBackend({
+      generate: (body) => jsonResponse({ ...RESULT, worksheet: { ...RESULT.worksheet, stufe: body.stufe as 'T' | 'A', titel: `Blatt ${String(body.stufe)}` } }),
     })
     openKiErstellung()
 
-    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: 'lokal-2' } })
     fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'LKW am Tor' } })
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
@@ -111,10 +145,9 @@ describe('KI-Erstellung – Generierung', () => {
     const result = await screen.findByRole('region', { name: 'Erstellte Varianten' })
     await within(result).findByText('✓ 2 Varianten erstellt')
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/ai/arbeitsblatt')
-    const first = requestBody(fetchMock.mock.calls[0])
-    const second = requestBody(fetchMock.mock.calls[1])
+    expect(generateCalls()).toHaveLength(2)
+    const first = requestBody(generateCalls()[0])
+    const second = requestBody(generateCalls()[1])
     expect([first.stufe, second.stufe].sort()).toEqual(['A', 'T'])
     expect(first.format).toBe('text')
     expect(first.sprache).toBe('Leichte Sprache')
@@ -134,7 +167,7 @@ describe('KI-Erstellung – Generierung', () => {
   it('zeigt waehrend der Generierung den Fortschritt an', async () => {
     // Jede Backend-Antwort wird erst auf Kommando freigegeben, damit der Fortschritt sichtbar bleibt
     const pending: Array<(value: Response) => void> = []
-    fetchMock.mockImplementation(() => new Promise<Response>((resolve) => pending.push(resolve)))
+    mockBackend({ generate: () => new Promise<Response>((resolve) => pending.push(resolve)) })
     openKiErstellung()
 
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
@@ -142,11 +175,11 @@ describe('KI-Erstellung – Generierung', () => {
 
     expect(await screen.findByText(/^Variante 1 von 2 …/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Variante 1 von 2 wird erstellt/ })).toBeDisabled()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(generateCalls()).toHaveLength(1)
 
     pending[0](jsonResponse(RESULT))
     expect(await screen.findByText(/^Variante 2 von 2 …/)).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(generateCalls()).toHaveLength(2)
 
     pending[1](jsonResponse(RESULT))
     await screen.findByText('✓ 2 Varianten erstellt')
@@ -155,7 +188,7 @@ describe('KI-Erstellung – Generierung', () => {
   })
 
   it('zeigt Backend-Fehler verstaendlich an und behaelt die Eingaben', async () => {
-    fetchMock.mockImplementation(async () => jsonResponse({ error: 'llm_rate_limit', message: 'Rate-Limit des KI-Anbieters erreicht.' }, 502))
+    mockBackend({ generate: () => jsonResponse({ error: 'llm_rate_limit', message: 'Rate-Limit des KI-Anbieters erreicht.' }, 502) })
     openKiErstellung()
 
     fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
@@ -166,7 +199,7 @@ describe('KI-Erstellung – Generierung', () => {
     expect(alert).toHaveTextContent('Fehler bei Variante 1 von 2')
     expect(alert).toHaveTextContent('Rate-Limit des KI-Anbieters erreicht.')
     expect(alert).toHaveTextContent('Die übrigen Varianten wurden nicht erstellt.')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(generateCalls()).toHaveLength(1)
 
     expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Gabelstapler')
     expect(screen.getByRole('button', { name: '✦ 2 Varianten generieren' })).toBeEnabled()
@@ -181,17 +214,15 @@ describe('KI-Erstellung – Generierung', () => {
   })
 
   it('laedt eine Variante als Word-Datei herunter', async () => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url.endsWith('/docx')) {
-        return new Response(new Blob(['PK']), {
+    mockBackend({
+      docx: () =>
+        new Response(new Blob(['PK']), {
           status: 200,
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="Lager_T-text.docx"; filename*=UTF-8''${encodeURIComponent('Lagerlogistik_BS1_Güter_entladen_T-text.docx')}`,
           },
-        })
-      }
-      return jsonResponse(RESULT)
+        }),
     })
     openKiErstellung()
     fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
@@ -200,8 +231,9 @@ describe('KI-Erstellung – Generierung', () => {
     fireEvent.click(screen.getByRole('button', { name: '📄 .docx' }))
 
     await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(1))
-    expect(fetchMock.mock.calls[1][0]).toBe('/api/ai/arbeitsblatt/docx')
-    expect(requestBody(fetchMock.mock.calls[1])).toHaveProperty('worksheet.titel', 'Der LKW ist da')
+    const docxCall = fetchMock.mock.calls.find((call) => call[0] === '/api/ai/arbeitsblatt/docx')
+    expect(docxCall).toBeDefined()
+    expect(requestBody(docxCall as unknown[])).toHaveProperty('worksheet.titel', 'Der LKW ist da')
     expect(vi.mocked(saveAs).mock.calls[0][1]).toBe('Lagerlogistik_BS1_Güter_entladen_T-text.docx')
   })
 })

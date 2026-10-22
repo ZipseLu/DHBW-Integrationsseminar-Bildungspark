@@ -16,7 +16,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "import:lehrplaene": "node scripts/import-lehrplaene.js"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",

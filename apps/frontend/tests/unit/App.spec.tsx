@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 
 /**
@@ -8,6 +8,13 @@ import App from '@/App'
  * Die KI-Erstellung ruft das Backend auf – hier mit gemocktem fetch
  * (ausfuehrliche Tests in KiErstellung.spec.tsx).
  */
+
+const emptyLehrplaene = () => new Response(JSON.stringify({ anzahl: 0, lernziele: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+
+beforeEach(() => {
+  // Die KI-Erstellung fragt beim Oeffnen GET /api/lehrplaene ab – ohne Import: leere Liste
+  vi.stubGlobal('fetch', vi.fn(async () => emptyLehrplaene()))
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -109,7 +116,12 @@ describe('KI-Erstellung', () => {
       lernziel: 'Güter entladen', einleitung: 'Text.', aufgaben: [{ nr: 1, typ: 'offen', anweisung: 'Schreibe.' }], woerterbuch: [], hinweisAnleiter: '',
     }
     const meta = { provider: 'gemini', model: 'mock', mocked: true, durationMs: 1, promptVersion: '1.0.0', attempts: 0, usage: null, validation: { ok: true, hinweise: [] } }
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ worksheet, meta }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url === '/api/lehrplaene' ? emptyLehrplaene() : new Response(JSON.stringify({ worksheet, meta }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      ),
+    )
 
     renderApp()
     navigate('KI-Erstellung')

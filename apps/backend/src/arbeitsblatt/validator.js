@@ -98,9 +98,15 @@ export function validateWorksheet(worksheet) {
   }
 
   // Texte, die Teilnehmende lesen (Hinweis fuer den Anleiter zaehlt nicht)
+  // Jede Option zaehlt als eigener Text; Zuordnen-Paare "links | rechts" werden getrennt gemessen
   const lesetexte = [
     { ort: 'Einleitung', text: worksheet.einleitung ?? '' },
-    ...aufgaben.map((a) => ({ ort: `Aufgabe ${a.nr}`, text: [a.anweisung, ...(a.optionen ?? [])].join(' ') })),
+    ...aufgaben.flatMap((a) => [
+      { ort: `Aufgabe ${a.nr}`, text: a.anweisung ?? '' },
+      ...(a.optionen ?? [])
+        .flatMap((option) => (a.typ === 'zuordnen' ? option.split('|') : [option]))
+        .map((text) => ({ ort: `Aufgabe ${a.nr} (Option)`, text: text.trim() })),
+    ]),
     ...woerterbuch.map((w) => ({ ort: `Wörterbuch „${w.wort}“`, text: w.erklaerung ?? '' })),
   ]
 
