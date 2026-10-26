@@ -6,6 +6,8 @@ type Props = {
   onChange: (filter: WorksheetFilter) => void
   bausteine: number[]
   ausbildungsbausteine: string[]
+  onlyFavorites: boolean
+  onOnlyFavoritesChange: (value: boolean) => void
   resultCount: number
 }
 
@@ -15,7 +17,7 @@ const chipStyle = (active: boolean) => ({
   border: '1px solid var(--border)',
 })
 
-export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbausteine, resultCount }: Props) {
+export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbausteine, onlyFavorites, onOnlyFavoritesChange, resultCount }: Props) {
   const update = (patch: Partial<WorksheetFilter>) => onChange({ ...filter, ...patch })
 
   return (
@@ -30,6 +32,15 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
           className="px-3 py-2 rounded text-sm outline-none flex-1"
           style={{ border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)', minWidth: 200 }}
         />
+        <button
+          type="button"
+          aria-pressed={onlyFavorites}
+          onClick={() => onOnlyFavoritesChange(!onlyFavorites)}
+          className="px-2.5 py-1.5 rounded text-xs font-medium transition-all"
+          style={chipStyle(onlyFavorites)}
+        >
+          ★ Nur Favoriten
+        </button>
         <span className="text-xs font-mono ml-auto" style={{ color: 'var(--muted-foreground)' }} aria-live="polite">
           {resultCount} Ergebnisse
         </span>

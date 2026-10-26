@@ -20,6 +20,7 @@ export default function App() {
   const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
   // Liegt hier statt in der Seite, damit gespeicherte Dokumente beim Seitenwechsel erhalten bleiben
   const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
 
   const title = NAV_ITEMS.find((item) => item.id === activeNav)?.title ?? ''
 
@@ -32,7 +33,13 @@ export default function App() {
 
         <main className="flex-1 p-8 overflow-auto" data-page={activeNav}>
           {activeNav === 'arbeitsblaetter' && (
-            <ArbeitsblaetterPage user={user} savedDocs={savedDocs} onSavedDocsChange={setSavedDocs} />
+            <ArbeitsblaetterPage
+              user={user}
+              savedDocs={savedDocs}
+              onSavedDocsChange={setSavedDocs}
+              favoriteIds={favoriteIds}
+              onFavoriteIdsChange={setFavoriteIds}
+            />
           )}
           {activeNav === 'ki-erstellung' && <KiErstellungPage />}
           {/* Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen: noch leer */}

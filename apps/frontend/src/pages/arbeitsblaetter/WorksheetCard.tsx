@@ -4,6 +4,8 @@ import type { Worksheet } from '@/types'
 type Props = {
   worksheet: Worksheet
   expanded: boolean
+  isFavorite: boolean
+  onToggleFavorite: () => void
   onToggleExpand: () => void
   onPreview: () => void
   onHistory: () => void
@@ -13,7 +15,17 @@ type Props = {
 
 const secondaryButton = { backgroundColor: 'var(--muted)', color: 'var(--foreground)', border: '1px solid var(--border)' }
 
-export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPreview, onHistory, onDownload, onAdapt }: Props) {
+export function WorksheetCard({
+  worksheet: w,
+  expanded,
+  isFavorite,
+  onToggleFavorite,
+  onToggleExpand,
+  onPreview,
+  onHistory,
+  onDownload,
+  onAdapt,
+}: Props) {
   const opt = formatOption(w.format)
   const formatColors = FORMAT_BADGE_COLORS[w.format]
 
@@ -80,6 +92,21 @@ export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPrevie
         </div>
 
         <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            aria-label="Als Favorit markieren"
+            aria-pressed={isFavorite}
+            title={isFavorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+            className="text-sm px-2 py-1 rounded font-medium transition-all hover:opacity-80"
+            style={{
+              backgroundColor: isFavorite ? '#FEF3C7' : 'var(--muted)',
+              color: isFavorite ? '#92400E' : 'var(--muted-foreground)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {isFavorite ? '★' : '☆'}
+          </button>
           <button
             type="button"
             onClick={onToggleExpand}

@@ -73,6 +73,18 @@ describe('Arbeitsblätter', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('markiert Favoriten und filtert auf "Nur Favoriten"', () => {
+    renderApp()
+    const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
+    fireEvent.click(within(card).getByRole('button', { name: 'Als Favorit markieren' }))
+    expect(within(card).getByRole('button', { name: 'Als Favorit markieren' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: '★ Nur Favoriten' }))
+    expect(screen.getByText('1 Ergebnisse')).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Begleitpapiere prüfen' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Güter entladen' })).not.toBeInTheDocument()
+  })
+
   it('erzeugt im Anpassen-Panel vier Varianten', async () => {
     renderApp()
     const card = screen.getByRole('article', { name: 'Güter entladen' })

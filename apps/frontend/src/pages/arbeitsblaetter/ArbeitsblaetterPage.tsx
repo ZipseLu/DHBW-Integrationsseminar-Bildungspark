@@ -14,6 +14,8 @@ type Props = {
   user: StaffUser
   savedDocs: SavedDocument[]
   onSavedDocsChange: (docs: SavedDocument[]) => void
+  favoriteIds: number[]
+  onFavoriteIdsChange: (ids: number[]) => void
 }
 
 async function download(w: Worksheet) {
@@ -25,15 +27,24 @@ async function download(w: Worksheet) {
   }
 }
 
-export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange }: Props) {
+export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favoriteIds, onFavoriteIdsChange }: Props) {
   const [filter, setFilter] = useState<WorksheetFilter>(EMPTY_FILTER)
+  const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
   const [transformSource, setTransformSource] = useState<TransformSource | null>(null)
 
   const filtered = useMemo(() => filterWorksheets(WORKSHEETS, filter), [filter])
+  const visible = useMemo(
+    () => (onlyFavorites ? filtered.filter((w) => favoriteIds.includes(w.id)) : filtered),
+    [filtered, onlyFavorites, favoriteIds],
+  )
   const bausteine = useMemo(() => bausteinOptions(WORKSHEETS), [])
   const ausbildungsbausteine = useMemo(() => ausbildungsbausteinOptions(WORKSHEETS, filter.berufsbild), [filter.berufsbild])
+
+  function toggleFavorite(id: number) {
+    onFavoriteIdsChange(favoriteIds.includes(id) ? favoriteIds.filter((x) => x !== id) : [...favoriteIds, id])
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,15 +55,19 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange }: Prop
         onChange={setFilter}
         bausteine={bausteine}
         ausbildungsbausteine={ausbildungsbausteine}
-        resultCount={filtered.length}
+        onlyFavorites={onlyFavorites}
+        onOnlyFavoritesChange={setOnlyFavorites}
+        resultCount={visible.length}
       />
 
       <div className="flex flex-col gap-2">
-        {filtered.map((w) => (
+        {visible.map((w) => (
           <WorksheetCard
             key={w.id}
             worksheet={w}
             expanded={expandedId === w.id}
+            isFavorite={favoriteIds.includes(w.id)}
+            onToggleFavorite={() => toggleFavorite(w.id)}
             onToggleExpand={() => setExpandedId(expandedId === w.id ? null : w.id)}
             onPreview={() => setDetail({ worksheet: w, tab: 'vorschau' })}
             onHistory={() => setDetail({ worksheet: w, tab: 'verlauf' })}
@@ -60,7 +75,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange }: Prop
             onAdapt={() => setTransformSource(w)}
           />
         ))}
-        {filtered.length === 0 && (
+        {visible.length === 0 && (
           <div
             className="py-10 text-center text-sm rounded-lg"
             style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
