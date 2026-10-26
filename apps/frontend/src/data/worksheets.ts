@@ -7,7 +7,7 @@ import type { HistoryEntry, Worksheet } from '@/types'
 export const WORKSHEETS: Worksheet[] = [
   {
     id: 1, berufsbild: 'Lagerlogistik', baustein: 1,
-    ausbildungsbaustein: 'Wareneingang', createdBy: 'C. Hager', date: '2025-09-24', aiGenerated: true, participants: 8, format: 'text',
+    ausbildungsbaustein: 'Wareneingang', createdBy: 'C. Hager', date: '2025-09-24', aiGenerated: true, participants: 8, format: 'text', sprache: 'Standardsprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Begleitpapiere prüfen',
     abschnitt: {
       titel: 'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften auf Richtigkeit und Vollständigkeit prüfen',
@@ -21,7 +21,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 2, berufsbild: 'Lagerlogistik', baustein: 1,
-    ausbildungsbaustein: 'Wareneingang', createdBy: 'A. Mustajbegovic', date: '2025-09-22', aiGenerated: false, participants: 12, format: 'piktogramm',
+    ausbildungsbaustein: 'Wareneingang', createdBy: 'A. Mustajbegovic', date: '2025-09-22', aiGenerated: false, participants: 12, format: 'piktogramm', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Güter entladen',
     abschnitt: {
       titel: 'Güter entladen',
@@ -35,7 +35,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 3, berufsbild: 'Lagerlogistik', baustein: 1,
-    ausbildungsbaustein: 'Innerbetrieblicher Transport', createdBy: 'C. Hager', date: '2025-09-20', aiGenerated: true, participants: 6, format: 'text',
+    ausbildungsbaustein: 'Innerbetrieblicher Transport', createdBy: 'C. Hager', date: '2025-09-20', aiGenerated: true, participants: 6, format: 'text', sprache: 'Standardsprache', niveaus: ['F', 'B'],
     title: 'Gesetzliche Vorschriften bei Verpackung und Transport',
     abschnitt: {
       titel: 'Gesetzliche und betriebliche Vorschriften bei Verpackung und Transport anwenden',
@@ -49,7 +49,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 4, berufsbild: 'Lagerlogistik', baustein: 3,
-    ausbildungsbaustein: 'Lagerung von Gütern', createdBy: 'T. Neumann', date: '2025-09-18', aiGenerated: true, participants: 4, format: 'text',
+    ausbildungsbaustein: 'Lagerung von Gütern', createdBy: 'T. Neumann', date: '2025-09-18', aiGenerated: true, participants: 4, format: 'text', sprache: 'Standardsprache', niveaus: ['A', 'F', 'B'],
     title: 'Güter auszeichnen und sortieren',
     abschnitt: {
       titel: 'Güter auszeichnen, sortieren, Lager- und Verkaufseinheiten bilden sowie zur Lagerung vorbereiten',
@@ -63,7 +63,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 5, berufsbild: 'Metallverarbeitung', baustein: 1,
-    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'S. Oturucu', date: '2025-09-17', aiGenerated: false, participants: 9, format: 'text',
+    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'S. Oturucu', date: '2025-09-17', aiGenerated: false, participants: 9, format: 'text', sprache: 'Standardsprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Planung der Herstellung durch Fügen',
     abschnitt: {
       titel: 'Planung der Herstellung von Bauteilen durch Fügen – Gesamtzeichnungen, Stücklisten, Montagepläne',
@@ -77,7 +77,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 6, berufsbild: 'Metallverarbeitung', baustein: 1,
-    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'C. Hager', date: '2025-09-15', aiGenerated: false, participants: 11, format: 'text',
+    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'C. Hager', date: '2025-09-15', aiGenerated: false, participants: 11, format: 'text', sprache: 'Leichte Sprache', niveaus: ['T', 'A', 'F'],
     title: 'Einrichtung des Arbeitsplatzes / Arbeitssicherheit',
     abschnitt: {
       titel: 'Einrichtung des Arbeitsplatzes unter Berücksichtigung betrieblicher Vorgaben – Gefahren und Sicherheitsvorgaben',
@@ -91,7 +91,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 7, berufsbild: 'Küche & Gastronomie', baustein: 2,
-    ausbildungsbaustein: 'Hygiene', createdBy: 'O. Oláh', date: '2025-09-12', aiGenerated: true, participants: 5, format: 'mathefrei',
+    ausbildungsbaustein: 'Hygiene', createdBy: 'O. Oláh', date: '2025-09-12', aiGenerated: true, participants: 5, format: 'mathefrei', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Personal- und Betriebshygiene',
     abschnitt: {
       titel: 'Vorschriften und Grundsätze zur Personal- und Betriebshygiene anwenden',
@@ -105,7 +105,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 8, berufsbild: 'Küche & Gastronomie', baustein: 2,
-    ausbildungsbaustein: 'Hygiene', createdBy: 'A. Mustajbegovic', date: '2025-09-10', aiGenerated: true, participants: 7, format: 'text',
+    ausbildungsbaustein: 'Hygiene', createdBy: 'A. Mustajbegovic', date: '2025-09-10', aiGenerated: true, participants: 7, format: 'text', sprache: 'Standardsprache', niveaus: ['F', 'B'],
     title: 'Geräte, Maschinen und Gebrauchsgüter reinigen',
     abschnitt: {
       titel: 'Geräte, Maschinen und Gebrauchsgüter reinigen und pflegen',
@@ -119,7 +119,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 9, berufsbild: 'Reinigung & Gebäudepflege', baustein: 1,
-    ausbildungsbaustein: 'Reinigungsverfahren', createdBy: 'C. Hager', date: '2025-08-10', aiGenerated: false, participants: 5, format: 'piktogramm',
+    ausbildungsbaustein: 'Reinigungsverfahren', createdBy: 'C. Hager', date: '2025-08-10', aiGenerated: false, participants: 5, format: 'piktogramm', sprache: 'Leichte Sprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Reinigungsmittel auswählen und anwenden',
     abschnitt: {
       titel: 'Reinigungsmittel sachgerecht auswählen und anwenden',
@@ -133,7 +133,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 10, berufsbild: 'Reinigung & Gebäudepflege', baustein: 1,
-    ausbildungsbaustein: 'Reinigungsverfahren', createdBy: 'C. Hager', date: '2025-08-05', aiGenerated: true, participants: 6, format: 'text',
+    ausbildungsbaustein: 'Reinigungsverfahren', createdBy: 'C. Hager', date: '2025-08-05', aiGenerated: true, participants: 6, format: 'text', sprache: 'Standardsprache', niveaus: ['T', 'A'],
     title: 'Reinigungsgeräte bedienen und pflegen',
     abschnitt: {
       titel: 'Reinigungsgeräte sachgerecht bedienen und instand halten',
@@ -147,7 +147,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 11, berufsbild: 'Reinigung & Gebäudepflege', baustein: 2,
-    ausbildungsbaustein: 'Unterhaltsreinigung', createdBy: 'T. Neumann', date: '2025-07-28', aiGenerated: false, participants: 4, format: 'text',
+    ausbildungsbaustein: 'Unterhaltsreinigung', createdBy: 'T. Neumann', date: '2025-07-28', aiGenerated: false, participants: 4, format: 'piktogramm-mathefrei', sprache: 'Standardsprache', niveaus: ['A', 'F', 'B'],
     title: 'Unterhaltsreinigung im Bürobereich',
     abschnitt: {
       titel: 'Unterhaltsreinigung in Büro- und Verwaltungsgebäuden durchführen',
@@ -161,7 +161,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 12, berufsbild: 'Reinigung & Gebäudepflege', baustein: 2,
-    ausbildungsbaustein: 'Unterhaltsreinigung', createdBy: 'A. Mustajbegovic', date: '2025-07-20', aiGenerated: true, participants: 5, format: 'piktogramm',
+    ausbildungsbaustein: 'Unterhaltsreinigung', createdBy: 'A. Mustajbegovic', date: '2025-07-20', aiGenerated: true, participants: 5, format: 'piktogramm', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Sanitärreinigung und Hygiene',
     abschnitt: {
       titel: 'Sanitärbereiche hygienisch reinigen und desinfizieren',

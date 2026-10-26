@@ -51,6 +51,36 @@ describe('filterWorksheets', () => {
   it('liefert eine leere Liste, wenn nichts passt', () => {
     expect(filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, search: 'gibt es nicht' })).toEqual([])
   })
+
+  it('filtert nach Niveau nur auf die hinterlegten Niveaus', () => {
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, niveau: 'T' })
+    expect(result.length).toBeGreaterThan(0)
+    expect(result.every((w) => w.niveaus.includes('T'))).toBe(true)
+    expect(result.map((w) => w.id)).not.toContain(3)
+  })
+
+  it('filtert nach Sprache', () => {
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, sprache: 'Leichte Sprache' })
+    expect(result.length).toBeGreaterThan(0)
+    expect(result.every((w) => w.sprache === 'Leichte Sprache')).toBe(true)
+  })
+
+  it('filtert nach Format', () => {
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, format: 'piktogramm-mathefrei' })
+    expect(result.length).toBeGreaterThan(0)
+    expect(result.every((w) => w.format === 'piktogramm-mathefrei')).toBe(true)
+  })
+
+  it('kombiniert Niveau, Sprache und Format', () => {
+    const result = filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, niveau: 'A', sprache: 'Leichte Sprache', format: 'piktogramm' })
+    expect(result.length).toBeGreaterThan(0)
+    expect(result.every((w) => w.niveaus.includes('A') && w.sprache === 'Leichte Sprache' && w.format === 'piktogramm')).toBe(true)
+    expect(result.map((w) => w.id)).toContain(2)
+  })
+
+  it('liefert eine leere Liste bei widerspruechlicher Filterkombination', () => {
+    expect(filterWorksheets(WORKSHEETS, { ...EMPTY_FILTER, niveau: 'B', format: 'mathefrei', sprache: 'Leichte Sprache' })).toEqual([])
+  })
 })
 
 describe('Filteroptionen', () => {
