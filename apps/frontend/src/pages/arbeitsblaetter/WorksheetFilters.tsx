@@ -1,5 +1,6 @@
-import { ALLE_BERUFSBILDER, BERUFSBILDER } from '@/data/constants'
+import { ALLE_BERUFSBILDER, BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
 import type { WorksheetFilter } from '@/lib/worksheetFilter'
+import type { Format, Level, Sprache } from '@/types'
 
 type Props = {
   filter: WorksheetFilter
@@ -10,6 +11,20 @@ type Props = {
   onOnlyFavoritesChange: (value: boolean) => void
   resultCount: number
 }
+
+type ChipOption<T extends string> = { value: T | 'Alle'; label: string }
+
+const NIVEAU_OPTIONS: ChipOption<Level>[] = [
+  { value: 'Alle', label: 'Alle' },
+  ...LEVELS.map((l) => ({ value: l, label: `${l} · ${LEVEL_STYLES[l].label}` })),
+]
+
+const SPRACHE_OPTIONS: ChipOption<Sprache>[] = [{ value: 'Alle', label: 'Alle' }, ...SPRACHEN.map((s) => ({ value: s, label: s }))]
+
+const FORMAT_CHIP_OPTIONS: ChipOption<Format>[] = [
+  { value: 'Alle', label: 'Alle' },
+  ...FORMAT_OPTIONS.map((o) => ({ value: o.id, label: `${o.icon} ${o.label}` })),
+]
 
 const chipStyle = (active: boolean) => ({
   backgroundColor: active ? 'var(--primary)' : 'var(--muted)',
@@ -103,6 +118,48 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 items-start">
+        <ChipGroup title="NIVEAU" ariaLabel="Niveau" options={NIVEAU_OPTIONS} value={filter.niveau} onChange={(niveau) => update({ niveau })} />
+        <ChipGroup title="SPRACHE" ariaLabel="Sprache" options={SPRACHE_OPTIONS} value={filter.sprache} onChange={(sprache) => update({ sprache })} />
+        <ChipGroup title="FORMAT" ariaLabel="Format" options={FORMAT_CHIP_OPTIONS} value={filter.format} onChange={(format) => update({ format })} />
+      </div>
+    </div>
+  )
+}
+
+function ChipGroup<T extends string>({
+  title,
+  ariaLabel,
+  options,
+  value,
+  onChange,
+}: {
+  title: string
+  ariaLabel: string
+  options: ChipOption<T>[]
+  value: T | 'Alle'
+  onChange: (value: T | 'Alle') => void
+}) {
+  return (
+    <div>
+      <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
+        {title}
+      </div>
+      <div className="flex gap-1 flex-wrap" role="group" aria-label={ariaLabel}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+            className="px-2.5 py-1.5 rounded text-xs font-medium transition-all"
+            style={chipStyle(value === o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
     </div>
   )
