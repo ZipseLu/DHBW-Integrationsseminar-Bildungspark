@@ -123,6 +123,21 @@ describe('KI-Erstellung', () => {
     expect(within(result).getByText(/„Gabelstapler"/)).toBeInTheDocument()
   })
 
+  it('oeffnet die Vorschau erst nach Klick auf "Vorschau"', async () => {
+    renderApp()
+    navigate('KI-Erstellung')
+
+    fireEvent.change(screen.getByLabelText('THEMA / TITEL'), { target: { value: 'Gabelstapler' } })
+    fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
+
+    const result = await screen.findByRole('region', { name: 'Erstellte Varianten' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(within(result).getByRole('button', { name: /Vorschau/ }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
+  })
+
   it('zeigt simulierte Suchtreffer', async () => {
     renderApp()
     navigate('KI-Erstellung')
