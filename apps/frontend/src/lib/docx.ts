@@ -14,7 +14,7 @@ import {
   convertInchesToTwip,
 } from 'docx'
 import { saveAs } from 'file-saver'
-import { LEVELS, LEVEL_STYLES } from '@/data/constants'
+import { LEVEL_STYLES, niveausOf } from '@/data/constants'
 import type { Level, Worksheet } from '@/types'
 
 const FONT = 'Calibri'
@@ -35,6 +35,7 @@ const levelColors = (level: Level) => ({
 /** Erzeugt das Word-Dokument eines Arbeitsblatts mit der Niveau-Tabelle T/A/F/B */
 export function buildWorksheetDocument(w: Worksheet): Document {
   const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+  const levels = niveausOf(w)
 
   const header = [
     new Paragraph({
@@ -68,10 +69,10 @@ export function buildWorksheetDocument(w: Worksheet): Document {
 
   const headerRow = new TableRow({
     tableHeader: true,
-    children: LEVELS.map((level) => {
+    children: levels.map((level) => {
       const c = levelColors(level)
       return new TableCell({
-        width: { size: 25, type: WidthType.PERCENTAGE },
+        width: { size: Math.floor(100 / levels.length), type: WidthType.PERCENTAGE },
         shading: { type: ShadingType.CLEAR, color: 'auto', fill: c.fill },
         borders: {
           top: noBorder,
@@ -94,11 +95,11 @@ export function buildWorksheetDocument(w: Worksheet): Document {
   })
 
   const contentRow = new TableRow({
-    children: LEVELS.map((level) => {
+    children: levels.map((level) => {
       const c = levelColors(level)
       const row = w.abschnitt.niveaus[level]
       return new TableCell({
-        width: { size: 25, type: WidthType.PERCENTAGE },
+        width: { size: Math.floor(100 / levels.length), type: WidthType.PERCENTAGE },
         shading: { type: ShadingType.CLEAR, color: 'auto', fill: COLOR_PAPER },
         borders: {
           top: { style: BorderStyle.SINGLE, size: 1, color: COLOR_BORDER },

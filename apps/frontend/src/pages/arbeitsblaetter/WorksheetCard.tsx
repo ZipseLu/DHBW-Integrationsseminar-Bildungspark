@@ -1,4 +1,4 @@
-import { FORMAT_BADGE_COLORS, LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
+import { FORMAT_BADGE_COLORS, LEVEL_STYLES, PERSONA_MAP, formatOption, niveausOf } from '@/data/constants'
 import type { Worksheet } from '@/types'
 
 type Props = {
@@ -28,6 +28,7 @@ export function WorksheetCard({
 }: Props) {
   const opt = formatOption(w.format)
   const formatColors = FORMAT_BADGE_COLORS[w.format]
+  const levels = niveausOf(w)
 
   return (
     <article
@@ -71,10 +72,13 @@ export function WorksheetCard({
             <span className="text-xs font-mono px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: formatColors.bg, color: formatColors.color }}>
               {opt.icon} {opt.label}
             </span>
+            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>
+              {w.sprache}
+            </span>
             <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
               → Personas:
             </span>
-            {LEVELS.map((l) => {
+            {levels.map((l) => {
               const letter = PERSONA_MAP[l][w.format]
               const s = LEVEL_STYLES[l]
               return (
@@ -156,8 +160,8 @@ export function WorksheetCard({
             <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
               BINNENDIFFERENZIERUNG NACH NIVEAUSTUFEN
             </div>
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-              {LEVELS.map((l) => {
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${levels.length}, 1fr)` }}>
+              {levels.map((l) => {
                 const s = LEVEL_STYLES[l]
                 const row = w.abschnitt.niveaus[l]
                 return (
