@@ -136,11 +136,18 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const seite1 = await request(app).get('/api/arbeitsblaetter')
       expect(seite1.body).toMatchObject({ seite: 1, proSeite: 15, gesamt: 17, seiten: 2 })
       expect(seite1.body.eintraege).toHaveLength(15)
-      expect(seite1.body.eintraege[0].titel).toBe('Blatt 17')
       expect(seite1.body.eintraege[0]).not.toHaveProperty('inhalt')
 
       const seite2 = await request(app).get('/api/arbeitsblaetter?seite=2')
-      expect(seite2.body.eintraege.map((e) => e.titel)).toEqual(['Blatt 02', 'Blatt 01'])
+      expect(seite2.body.eintraege).toHaveLength(2)
+
+      // Neueste zuerst: Zeitstempel fallen ueber beide Seiten monoton, kein Blatt doppelt oder vergessen.
+      // (Nicht auf exakte Titel pruefen – zwei Inserts koennen dieselbe Millisekunde haben.)
+      const alle = [...seite1.body.eintraege, ...seite2.body.eintraege]
+      expect(new Set(alle.map((e) => e.id)).size).toBe(17)
+      const zeiten = alle.map((e) => e.geaendertAm)
+      expect(zeiten).toEqual([...zeiten].sort().reverse())
+      expect(seite2.body.eintraege.map((e) => e.titel)).toContain('Blatt 01')
 
       const nachTitel = await request(app).get('/api/arbeitsblaetter?sortierung=titel&proSeite=3')
       expect(nachTitel.body.eintraege.map((e) => e.titel)).toEqual(['Blatt 01', 'Blatt 02', 'Blatt 03'])
