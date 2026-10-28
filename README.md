@@ -36,12 +36,13 @@ Voraussetzung: Node 22 und npm. Alle Befehle im Ordner des Repos.
    cd apps/backend && npm ci && cd ../frontend && npm ci && cd ../..
    ```
 
-3. **Optional: Gemini-Key eintragen.** Datei `apps/backend/.env` anlegen (landet nicht in Git):
+3. **Optional: Gemini-Key eintragen.** Im Repo-Root `.env` aus der Vorlage anlegen (landet nicht in Git) und den Key eintragen:
 
-   ```dotenv
-   GEMINI_API_KEY=hier-den-key-einfügen
+   ```bash
+   cp .env.example .env
    ```
 
+   In der `.env` die Zeile `GEMINI_API_KEY=` ausfüllen. Dieselbe Datei nutzt auch Docker Compose.
    Kostenloser Key: <https://aistudio.google.com/apikey>. Ohne Key läuft alles im Mock-Modus mit einer festen Beispielantwort.
 
 4. **Backend starten** (Terminal 1, bleibt offen):
@@ -117,7 +118,7 @@ noch nicht; angezeigt wird immer die Beispielnutzerin Celine Hager (Administrato
 Ohne Docker (zwei Terminals; das Backend braucht für die KI-Routen keine MySQL):
 
 ```bash
-cd apps/backend  && npm ci && npm run dev   # http://localhost:3000 – Key in apps/backend/.env
+cd apps/backend  && npm ci && npm run dev   # http://localhost:3000 – liest die Root-.env (und optional apps/backend/.env)
 cd apps/frontend && npm ci && npm run dev   # http://localhost:5173 – leitet /api an :3000 weiter
 ```
 
@@ -237,6 +238,11 @@ docker compose --profile prod --profile legacy up -d --build
 # --- Ohne Docker (wenn MySQL lokal laeuft) ---
 npm run dev:backend
 npm run dev:frontend
+
+# --- Datenbank (in apps/backend; Verbindung aus der .env) ---
+npm run db:migrate                 # Schema anlegen/aktualisieren (db/migrations/*.sql, laeuft auch beim Start)
+npm run db:seed                    # Beispiel-Arbeitsblaetter (24 mit Lehrplan-Import, sonst 16), nur in eine leere Tabelle
+npm run db:seed -- --reset         # alles loeschen und neu befuellen
 ```
 
 ---
@@ -252,7 +258,12 @@ cd e2e           && npm ci && npm run install:browsers && npm run test
 ```
 
 Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
-**übersprungen statt rot** – so bleibt `npm test` auch ohne DB nutzbar.
+**übersprungen statt rot** – so bleibt `npm test` auch ohne DB nutzbar. Mit laufendem
+Compose-Dienst `db` laufen sie so gegen die Testdatenbank:
+
+```bash
+cd apps/backend && DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run
+```
 
 Die E2E-Tests starten das Frontend zwar selbst (`webServer` in `playwright.config.js`),
 brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 – der
@@ -342,7 +353,8 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 |---|---|---|
 | `MYSQL_PASSWORD` | `bildungspark-dev` | DB-Passwort des App-Users |
 | `MYSQL_PORT` | `3307` | Host-Port (3306 ist oft belegt) |
-| `DB_HOST` | `db` | **Im Compose `db`, nicht `localhost`** |
+| `DB_HOST` | `db` | **Im Compose `db`, nicht `localhost`**; ohne Docker `127.0.0.1` |
+| `DB_PORT` | `MYSQL_PORT` (3307) | Ohne Docker: Host-Port des Compose-Dienstes `db`; eigene MySQL meist `3306` |
 | `AI_PROVIDER` | `gemini` | `gemini` \| `azure` |
 | `GEMINI_API_KEY` | leer | Ohne Key läuft KI im Mock-Modus |
 | `GEMINI_MODEL` | `gemini-3.5-flash` | `gemini-2.5-flash` ist seit Oktober 2026 für neue Keys nicht mehr verfügbar |
@@ -352,6 +364,8 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 
 > **Ohne `GEMINI_API_KEY` läuft die KI im Mock-Modus.** Das ist Absicht:
 > So laufen Frontend, Supertest und Playwright ohne API-Key und ohne Kosten.
+> Das Backend liest ohne Docker zuerst `apps/backend/.env` (optional), dann die Root-`.env`;
+> die erste gesetzte Variable gewinnt. Eine einzige `.env` im Root reicht also für Docker und `npm run dev`.
 > Die Backend-Tests leeren den Key zusätzlich selbst (`vitest.config.js`), damit kein
 > Testlauf Gemini-Kontingent verbraucht – auch wenn lokal eine `.env` liegt.
 
@@ -444,26 +458,25 @@ docker compose down -v && docker compose up --build
 
 ## Noch offen
 
-- [ ] Mapper für die Arbeitsblatt-Tabellen (`mysql2` → Repository-Layer)
+- [x] Repository-Layer für Arbeitsblätter (`mysql2`), Migrationen und Seed – siehe `docs/persistenz-arbeitsblaetter.md` (28.10.)
 - [ ] Auth (JWT) für Dozent/Assistent/Admin – `JWT_SECRET` ist bereits in der Konfiguration, wird aber noch nicht benutzt
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
-- [ ] Generierte Arbeitsblätter speichern (MySQL), bearbeiten und freigeben – siehe docs/prototyp-ki-arbeitsblatt.md, Abschnitt 6
+- [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
-- [ ] `docker-compose.yml`: Default `GEMINI_MODEL` steht noch auf `gemini-2.5-flash` (für neue Keys nicht mehr verfügbar); solange `.env` aus `.env.example` kopiert wird, greift der dortige Wert
 - [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
 - [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern
 - [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
-- [ ] Backend-Skripte `db:migrate` und `db:reset` neu anlegen (am 22.10. aus `package.json` entfernt, die Dateien existierten nie); `db:seed` ist ein Platzhalter
+- [x] Backend-Skripte `db:migrate` und `db:seed` (28.10.); ein `db:reset` ist `docker compose down -v` bzw. `npm run db:seed -- --reset`
 - [x] `@google/genai` installiert und gegen die echte API getestet (22.10.); `@azure/openai` später
 - [ ] Playwright-Version in `e2e/package.json` und `e2e/Dockerfile` synchron halten (aktuell 1.49.1)
-- [ ] `docker/mysql/init` nur für Erstinbetriebnahme; danach Migrationen
+- [x] `docker/mysql/init` legt nur noch Datenbanken und Rechte an; Tabellen kommen aus `apps/backend/db/migrations` (28.10.)
 - [ ] Stufenbezeichnungen T/A/F/B und Liste der Berufsfelder vom Bildungspark bestätigen lassen (siehe `docs/fachliche-grundlagen.md`)
 - [ ] `ArbeitsblattverwaltungMockup/src/imports/*.pdf` sind Git-LFS-Zeiger ohne hinterlegte Objekte – LFS einrichten oder Dateien entfernen
 
 ---
 
-*Stack-Anpassung: 16.10.2026 · Bereinigung von Beispieldaten und Dokumentation: 22.10.2026 · Prototyp KI-Arbeitsblatt: 22.10.2026*
+*Stack-Anpassung: 16.10.2026 · Bereinigung von Beispieldaten und Dokumentation: 22.10.2026 · Prototyp KI-Arbeitsblatt: 22.10.2026 · Arbeitsblätter speichern (MySQL): 28.10.2026*
