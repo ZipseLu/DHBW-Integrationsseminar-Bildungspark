@@ -325,7 +325,7 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
       <div className="p-4 flex flex-col gap-3" style={{ backgroundColor: '#FFFEF9' }}>
         {anyMocked && (
           <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
-            ⚠ Kein API-Key – Beispielantwort (Mock). Mit GEMINI_API_KEY in apps/backend/.env antwortet Gemini.
+            ⚠ Kein API-Key – Beispielantwort (Mock). Mit GEMINI_API_KEY in der .env (Repo-Root) antwortet Gemini.
           </div>
         )}
 

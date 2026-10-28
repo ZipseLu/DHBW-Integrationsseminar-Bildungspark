@@ -17,8 +17,10 @@ unseren Regeln; ein Prüfprogramm (Validator) meldet Verstöße gegen die Regeln
 Klick lädt das Blatt als Word-Datei im Bildungspark-Stil herunter. Ohne API-Key läuft alles mit einer
 festen Beispielantwort (Mock) – die komplette Demo funktioniert also auch ohne Internet.
 
-**Was er nicht ist:** kein Endprodukt. Es wird nichts gespeichert, es gibt keine Anmeldung und keine
-Freigabe. Jedes Ergebnis ist ein KI-Entwurf, den eine Lehrkraft prüfen muss (steht auch im Dokument).
+**Was er nicht ist:** kein Endprodukt. Es gibt keine Anmeldung. Jedes Ergebnis ist ein KI-Entwurf,
+den eine Lehrkraft prüfen muss (steht auch im Dokument). Seit 28.10. kann das Backend Arbeitsblätter
+in MySQL speichern, auflisten, freigeben und mit Verlauf führen (`/api/arbeitsblaetter`, siehe
+[persistenz-arbeitsblaetter.md](persistenz-arbeitsblaetter.md)); die Buttons dafür im Frontend fehlen noch.
 
 ---
 
@@ -115,7 +117,7 @@ Bei mehreren Varianten (z. B. Stufe T und A × Text und Piktogramm = 4) läuft S
 mit Fortschrittsanzeige „Variante 2 von 4 …“. Grund: der kostenlose Gemini-Zugang erlaubt nur wenige
 Anfragen pro Minute (siehe Rate-Limit im Glossar).
 
-**Ohne API-Key** (Datei `apps/backend/.env` fehlt oder `GEMINI_API_KEY` ist leer) überspringt das Backend
+**Ohne API-Key** (`GEMINI_API_KEY` in der `.env` leer oder Datei fehlt) überspringt das Backend
 die Schritte 3–5 und liefert ein festes Beispiel-Arbeitsblatt, in das Lernziel, Stufe, Format und Sprache
 der Anfrage übernommen werden. Die Antwort trägt `meta.mocked = true`, das Frontend zeigt einen gelben Hinweis.
 
@@ -150,7 +152,8 @@ Voraussetzungen: Node 22, npm, Internet (für Gemini). Alle Befehle im Ordner de
 
 1. **Key besorgen** (einmalig, kostenlos): Google AI Studio → <https://aistudio.google.com/apikey> → „Create API key“.
    Der Free-Tier reicht für die Demo.
-2. **Key eintragen** – Datei `apps/backend/.env` anlegen (sie ist in `.gitignore`, landet also nie in Git):
+2. **Key eintragen** – im Repo-Root `cp .env.example .env` und in der `.env` den Key setzen
+   (die Datei ist in `.gitignore`, landet also nie in Git):
 
    ```dotenv
    AI_PROVIDER=gemini
@@ -159,6 +162,8 @@ Voraussetzungen: Node 22, npm, Internet (für Gemini). Alle Befehle im Ordner de
    # GEMINI_MODEL=gemini-3.5-flash-lite
    ```
 
+   Dieselbe Datei benutzt auch Docker Compose. Das Backend liest beim Start zuerst eine optionale
+   `apps/backend/.env`, dann die Root-`.env` – die erste gesetzte Variable gewinnt.
    Den Key nie in Chats, Screenshots oder Commits zeigen. Nach der Demo im AI Studio rotieren (neu erzeugen, alten löschen).
 3. **Abhängigkeiten** (einmalig): `npm ci` in `apps/backend` und in `apps/frontend`.
 4. **Zwei Terminals:**
@@ -191,7 +196,7 @@ Dann wie oben <http://localhost:5173>. Ohne Key in der `.env` läuft die Demo im
 | Meldung im Frontend | Ursache | Was tun |
 |---|---|---|
 | „Das Backend ist nicht erreichbar“ | Backend läuft nicht | Terminal 1 prüfen, `npm run dev` in `apps/backend` |
-| Gelber Hinweis „Kein API-Key – Beispielantwort (Mock)“ | `.env` fehlt oder Key leer | `apps/backend/.env` anlegen, Backend neu starten |
+| Gelber Hinweis „Kein API-Key – Beispielantwort (Mock)“ | `.env` fehlt oder Key leer | Root-`.env` anlegen (`cp .env.example .env`), Key eintragen, Backend neu starten |
 | „Rate-Limit des KI-Anbieters erreicht“ | zu viele Anfragen (Free-Tier) | eine Minute warten, weniger Varianten auf einmal |
 | „Der KI-Anbieter ist gerade nicht erreichbar“ | Gemini überlastet (503), auch das Fallback-Modell | kurz warten, erneut klicken; notfalls `GEMINI_MODEL=gemini-3.5-flash-lite` setzen |
 | „Das konfigurierte KI-Modell ist für diesen API-Key nicht verfügbar“ | Modellname veraltet (z. B. `gemini-2.5-flash`, seit Oktober 2026 für neue Keys gesperrt) | `GEMINI_MODEL` in `.env` auf `gemini-3.5-flash` oder `gemini-3.5-flash-lite` setzen |
@@ -206,7 +211,7 @@ Die Eingaben im Formular bleiben bei jedem Fehler erhalten – einfach erneut au
 
 **Vorbereitung (vor der Präsentation):** Backend und Frontend starten, einmal probeweise generieren
 (dann ist alles „warm“ und man weiß, ob der Key funktioniert). Browser-Zoom so, dass das Formular komplett sichtbar ist.
-Plan B bei Internetproblemen: `apps/backend/.env` umbenennen, Backend neu starten → Mock-Modus, Ablauf identisch.
+Plan B bei Internetproblemen: in der `.env` den `GEMINI_API_KEY` leeren (oder die Datei umbenennen), Backend neu starten → Mock-Modus, Ablauf identisch.
 
 | Minute | Was zeigen | Was sagen |
 |---|---|---|
@@ -232,9 +237,9 @@ oder auf den Mock-Modus wechseln (Plan B).
 
 | Fehlt im Prototyp | Warum | Nächster Schritt |
 |---|---|---|
-| Speichern in MySQL | Schema steht (`docker/mysql/init`), aber kein Repository-Layer | `POST /api/worksheets` + Liste im Frontend; generierte Blätter als Status `entwurf` ablegen |
+| Speichern-Button im Frontend | Backend seit 28.10. fertig: `POST /api/arbeitsblaetter` legt das Ergebnis als `entwurf` ab, `GET` liefert die Liste ([Doku](persistenz-arbeitsblaetter.md)) | `saveArbeitsblatt()` aus `lib/api.ts` in `GeneratedWorksheetCard` aufrufen; Liste auf `fetchArbeitsblaetter()` umstellen |
 | Login / Rollen | Nicht-Ziel laut Projektauftrag, Entscheidung mit Bildungspark offen | einfacher Login für Dozierende (JWT ist vorbereitet) |
-| Freigabe-Workflow | braucht Speicherung | Status entwurf → geprüft → freigegeben, Verlauf |
+| Freigabe-Workflow im Frontend | Backend kann es: `PATCH { status: 'freigegeben' }` schreibt Version + Verlauf | Buttons „Freigeben“/„Archivieren“ und Verlaufsanzeige |
 | Echte Piktogramm-Bilder | kein Set vom Bildungspark | Whitelist in `schema.js` auf Bilddateien abbilden (Prompt bleibt gleich) |
 | Azure OpenAI | kein Zugang; Adapter nur strukturell vorbereitet | `npm i @azure/openai`, `AI_PROVIDER=azure`, Test |
 | Upload-Analyse (PDF → Lernziel) | Frontend simuliert | Dokumentanalyse als eigener Endpunkt (Konzept AP4, Kap. 8) |
