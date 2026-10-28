@@ -243,7 +243,7 @@ oder auf den Mock-Modus wechseln (Plan B).
 | Echte Piktogramm-Bilder | kein Set vom Bildungspark | Whitelist in `schema.js` auf Bilddateien abbilden (Prompt bleibt gleich) |
 | Azure OpenAI | kein Zugang; Adapter nur strukturell vorbereitet | `npm i @azure/openai`, `AI_PROVIDER=azure`, Test |
 | Upload-Analyse (PDF → Lernziel) | Frontend simuliert | Dokumentanalyse als eigener Endpunkt (Konzept AP4, Kap. 8) |
-| Lehrplan-Pflege im Browser | Import nur per Skript (Abschnitt 9) | Seite „Lehrpläne“ (Projektauftrag Teilziel 3) |
+| Lehrplan-Pflege im Browser | Import nur per Skript (Abschnitt 9); die Seite „Lehrpläne“ zeigt die Lehrpläne an, bearbeiten geht noch nicht | Bearbeiten/Hochladen auf der Seite „Lehrpläne“ (Projektauftrag Teilziel 3) |
 | Websuche | im Frontend simuliert | später, kein Teil von AP4 |
 | Bearbeiten des Ergebnisses | nur Anzeige + Download | Felder editierbar machen, dann speichern |
 

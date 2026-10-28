@@ -2,9 +2,10 @@
 
 Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
-> **Status (22.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
-> Das Frontend zeigt die Seiten **Arbeitsblätter** und **KI-Erstellung**; die übrigen Menüpunkte
-> sind angelegt, aber noch leer.
+> **Status (28.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
+> Das Frontend enthält alle Seiten des Figma-Mockups (Version 41): **Dashboard**, **Lehrpläne**, **Arbeitsblätter**, **KI-Erstellung**,
+> **Teilnehmende**, **Berichte** (Platzhalter), **Benutzerverwaltung** und **Einstellungen**.
+> KI-Erstellung und Lehrpläne nutzen das Backend (ohne Backend: Beispiel-Lernziele), die übrigen Seiten Beispieldaten im Browser.
 > **Neu: Die KI-Erstellung erzeugt echte Arbeitsblätter über das Backend** (Lernziel aus dem Lehrplan →
 > Gemini → Validator → Anzeige → Word-Export; ohne API-Key im Mock-Modus) – siehe
 > **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
@@ -315,7 +316,13 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 │       │   ├── layout/           Seitenleiste und Kopfzeile
 │       │   └── pages/
 │       │       ├── arbeitsblaetter/  Liste, Upload, Vorschau, Verlauf, Anpassen
-│       │       └── ki-erstellung/    Formular, Websuche, Ergebnis (GeneratedWorksheetCard)
+│       │       ├── ki-erstellung/    Formular, Websuche, Ergebnis (GeneratedWorksheetCard)
+│       │       ├── dashboard/        Kennzahlen, Niveaustufen, Personas, zuletzt bearbeitet
+│       │       ├── lehrplaene/       Curriculum-Bibliothek, Online-Vorschau, Word-Export, → KI-Erstellung
+│       │       ├── teilnehmende/     Anonyme Profile, Lernweg, Anlegen/Bearbeiten, Zuweisen
+│       │       ├── berichte/         Platzhalter (späterer Sprint)
+│       │       ├── benutzerverwaltung/ Mitarbeiter-Zugänge (nur Admin)
+│       │       └── einstellungen/    Darstellung, Sprache, KI, Sitzung, Mein Konto
 │       └── tests/unit/       Vitest + React Testing Library (jsdom)
 │
 ├── e2e/                     Playwright-Tests
@@ -458,8 +465,10 @@ docker compose down -v && docker compose up --build
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
 - [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
-- [ ] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen
-- [ ] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – fehlt bisher in der Navigation
+- [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
+- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern
+- [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
+- [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
 - [x] Backend-Skripte `db:migrate` und `db:seed` (28.10.); ein `db:reset` ist `docker compose down -v` bzw. `npm run db:seed -- --reset`
 - [x] `@google/genai` installiert und gegen die echte API getestet (22.10.); `@azure/openai` später
