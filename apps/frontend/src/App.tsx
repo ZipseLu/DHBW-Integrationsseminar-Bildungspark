@@ -30,6 +30,7 @@ export default function App() {
   const user = CURRENT_USER
   const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
   const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [participants, setParticipants] = useState<Participant[]>(PARTICIPANTS)
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([...STAFF_USERS])
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
@@ -68,7 +69,13 @@ export default function App() {
           {activeNav === 'dashboard' && <DashboardPage participants={participants} onNavigate={navigate} />}
           {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} />}
           {activeNav === 'arbeitsblaetter' && (
-            <ArbeitsblaetterPage user={user} savedDocs={savedDocs} onSavedDocsChange={setSavedDocs} />
+            <ArbeitsblaetterPage
+              user={user}
+              savedDocs={savedDocs}
+              onSavedDocsChange={setSavedDocs}
+              favoriteIds={favoriteIds}
+              onFavoriteIdsChange={setFavoriteIds}
+            />
           )}
           {activeNav === 'ki-erstellung' && (
             <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel}` : 'neu'} vorauswahl={kiVorauswahl} />

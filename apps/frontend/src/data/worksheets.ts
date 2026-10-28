@@ -17,7 +17,7 @@ import type { HistoryEntry, Worksheet } from '@/types'
 export const WORKSHEETS: Worksheet[] = [
   {
     id: 1, berufsbild: BERUFSBILD_LAGER, baustein: 1,
-    ausbildungsbaustein: 'Wareneingang', createdBy: 'C. Hager', date: '2026-10-14', aiGenerated: true, participants: 8, format: 'text',
+    ausbildungsbaustein: 'Wareneingang', createdBy: 'C. Hager', date: '2026-10-14', aiGenerated: true, participants: 8, format: 'text', sprache: 'Standardsprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Begleitpapiere prüfen',
     abschnitt: {
       titel: 'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben auf Richtigkeit und Vollständigkeit prüfen',
@@ -31,7 +31,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 2, berufsbild: BERUFSBILD_LAGER, baustein: 1,
-    ausbildungsbaustein: 'Wareneingang', createdBy: 'A. Mustajbegovic', date: '2026-10-12', aiGenerated: false, participants: 12, format: 'piktogramm',
+    ausbildungsbaustein: 'Wareneingang', createdBy: 'A. Mustajbegovic', date: '2026-10-12', aiGenerated: false, participants: 12, format: 'piktogramm', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Güter entladen',
     abschnitt: {
       titel: 'Güter entladen',
@@ -45,7 +45,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 3, berufsbild: BERUFSBILD_LAGER, baustein: 2,
-    ausbildungsbaustein: 'Innerbetrieblicher Transport', createdBy: 'C. Hager', date: '2026-10-09', aiGenerated: true, participants: 6, format: 'text',
+    ausbildungsbaustein: 'Innerbetrieblicher Transport', createdBy: 'C. Hager', date: '2026-10-09', aiGenerated: true, participants: 6, format: 'text', sprache: 'Standardsprache', niveaus: ['F', 'B'],
     title: 'Vorschriften bei Verpackung und Transport',
     abschnitt: {
       titel: 'Gesetzliche und betriebliche Vorschriften bei Verpackung und Transport anwenden',
@@ -59,7 +59,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 4, berufsbild: BERUFSBILD_LAGER, baustein: 3,
-    ausbildungsbaustein: 'Lagerung von Gütern', createdBy: 'T. Neumann', date: '2026-10-07', aiGenerated: true, participants: 4, format: 'text',
+    ausbildungsbaustein: 'Lagerung von Gütern', createdBy: 'T. Neumann', date: '2026-10-07', aiGenerated: true, participants: 4, format: 'text', sprache: 'Standardsprache', niveaus: ['A', 'F', 'B'],
     title: 'Güter auszeichnen und sortieren',
     abschnitt: {
       titel: 'Güter auszeichnen, sortieren, Lager- und Verkaufseinheiten bilden sowie Güter zur Lagerung vorbereiten',
@@ -73,7 +73,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 5, berufsbild: BERUFSBILD_METALL, baustein: 2,
-    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'S. Oturucu', date: '2026-10-06', aiGenerated: false, participants: 9, format: 'text',
+    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'S. Oturucu', date: '2026-10-06', aiGenerated: false, participants: 9, format: 'text', sprache: 'Standardsprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Planung der Herstellung durch Fügen',
     abschnitt: {
       titel: 'Planung der Herstellung von Bauteilen durch Fügen durch Nutzung von Gesamtzeichnungen, Stücklisten, Anordnungs- und Montageplänen',
@@ -87,7 +87,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 6, berufsbild: BERUFSBILD_METALL, baustein: 2,
-    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'C. Hager', date: '2026-10-02', aiGenerated: false, participants: 11, format: 'text',
+    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'C. Hager', date: '2026-10-02', aiGenerated: false, participants: 11, format: 'text', sprache: 'Leichte Sprache', niveaus: ['T', 'A', 'F'],
     title: 'Arbeitsplatz einrichten und Arbeitssicherheit',
     abschnitt: {
       titel: 'Einrichtung des Arbeitsplatzes unter Berücksichtigung betrieblicher Vorgaben',
@@ -101,7 +101,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 7, berufsbild: BERUFSBILD_METALL, baustein: 2,
-    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'T. Neumann', date: '2026-09-30', aiGenerated: true, participants: 7, format: 'piktogramm',
+    ausbildungsbaustein: 'Fügen von Bauteilen zu Baugruppen', createdBy: 'T. Neumann', date: '2026-09-30', aiGenerated: true, participants: 7, format: 'piktogramm', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Bauteile zu Baugruppen fügen',
     abschnitt: {
       titel: 'Fügen von Bauteilen aus identischen und unterschiedlichen Werkstoffen mit lösbaren und festen Verbindungen zu Baugruppen',
@@ -115,7 +115,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 8, berufsbild: BERUFSBILD_GASTRO, baustein: 2,
-    ausbildungsbaustein: 'Grundlagen des Berufsbereichs Küche und Zubereitung', createdBy: 'O. Oláh', date: '2026-09-28', aiGenerated: true, participants: 5, format: 'piktogramm',
+    ausbildungsbaustein: 'Grundlagen des Berufsbereichs Küche und Zubereitung', createdBy: 'O. Oláh', date: '2026-09-28', aiGenerated: true, participants: 5, format: 'piktogramm', sprache: 'Standardsprache', niveaus: ['F', 'B'],
     title: 'Speisen anrichten',
     abschnitt: {
       titel: 'Speisen anrichten',
@@ -129,7 +129,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 9, berufsbild: BERUFSBILD_GASTRO, baustein: 3,
-    ausbildungsbaustein: 'Service', createdBy: 'A. Mustajbegovic', date: '2026-09-25', aiGenerated: false, participants: 6, format: 'text',
+    ausbildungsbaustein: 'Service', createdBy: 'A. Mustajbegovic', date: '2026-09-25', aiGenerated: false, participants: 6, format: 'text', sprache: 'Leichte Sprache', niveaus: ['T', 'A', 'F', 'B'],
     title: 'Verkaufsfähigkeit von Produkten prüfen',
     abschnitt: {
       titel: 'Verkaufsfähigkeit von Produkten prüfen',
@@ -143,7 +143,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 10, berufsbild: BERUFSBILD_GASTRO, baustein: 4,
-    ausbildungsbaustein: 'Lager/Warenwirtschaft', createdBy: 'C. Hager', date: '2026-09-22', aiGenerated: true, participants: 5, format: 'mathefrei',
+    ausbildungsbaustein: 'Lager/Warenwirtschaft', createdBy: 'C. Hager', date: '2026-09-22', aiGenerated: true, participants: 5, format: 'mathefrei', sprache: 'Standardsprache', niveaus: ['T', 'A'],
     title: 'Produkte auf Güte prüfen',
     abschnitt: {
       titel: 'Produkte auf Güte prüfen und Verwendungsmöglichkeiten zuordnen',
@@ -157,7 +157,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 11, berufsbild: BERUFSBILD_GASTRO, baustein: 5,
-    ausbildungsbaustein: 'Hygiene', createdBy: 'T. Neumann', date: '2026-09-18', aiGenerated: false, participants: 4, format: 'text',
+    ausbildungsbaustein: 'Hygiene', createdBy: 'T. Neumann', date: '2026-09-18', aiGenerated: false, participants: 4, format: 'piktogramm-mathefrei', sprache: 'Standardsprache', niveaus: ['A', 'F', 'B'],
     title: 'Geräte, Maschinen und Gebrauchsgüter reinigen',
     abschnitt: {
       titel: 'Geräte, Maschinen und Gebrauchsgüter reinigen und pflegen',
@@ -171,7 +171,7 @@ export const WORKSHEETS: Worksheet[] = [
   },
   {
     id: 12, berufsbild: BERUFSBILD_GASTRO, baustein: 5,
-    ausbildungsbaustein: 'Hygiene', createdBy: 'A. Mustajbegovic', date: '2026-09-16', aiGenerated: true, participants: 5, format: 'piktogramm-mathefrei',
+    ausbildungsbaustein: 'Hygiene', createdBy: 'A. Mustajbegovic', date: '2026-09-16', aiGenerated: true, participants: 5, format: 'piktogramm-mathefrei', sprache: 'Leichte Sprache', niveaus: ['T', 'A'],
     title: 'Personal- und Betriebshygiene',
     abschnitt: {
       titel: 'Vorschriften und Grundsätze zur Personal- und Betriebshygiene anwenden',

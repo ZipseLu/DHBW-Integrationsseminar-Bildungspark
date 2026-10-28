@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
 import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
 import { BERUFSBILDER, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { TRANSFORM_PREVIEWS } from '@/data/previews'
 import { WORKSHEETS } from '@/data/worksheets'
 import { ApiError, fetchLehrplaene, generateArbeitsblatt, lernzielFromWorksheet, type ArbeitsblattResult, type LernzielInput } from '@/lib/api'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
@@ -119,7 +121,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
   const trimmedErwartungen = erwartungen.trim()
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 780 }}>
+    <div className="flex flex-col gap-6">
       <section className="rounded-lg p-6" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-5">
           <span className="text-lg" style={{ color: 'var(--accent)' }} aria-hidden="true">
@@ -302,6 +304,8 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
   )
 }
 
+type PreviewTarget = { level: Level; format: Format }
+
 type GeneratedVariantsProps = {
   generated: Generated
   results: ArbeitsblattResult[]
@@ -312,6 +316,8 @@ type GeneratedVariantsProps = {
 function GeneratedVariants({ generated, results, progress, error }: GeneratedVariantsProps) {
   const finished = progress === null
   const anyMocked = results.some((r) => r.meta.mocked)
+  const stufen = [...new Set(results.map((r) => r.worksheet.stufe))]
+  const [preview, setPreview] = useState<PreviewTarget | null>(null)
 
   let status: string
   if (!finished) status = `Variante ${progress.current} von ${progress.total} wird erstellt…`
@@ -329,7 +335,7 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
         </div>
       </div>
 
-      <div className="p-4 flex flex-col gap-3" style={{ backgroundColor: '#FFFEF9' }}>
+      <div className="p-4 flex flex-col gap-5" style={{ backgroundColor: '#FFFEF9' }}>
         {anyMocked && (
           <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
             ⚠ Kein API-Key – Beispielantwort (Mock). Mit GEMINI_API_KEY in der .env (Repo-Root) antwortet Gemini.
@@ -347,10 +353,72 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
           </div>
         )}
 
-        {results.map((result) => (
-          <GeneratedWorksheetCard key={`${result.worksheet.stufe}-${result.worksheet.format}`} result={result} />
-        ))}
+        {stufen.map((stufe) => {
+          const s = LEVEL_STYLES[stufe]
+          return (
+            <div key={stufe} className="flex flex-col gap-3">
+              <div className="flex items-baseline gap-2 pb-1" style={{ borderBottom: `1.5px solid ${s.text}` }}>
+                <span className="text-sm font-mono font-bold" style={{ color: s.text }}>
+                  {stufe}
+                </span>
+                <span className="text-xs font-medium" style={{ color: s.text }}>
+                  {s.label}
+                </span>
+              </div>
+              {results
+                .filter((result) => result.worksheet.stufe === stufe)
+                .map((result) => (
+                  <GeneratedWorksheetCard
+                    key={`${result.worksheet.stufe}-${result.worksheet.format}`}
+                    result={result}
+                    onVorschau={() => setPreview({ level: result.worksheet.stufe, format: result.worksheet.format })}
+                  />
+                ))}
+            </div>
+          )
+        })}
       </div>
+
+      {preview && <VariantPreview generated={generated} target={preview} onClose={() => setPreview(null)} />}
     </section>
+  )
+}
+
+function VariantPreview({ generated, target, onClose }: { generated: Generated; target: PreviewTarget; onClose: () => void }) {
+  const s = LEVEL_STYLES[target.level]
+  const opt = formatOption(target.format)
+  const hinweise = TRANSFORM_PREVIEWS[target.level]
+
+  return (
+    <SlideOver label={`Vorschau ${generated.thema || 'Neues Arbeitsblatt'}`} width={480} onClose={onClose}>
+      <div className="px-6 py-5 flex items-start justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div>
+          <div className="text-xs font-mono mb-1" style={{ color: s.text }}>
+            {target.level} · {s.label} · {opt.icon} {opt.label}
+          </div>
+          <h2 className="font-display text-lg font-semibold leading-snug">{generated.thema || 'Neues Arbeitsblatt'}</h2>
+          <div className="text-xs font-mono mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            {generated.berufsbild} · {generated.sprache}
+          </div>
+        </div>
+        <CloseButton onClick={onClose} />
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-5">
+        <div className="rounded px-3 py-2.5 text-sm leading-snug" style={{ backgroundColor: s.bg, color: s.text }}>
+          {hinweise.hinweis}
+        </div>
+        <div>
+          <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
+            BEISPIELAUFGABEN
+          </div>
+          <ol className="flex flex-col gap-2 pl-5 text-sm list-decimal">
+            {hinweise.aufgaben.map((aufgabe) => (
+              <li key={aufgabe}>{aufgabe}</li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </SlideOver>
   )
 }

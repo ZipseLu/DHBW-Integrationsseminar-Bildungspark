@@ -11,6 +11,21 @@ import App from '@/App'
 
 const emptyLehrplaene = () => new Response(JSON.stringify({ anzahl: 0, lernziele: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 
+const generatedWorksheet = {
+  titel: 'Gabelstapler', berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'T', format: 'text', sprache: 'Leichte Sprache',
+  lernziel: 'Güter entladen', einleitung: 'Text.', aufgaben: [{ nr: 1, typ: 'offen', anweisung: 'Schreibe.' }], woerterbuch: [], hinweisAnleiter: '',
+}
+const generatedMeta = { provider: 'gemini', model: 'mock', mocked: true, durationMs: 1, promptVersion: '1.0.0', attempts: 0, usage: null, validation: { ok: true, hinweise: [] } }
+
+function stubGenerate() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url === '/api/lehrplaene' ? emptyLehrplaene() : new Response(JSON.stringify({ worksheet: generatedWorksheet, meta: generatedMeta }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    ),
+  )
+}
+
 beforeEach(() => {
   // Die KI-Erstellung fragt beim Oeffnen GET /api/lehrplaene ab – ohne Import: leere Liste
   vi.stubGlobal('fetch', vi.fn(async () => emptyLehrplaene()))
@@ -94,6 +109,18 @@ describe('Arbeitsblätter', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('markiert Favoriten und filtert auf "Nur Favoriten"', () => {
+    renderApp()
+    const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
+    fireEvent.click(within(card).getByRole('button', { name: 'Als Favorit markieren' }))
+    expect(within(card).getByRole('button', { name: 'Als Favorit markieren' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: '★ Nur Favoriten' }))
+    expect(screen.getByText('1 Ergebnisse')).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Begleitpapiere prüfen' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Güter entladen' })).not.toBeInTheDocument()
+  })
+
   it('erzeugt im Anpassen-Panel vier Varianten', async () => {
     renderApp()
     const card = screen.getByRole('article', { name: 'Güter entladen' })
@@ -119,17 +146,7 @@ describe('Arbeitsblätter', () => {
 
 describe('KI-Erstellung', () => {
   it('generiert Varianten fuer die gewaehlten Niveaus und Formate', async () => {
-    const worksheet = {
-      titel: 'Gabelstapler', berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'T', format: 'text', sprache: 'Leichte Sprache',
-      lernziel: 'Güter entladen', einleitung: 'Text.', aufgaben: [{ nr: 1, typ: 'offen', anweisung: 'Schreibe.' }], woerterbuch: [], hinweisAnleiter: '',
-    }
-    const meta = { provider: 'gemini', model: 'mock', mocked: true, durationMs: 1, promptVersion: '1.0.0', attempts: 0, usage: null, validation: { ok: true, hinweise: [] } }
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) =>
-        url === '/api/lehrplaene' ? emptyLehrplaene() : new Response(JSON.stringify({ worksheet, meta }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
-      ),
-    )
+    stubGenerate()
 
     renderApp()
     navigate('KI-Erstellung')
@@ -142,6 +159,23 @@ describe('KI-Erstellung', () => {
     const result = await screen.findByRole('region', { name: 'Erstellte Varianten' })
     expect(within(result).getByText('✓ 2 Varianten erstellt')).toBeInTheDocument()
     expect(within(result).getByText(/„Gabelstapler"/)).toBeInTheDocument()
+  })
+
+  it('oeffnet die Vorschau erst nach Klick auf "Vorschau"', async () => {
+    stubGenerate()
+
+    renderApp()
+    navigate('KI-Erstellung')
+
+    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
+    fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
+
+    const result = await screen.findByRole('region', { name: 'Erstellte Varianten' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(within(result).getByRole('button', { name: /Vorschau/ }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
   })
 
   it('zeigt simulierte Suchtreffer', async () => {

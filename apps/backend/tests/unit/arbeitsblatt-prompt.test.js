@@ -26,7 +26,7 @@ describe('System-Prompt (stabiler Teil)', () => {
   })
 
   it('enthaelt ein Few-Shot-Beispiel, das dem Schema entspricht und den Validator besteht', () => {
-    const match = /```json\n([\s\S]*?)\n```/.exec(SYSTEM_PROMPT)
+    const match = /```json\r?\n([\s\S]*?)\r?\n```/.exec(SYSTEM_PROMPT)
     expect(match).not.toBeNull()
     const parsed = LlmWorksheetSchema.safeParse(JSON.parse(match[1]))
     expect(parsed.success).toBe(true)

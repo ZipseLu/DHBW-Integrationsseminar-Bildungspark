@@ -1,4 +1,4 @@
-import type { Format, HistoryAction, Level, NavItem, Sprache, StaffRole } from '@/types'
+import type { Format, HistoryAction, Level, NavItem, Sprache, StaffRole, Worksheet } from '@/types'
 
 export const LEVELS: readonly Level[] = ['T', 'A', 'F', 'B']
 
@@ -32,6 +32,11 @@ export const FORMAT_OPTIONS: readonly FormatOption[] = [
 export function formatOption(format: Format): FormatOption {
   // FORMAT_OPTIONS deckt alle Formate ab, daher ist das Ergebnis nie undefined
   return FORMAT_OPTIONS.find((option) => option.id === format) as FormatOption
+}
+
+/** Niveaustufen, für die ein Arbeitsblatt hinterlegt ist, in der Reihenfolge T/A/F/B */
+export function niveausOf(worksheet: Worksheet): Level[] {
+  return LEVELS.filter((l) => worksheet.niveaus.includes(l))
 }
 
 export const FORMAT_BADGE_COLORS: Record<Format, { bg: string; color: string }> = {

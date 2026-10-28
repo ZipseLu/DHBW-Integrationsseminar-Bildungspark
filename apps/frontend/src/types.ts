@@ -44,6 +44,9 @@ export type Worksheet = {
   aiGenerated: boolean
   participants: number
   format: Format
+  sprache: Sprache
+  /** Niveaustufen, für die dieses Arbeitsblatt hinterlegt ist */
+  niveaus: Level[]
 }
 
 export type SavedDocument = {

@@ -1,5 +1,5 @@
 import { CloseButton, SlideOver } from '@/components/SlideOver'
-import { HISTORY_ACTION_STYLES, LEVELS, LEVEL_STYLES } from '@/data/constants'
+import { HISTORY_ACTION_STYLES, LEVEL_STYLES, niveausOf } from '@/data/constants'
 import { WORKSHEET_HISTORY } from '@/data/worksheets'
 import type { Worksheet } from '@/types'
 
@@ -85,6 +85,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, onTabChange, onClose, 
 /** Nachbildung einer Word-Seite – entspricht dem Aufbau des .docx-Exports */
 function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
   const smallCaps = { fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const }
+  const levels = niveausOf(w)
 
   return (
     <div className="flex flex-col items-center" style={{ backgroundColor: '#C8C0B4', padding: '20px 8px', minHeight: '100%', margin: '0 -24px' }}>
@@ -113,10 +114,10 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              {LEVELS.map((l) => {
+              {levels.map((l) => {
                 const s = LEVEL_STYLES[l]
                 return (
-                  <th key={l} style={{ width: '25%', backgroundColor: s.bg, padding: '6px 8px', textAlign: 'center', borderBottom: `2px solid ${s.text}` }}>
+                  <th key={l} style={{ width: `${100 / levels.length}%`, backgroundColor: s.bg, padding: '6px 8px', textAlign: 'center', borderBottom: `2px solid ${s.text}` }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: s.text, lineHeight: 1.1 }}>{l}</div>
                     <div style={{ fontSize: 9, color: s.text, fontWeight: 600 }}>{s.label}</div>
                   </th>
@@ -126,7 +127,7 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
           </thead>
           <tbody>
             <tr>
-              {LEVELS.map((l) => {
+              {levels.map((l) => {
                 const s = LEVEL_STYLES[l]
                 const row = w.abschnitt.niveaus[l]
                 return (

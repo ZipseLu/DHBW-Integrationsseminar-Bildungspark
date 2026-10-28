@@ -1,9 +1,11 @@
-import { FORMAT_BADGE_COLORS, LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
+import { FORMAT_BADGE_COLORS, LEVEL_STYLES, PERSONA_MAP, formatOption, niveausOf } from '@/data/constants'
 import type { Worksheet } from '@/types'
 
 type Props = {
   worksheet: Worksheet
   expanded: boolean
+  isFavorite: boolean
+  onToggleFavorite: () => void
   onToggleExpand: () => void
   onPreview: () => void
   onHistory: () => void
@@ -13,9 +15,20 @@ type Props = {
 
 const secondaryButton = { backgroundColor: 'var(--muted)', color: 'var(--foreground)', border: '1px solid var(--border)' }
 
-export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPreview, onHistory, onDownload, onAdapt }: Props) {
+export function WorksheetCard({
+  worksheet: w,
+  expanded,
+  isFavorite,
+  onToggleFavorite,
+  onToggleExpand,
+  onPreview,
+  onHistory,
+  onDownload,
+  onAdapt,
+}: Props) {
   const opt = formatOption(w.format)
   const formatColors = FORMAT_BADGE_COLORS[w.format]
+  const levels = niveausOf(w)
 
   return (
     <article
@@ -59,10 +72,13 @@ export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPrevie
             <span className="text-xs font-mono px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: formatColors.bg, color: formatColors.color }}>
               {opt.icon} {opt.label}
             </span>
+            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>
+              {w.sprache}
+            </span>
             <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
               → Personas:
             </span>
-            {LEVELS.map((l) => {
+            {levels.map((l) => {
               const letter = PERSONA_MAP[l][w.format]
               const s = LEVEL_STYLES[l]
               return (
@@ -80,6 +96,21 @@ export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPrevie
         </div>
 
         <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            aria-label="Als Favorit markieren"
+            aria-pressed={isFavorite}
+            title={isFavorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+            className="text-sm px-2 py-1 rounded font-medium transition-all hover:opacity-80"
+            style={{
+              backgroundColor: isFavorite ? '#FEF3C7' : 'var(--muted)',
+              color: isFavorite ? '#92400E' : 'var(--muted-foreground)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {isFavorite ? '★' : '☆'}
+          </button>
           <button
             type="button"
             onClick={onToggleExpand}
@@ -129,8 +160,8 @@ export function WorksheetCard({ worksheet: w, expanded, onToggleExpand, onPrevie
             <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
               BINNENDIFFERENZIERUNG NACH NIVEAUSTUFEN
             </div>
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-              {LEVELS.map((l) => {
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${levels.length}, 1fr)` }}>
+              {levels.map((l) => {
                 const s = LEVEL_STYLES[l]
                 const row = w.abschnitt.niveaus[l]
                 return (

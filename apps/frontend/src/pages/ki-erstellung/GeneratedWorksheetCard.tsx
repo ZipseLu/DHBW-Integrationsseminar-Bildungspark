@@ -80,7 +80,7 @@ function AufgabeBlock({ aufgabe, accent }: { aufgabe: Aufgabe; accent: string })
 }
 
 /** Anzeige eines KI-generierten Arbeitsblatts mit Validator-Hinweisen und Word-Download */
-export function GeneratedWorksheetCard({ result }: { result: ArbeitsblattResult }) {
+export function GeneratedWorksheetCard({ result, onVorschau }: { result: ArbeitsblattResult; onVorschau: () => void }) {
   const { worksheet, meta } = result
   const s = LEVEL_STYLES[worksheet.stufe]
   const opt = formatOption(worksheet.format)
@@ -193,15 +193,20 @@ export function GeneratedWorksheetCard({ result }: { result: ArbeitsblattResult 
             {meta.usage?.totalTokens ? ` · ${meta.usage.totalTokens} Tokens` : ''}
           </div>
           <div className="flex flex-col items-end gap-1">
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
-              style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
-            >
-              {downloading ? 'Wird erstellt…' : '📄 .docx'}
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={onVorschau} className="text-xs px-3 py-1.5 rounded font-medium" style={{ backgroundColor: s.bg, color: s.text }}>
+                👁 Vorschau
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
+                style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
+              >
+                {downloading ? 'Wird erstellt…' : '📄 .docx'}
+              </button>
+            </div>
             {downloadError && (
               <span className="text-xs" style={{ color: '#7A2E00' }} role="alert">
                 {downloadError}
