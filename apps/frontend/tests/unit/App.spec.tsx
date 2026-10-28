@@ -39,10 +39,18 @@ describe('Start', () => {
 })
 
 describe('Navigation', () => {
-  it.each(['Dashboard', 'Teilnehmende', 'Berichte', 'Benutzerverwaltung', 'Einstellungen'])('Seite "%s" ist vorhanden, aber leer', (label) => {
+  it.each([
+    ['Dashboard', 'Übersicht'],
+    ['Lehrpläne', 'Lehrpläne'],
+    ['Teilnehmende', 'Teilnehmende'],
+    ['Berichte', 'Berichte'],
+    ['Benutzerverwaltung', 'Benutzerverwaltung'],
+    ['Einstellungen', 'Einstellungen'],
+  ])('Seite "%s" ist vorhanden und hat Inhalt', (label, title) => {
     renderApp()
     navigate(label)
-    expect(document.querySelector('main')).toBeEmptyDOMElement()
+    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+    expect(document.querySelector('main')).not.toBeEmptyDOMElement()
   })
 
   it('"+ Arbeitsblatt erstellen" fuehrt zur KI-Erstellung', () => {

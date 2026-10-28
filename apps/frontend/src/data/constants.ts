@@ -84,6 +84,7 @@ export type NavEntry = { id: NavItem; label: string; title: string; icon: string
 
 export const NAV_ITEMS: readonly NavEntry[] = [
   { id: 'dashboard', label: 'Dashboard', title: 'Übersicht', icon: '◈' },
+  { id: 'lehrplaene', label: 'Lehrpläne', title: 'Lehrpläne', icon: '▤' },
   { id: 'arbeitsblaetter', label: 'Arbeitsblätter', title: 'Arbeitsblätter', icon: '▦' },
   { id: 'ki-erstellung', label: 'KI-Erstellung', title: 'KI-Erstellung', icon: '✦' },
   { id: 'teilnehmer', label: 'Teilnehmende', title: 'Teilnehmende', icon: '◎' },

@@ -130,7 +130,7 @@ Stilvorlage für die KI-Erstellung.
 | Nicht-Ziele (Projektauftrag) | Benutzerverwaltung, automatische Zuordnung |
 | MUSS (Konzeption) | Arbeitsblätter in verschiedenen Stufen erstellen · Stand anzeigen (behandelt / als Nächstes) · User Management und Speicherung von Content |
 | Widerspruch | „Benutzerverwaltung“ als Nicht-Ziel vs. „User Management“ als MUSS → Team-Annahme: einfacher Login für Dozierende ja, Rollen-/Rechtesystem nein (Risiko 7, Bestätigung durch H. Novela ausstehend) |
-| Scope-Lücke im Prototyp | Ziel 3 „Lehrpläne“ hat im Frontend keinen Menüpunkt (Use Cases UC-03/UC-06 beschreiben eine Lehrplan-Seite aus dem Figma-Klick-Dummy) |
+| Lehrpläne im Prototyp | Ziel 3 „Lehrpläne“: Seite „Lehrpläne“ nach Figma-Mockup (Version 41) seit 28.10.2026 – Lernziele aus `GET /api/lehrplaene`, ohne Import die Beispiel-Lernziele |
 | Termine 2026 | 23.09. Präsentation Projektplanung · 28.09. Projektkonzeptions-Bericht · 06.10. Vorstellung am Bildungspark · **Erster Prototyp am 13.10. auf den 23.10. verschoben** · 06.11. Release Candidate (Feature Freeze) · 16.11. Abschlusspräsentation (60 % der Note, inkl. LinkedIn-Post) · 07.12. Projektbericht (40 %) |
 | Aufwand | ca. 40 PT (Projektauftrag); Planning Poker 23.09.: LZ 8, CH 8, AM 8, OO 5,5, SO 5,5, TN 5 |
 | Budget | Sachmittel ca. 500 € Projekt; Betrieb ca. 35–80 €/Monat (Konzeption: LLM 20–50 €, Hosting 15–30 €) |

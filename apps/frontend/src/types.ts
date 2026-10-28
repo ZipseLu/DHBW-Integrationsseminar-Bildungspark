@@ -8,6 +8,7 @@ export type Sprache = 'Leichte Sprache' | 'Standardsprache'
 
 export type NavItem =
   | 'dashboard'
+  | 'lehrplaene'
   | 'arbeitsblaetter'
   | 'ki-erstellung'
   | 'teilnehmer'
@@ -23,6 +24,8 @@ export type StaffUser = {
   initials: string
   role: StaffRole
   email: string
+  /** Anlagedatum YYYY-MM-DD (nur Anzeige in der Benutzerverwaltung) */
+  createdAt?: string
 }
 
 export type NiveauRow = { kompetenz: string; beispiel: string }
@@ -69,4 +72,48 @@ export type WebResult = {
   url: string
   snippet: string
   source: string
+}
+
+/** Status eines Berufsfelds im Lernweg einer/eines Teilnehmenden */
+export type StationStatus = 'abgeschlossen' | 'aktiv' | 'ausstehend'
+
+/** Ein Berufsfeld im Lernweg – Reihenfolge der Liste = Reihenfolge des Lernwegs */
+export type BerufStation = {
+  berufsbild: string
+  level: Level
+  format: Format
+  /** Fortschritt in Prozent */
+  progress: number
+  status: StationStatus
+  startDate: string
+  endDate?: string
+  worksheetsDone: number
+}
+
+/**
+ * Anonymisiertes Teilnehmerprofil (§ 60 SGB IX): nur eine pseudonyme Kennung,
+ * keine Namen und keine Diagnosen.
+ */
+export type Participant = {
+  id: string
+  level: Level
+  progress: number
+  lastActive: string
+  berufsbilder: BerufStation[]
+}
+
+export type AppSettings = {
+  darkMode: boolean
+  accentColor: string
+  primaryColor: string
+  sidebarCompact: boolean
+  defaultBerufsbild: string
+  aiAutoExpand: boolean
+  showPersonaBadges: boolean
+  language: 'de' | 'en'
+  dateFormat: 'DD.MM.YYYY' | 'YYYY-MM-DD'
+  exportFormat: 'docx' | 'pdf'
+  emailNotifications: boolean
+  worksheetReminders: boolean
+  autoSave: boolean
 }

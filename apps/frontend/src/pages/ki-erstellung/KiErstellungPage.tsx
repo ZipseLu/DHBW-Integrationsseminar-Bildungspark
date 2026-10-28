@@ -4,6 +4,7 @@ import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
 import { BERUFSBILDER, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { ApiError, fetchLehrplaene, generateArbeitsblatt, lernzielFromWorksheet, type ArbeitsblattResult, type LernzielInput } from '@/lib/api'
+import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
 import { GeneratedWorksheetCard } from './GeneratedWorksheetCard'
@@ -33,10 +34,11 @@ type GenerationError = { message: string; variant: string; current: number; tota
  * Die Varianten werden nacheinander erzeugt, weil der Gemini-Free-Tier
  * nur wenige Anfragen pro Minute erlaubt.
  */
-export function KiErstellungPage() {
+/** vorauswahl: Lernziel, das auf der Seite Lehrpläne mit "Arbeitsblatt daraus erstellen" gewählt wurde */
+export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorauswahl | null } = {}) {
   const [thema, setThema] = useState('')
   const [erwartungen, setErwartungen] = useState('')
-  const [berufsbild, setBerufsbild] = useState(BERUFSBILDER[0])
+  const [berufsbild, setBerufsbild] = useState(vorauswahl?.berufsfeld ?? BERUFSBILDER[0])
   const [lernzielKey, setLernzielKey] = useState<string | null>(null)
   const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
   const [katalogQuelle, setKatalogQuelle] = useState<'beispiele' | 'import'>('beispiele')
@@ -68,7 +70,12 @@ export function KiErstellungPage() {
 
   // Lernziele des gewaehlten Berufsbilds
   const lernziele = katalog.filter((l) => l.berufsfeld === berufsbild)
-  const lernziel = lernziele.find((l) => l.key === lernzielKey) ?? lernziele[0] ?? null
+  // Ohne eigene Auswahl: Vorauswahl aus den Lehrplaenen (gleiches Lernziel, sonst gleicher Baustein)
+  const vorausgewaehlt =
+    vorauswahl && vorauswahl.berufsfeld === berufsbild
+      ? (lernziele.find((l) => l.baustein === vorauswahl.baustein && l.titel === vorauswahl.titel) ?? lernziele.find((l) => l.baustein === vorauswahl.baustein))
+      : undefined
+  const lernziel = lernziele.find((l) => l.key === lernzielKey) ?? vorausgewaehlt ?? lernziele[0] ?? null
   const running = progress !== null
 
   async function handleSubmit(event: FormEvent) {
