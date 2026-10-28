@@ -143,7 +143,7 @@ Funktionen in `apps/frontend/src/lib/api.ts`: `fetchArbeitsblaetter(filter)`, `f
 
 ## 5. Tests und Dateien
 
-- `tests/integration/arbeitsblaetter-routes.test.js` – 30 Fälle gegen echte MySQL (bricht ab, wenn die verbundene Datenbank nicht auf `_test` endet) (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft.
+- `tests/integration/arbeitsblaetter-routes.test.js` – 28 Fälle gegen echte MySQL (bricht ab, wenn die verbundene Datenbank nicht auf `_test` endet) (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft.
 - `tests/unit/arbeitsblaetter-schema.test.js`, `arbeitsblaetter-repository.test.js`, `migrate.test.js` – ohne Datenbank.
 - Code: `src/routes/arbeitsblaetter.js` (HTTP), `src/arbeitsblaetter/schema.js` (zod), `src/arbeitsblaetter/repository.js` (SQL), `src/arbeitsblaetter/seed.js`, `src/db/migrate.js`, `db/migrations/001_arbeitsblaetter.sql`.
 
