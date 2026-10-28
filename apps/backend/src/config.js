@@ -2,9 +2,22 @@
  * Zentrale Konfiguration.
  *
  * Wird ausschliesslich aus Umgebungsvariablen gelesen – keine Secrets im Code.
- * In Docker kommen die Variablen aus docker-compose.yml, lokal aus `.env`.
+ *
+ * Woher die Variablen kommen:
+ *   - Docker: docker-compose.yml reicht sie aus der Root-`.env` in den Container.
+ *   - `npm run dev` ohne Docker: dotenv liest hier zwei Dateien, speziellere zuerst:
+ *       1. apps/backend/.env   (optional, nur fuer das Backend)
+ *       2. <Repo-Root>/.env    (dieselbe Datei, die auch Docker Compose benutzt)
+ *     dotenv ueberschreibt bereits gesetzte Variablen nicht – die erste Quelle gewinnt.
+ *     Deshalb reicht im Normalfall eine einzige `.env` im Repo-Root fuer beide Startarten.
  */
-import 'dotenv/config'
+import { config as loadEnv } from 'dotenv'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const backendRoot = fileURLToPath(new URL('..', import.meta.url))
+export const ENV_FILES = [resolve(backendRoot, '.env'), resolve(backendRoot, '../../.env')]
+for (const path of ENV_FILES) loadEnv({ path })
 
 const int = (value, fallback) => {
   const parsed = Number.parseInt(value ?? '', 10)

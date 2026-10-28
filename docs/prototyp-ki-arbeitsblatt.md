@@ -115,7 +115,7 @@ Bei mehreren Varianten (z. B. Stufe T und A × Text und Piktogramm = 4) läuft S
 mit Fortschrittsanzeige „Variante 2 von 4 …“. Grund: der kostenlose Gemini-Zugang erlaubt nur wenige
 Anfragen pro Minute (siehe Rate-Limit im Glossar).
 
-**Ohne API-Key** (Datei `apps/backend/.env` fehlt oder `GEMINI_API_KEY` ist leer) überspringt das Backend
+**Ohne API-Key** (`GEMINI_API_KEY` in der `.env` leer oder Datei fehlt) überspringt das Backend
 die Schritte 3–5 und liefert ein festes Beispiel-Arbeitsblatt, in das Lernziel, Stufe, Format und Sprache
 der Anfrage übernommen werden. Die Antwort trägt `meta.mocked = true`, das Frontend zeigt einen gelben Hinweis.
 
@@ -150,7 +150,8 @@ Voraussetzungen: Node 22, npm, Internet (für Gemini). Alle Befehle im Ordner de
 
 1. **Key besorgen** (einmalig, kostenlos): Google AI Studio → <https://aistudio.google.com/apikey> → „Create API key“.
    Der Free-Tier reicht für die Demo.
-2. **Key eintragen** – Datei `apps/backend/.env` anlegen (sie ist in `.gitignore`, landet also nie in Git):
+2. **Key eintragen** – im Repo-Root `cp .env.example .env` und in der `.env` den Key setzen
+   (die Datei ist in `.gitignore`, landet also nie in Git):
 
    ```dotenv
    AI_PROVIDER=gemini
@@ -159,6 +160,8 @@ Voraussetzungen: Node 22, npm, Internet (für Gemini). Alle Befehle im Ordner de
    # GEMINI_MODEL=gemini-3.5-flash-lite
    ```
 
+   Dieselbe Datei benutzt auch Docker Compose. Das Backend liest beim Start zuerst eine optionale
+   `apps/backend/.env`, dann die Root-`.env` – die erste gesetzte Variable gewinnt.
    Den Key nie in Chats, Screenshots oder Commits zeigen. Nach der Demo im AI Studio rotieren (neu erzeugen, alten löschen).
 3. **Abhängigkeiten** (einmalig): `npm ci` in `apps/backend` und in `apps/frontend`.
 4. **Zwei Terminals:**
@@ -191,7 +194,7 @@ Dann wie oben <http://localhost:5173>. Ohne Key in der `.env` läuft die Demo im
 | Meldung im Frontend | Ursache | Was tun |
 |---|---|---|
 | „Das Backend ist nicht erreichbar“ | Backend läuft nicht | Terminal 1 prüfen, `npm run dev` in `apps/backend` |
-| Gelber Hinweis „Kein API-Key – Beispielantwort (Mock)“ | `.env` fehlt oder Key leer | `apps/backend/.env` anlegen, Backend neu starten |
+| Gelber Hinweis „Kein API-Key – Beispielantwort (Mock)“ | `.env` fehlt oder Key leer | Root-`.env` anlegen (`cp .env.example .env`), Key eintragen, Backend neu starten |
 | „Rate-Limit des KI-Anbieters erreicht“ | zu viele Anfragen (Free-Tier) | eine Minute warten, weniger Varianten auf einmal |
 | „Der KI-Anbieter ist gerade nicht erreichbar“ | Gemini überlastet (503), auch das Fallback-Modell | kurz warten, erneut klicken; notfalls `GEMINI_MODEL=gemini-3.5-flash-lite` setzen |
 | „Das konfigurierte KI-Modell ist für diesen API-Key nicht verfügbar“ | Modellname veraltet (z. B. `gemini-2.5-flash`, seit Oktober 2026 für neue Keys gesperrt) | `GEMINI_MODEL` in `.env` auf `gemini-3.5-flash` oder `gemini-3.5-flash-lite` setzen |
@@ -206,7 +209,7 @@ Die Eingaben im Formular bleiben bei jedem Fehler erhalten – einfach erneut au
 
 **Vorbereitung (vor der Präsentation):** Backend und Frontend starten, einmal probeweise generieren
 (dann ist alles „warm“ und man weiß, ob der Key funktioniert). Browser-Zoom so, dass das Formular komplett sichtbar ist.
-Plan B bei Internetproblemen: `apps/backend/.env` umbenennen, Backend neu starten → Mock-Modus, Ablauf identisch.
+Plan B bei Internetproblemen: in der `.env` den `GEMINI_API_KEY` leeren (oder die Datei umbenennen), Backend neu starten → Mock-Modus, Ablauf identisch.
 
 | Minute | Was zeigen | Was sagen |
 |---|---|---|

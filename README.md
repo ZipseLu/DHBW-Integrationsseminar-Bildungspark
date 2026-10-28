@@ -35,12 +35,13 @@ Voraussetzung: Node 22 und npm. Alle Befehle im Ordner des Repos.
    cd apps/backend && npm ci && cd ../frontend && npm ci && cd ../..
    ```
 
-3. **Optional: Gemini-Key eintragen.** Datei `apps/backend/.env` anlegen (landet nicht in Git):
+3. **Optional: Gemini-Key eintragen.** Im Repo-Root `.env` aus der Vorlage anlegen (landet nicht in Git) und den Key eintragen:
 
-   ```dotenv
-   GEMINI_API_KEY=hier-den-key-einfügen
+   ```bash
+   cp .env.example .env
    ```
 
+   In der `.env` die Zeile `GEMINI_API_KEY=` ausfüllen. Dieselbe Datei nutzt auch Docker Compose.
    Kostenloser Key: <https://aistudio.google.com/apikey>. Ohne Key läuft alles im Mock-Modus mit einer festen Beispielantwort.
 
 4. **Backend starten** (Terminal 1, bleibt offen):
@@ -116,7 +117,7 @@ noch nicht; angezeigt wird immer die Beispielnutzerin Celine Hager (Administrato
 Ohne Docker (zwei Terminals; das Backend braucht für die KI-Routen keine MySQL):
 
 ```bash
-cd apps/backend  && npm ci && npm run dev   # http://localhost:3000 – Key in apps/backend/.env
+cd apps/backend  && npm ci && npm run dev   # http://localhost:3000 – liest die Root-.env (und optional apps/backend/.env)
 cd apps/frontend && npm ci && npm run dev   # http://localhost:5173 – leitet /api an :3000 weiter
 ```
 
@@ -345,6 +346,8 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 
 > **Ohne `GEMINI_API_KEY` läuft die KI im Mock-Modus.** Das ist Absicht:
 > So laufen Frontend, Supertest und Playwright ohne API-Key und ohne Kosten.
+> Das Backend liest ohne Docker zuerst `apps/backend/.env` (optional), dann die Root-`.env`;
+> die erste gesetzte Variable gewinnt. Eine einzige `.env` im Root reicht also für Docker und `npm run dev`.
 > Die Backend-Tests leeren den Key zusätzlich selbst (`vitest.config.js`), damit kein
 > Testlauf Gemini-Kontingent verbraucht – auch wenn lokal eine `.env` liegt.
 

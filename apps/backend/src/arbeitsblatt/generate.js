@@ -232,13 +232,13 @@ export function toArbeitsblattError(error, timeoutMs) {
   }
   if (status === 401 || status === 403 || /API key not valid|PERMISSION_DENIED|UNAUTHENTICATED/i.test(rawMessage)) {
     return new ArbeitsblattError(
-      'Der KI-Anbieter hat den API-Key abgelehnt. Bitte GEMINI_API_KEY in apps/backend/.env prüfen.',
+      'Der KI-Anbieter hat den API-Key abgelehnt. Bitte GEMINI_API_KEY in der .env prüfen.',
       { code: 'llm_auth', details },
     )
   }
   if (status === 404 || /no longer available|not found for API version|is not found/i.test(rawMessage)) {
     return new ArbeitsblattError(
-      'Das konfigurierte KI-Modell ist für diesen API-Key nicht verfügbar. Bitte GEMINI_MODEL in apps/backend/.env prüfen (z. B. gemini-flash-latest).',
+      'Das konfigurierte KI-Modell ist für diesen API-Key nicht verfügbar. Bitte GEMINI_MODEL in der .env prüfen (z. B. gemini-3.5-flash-lite).',
       { code: 'llm_model_not_found', details },
     )
   }
