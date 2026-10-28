@@ -24,17 +24,22 @@ const int = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+/** Erster nicht-leerer Wert aus mehreren Umgebungsvariablen */
+const first = (...names) => names.map((name) => process.env[name]).find((value) => value !== undefined && value !== '')
+
 export const config = {
   env: process.env.NODE_ENV ?? 'development',
   isTest: process.env.NODE_ENV === 'test',
   port: int(process.env.PORT, 3000),
 
+  // DB_* setzt Docker Compose im Container. Ohne Docker greifen die MYSQL_*-Werte
+  // der Root-.env, mit MYSQL_PORT = Host-Port des Compose-Dienstes `db` (3307).
   db: {
-    host: process.env.DB_HOST ?? '127.0.0.1',
-    port: int(process.env.DB_PORT, 3306),
-    database: process.env.DB_NAME ?? 'bildungspark',
-    user: process.env.DB_USER ?? 'bildungspark',
-    password: process.env.DB_PASSWORD ?? '',
+    host: first('DB_HOST') ?? '127.0.0.1',
+    port: int(first('DB_PORT', 'MYSQL_PORT'), 3306),
+    database: first('DB_NAME', 'MYSQL_DATABASE') ?? 'bildungspark',
+    user: first('DB_USER', 'MYSQL_USER') ?? 'bildungspark',
+    password: first('DB_PASSWORD', 'MYSQL_PASSWORD') ?? '',
     connectionLimit: int(process.env.DB_POOL_SIZE, 10),
   },
 

@@ -18,6 +18,13 @@ export default defineConfig({
       AZURE_OPENAI_API_KEY: '',
       AZURE_OPENAI_ENDPOINT: '',
       AI_PROVIDER: 'gemini',
+      // Datenbank nur, wenn DB_* ausdruecklich gesetzt ist (CI, Compose) – die
+      // MYSQL_*-Werte einer lokalen Root-.env sollen keinen Testlauf auf die
+      // Entwicklungsdatenbank lenken.
+      MYSQL_PORT: '',
+      MYSQL_DATABASE: '',
+      MYSQL_USER: '',
+      MYSQL_PASSWORD: '',
     },
 
     coverage: {

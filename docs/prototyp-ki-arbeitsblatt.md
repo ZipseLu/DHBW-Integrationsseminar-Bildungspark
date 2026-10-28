@@ -17,8 +17,10 @@ unseren Regeln; ein Prüfprogramm (Validator) meldet Verstöße gegen die Regeln
 Klick lädt das Blatt als Word-Datei im Bildungspark-Stil herunter. Ohne API-Key läuft alles mit einer
 festen Beispielantwort (Mock) – die komplette Demo funktioniert also auch ohne Internet.
 
-**Was er nicht ist:** kein Endprodukt. Es wird nichts gespeichert, es gibt keine Anmeldung und keine
-Freigabe. Jedes Ergebnis ist ein KI-Entwurf, den eine Lehrkraft prüfen muss (steht auch im Dokument).
+**Was er nicht ist:** kein Endprodukt. Es gibt keine Anmeldung. Jedes Ergebnis ist ein KI-Entwurf,
+den eine Lehrkraft prüfen muss (steht auch im Dokument). Seit 28.10. kann das Backend Arbeitsblätter
+in MySQL speichern, auflisten, freigeben und mit Verlauf führen (`/api/arbeitsblaetter`, siehe
+[persistenz-arbeitsblaetter.md](persistenz-arbeitsblaetter.md)); die Buttons dafür im Frontend fehlen noch.
 
 ---
 
@@ -235,9 +237,9 @@ oder auf den Mock-Modus wechseln (Plan B).
 
 | Fehlt im Prototyp | Warum | Nächster Schritt |
 |---|---|---|
-| Speichern in MySQL | Schema steht (`docker/mysql/init`), aber kein Repository-Layer | `POST /api/worksheets` + Liste im Frontend; generierte Blätter als Status `entwurf` ablegen |
+| Speichern-Button im Frontend | Backend seit 28.10. fertig: `POST /api/arbeitsblaetter` legt das Ergebnis als `entwurf` ab, `GET` liefert die Liste ([Doku](persistenz-arbeitsblaetter.md)) | `saveArbeitsblatt()` aus `lib/api.ts` in `GeneratedWorksheetCard` aufrufen; Liste auf `fetchArbeitsblaetter()` umstellen |
 | Login / Rollen | Nicht-Ziel laut Projektauftrag, Entscheidung mit Bildungspark offen | einfacher Login für Dozierende (JWT ist vorbereitet) |
-| Freigabe-Workflow | braucht Speicherung | Status entwurf → geprüft → freigegeben, Verlauf |
+| Freigabe-Workflow im Frontend | Backend kann es: `PATCH { status: 'freigegeben' }` schreibt Version + Verlauf | Buttons „Freigeben“/„Archivieren“ und Verlaufsanzeige |
 | Echte Piktogramm-Bilder | kein Set vom Bildungspark | Whitelist in `schema.js` auf Bilddateien abbilden (Prompt bleibt gleich) |
 | Azure OpenAI | kein Zugang; Adapter nur strukturell vorbereitet | `npm i @azure/openai`, `AI_PROVIDER=azure`, Test |
 | Upload-Analyse (PDF → Lernziel) | Frontend simuliert | Dokumentanalyse als eigener Endpunkt (Konzept AP4, Kap. 8) |
