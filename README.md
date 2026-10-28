@@ -2,10 +2,82 @@
 
 Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
-> **Status:** Prototyp. Docker, CI und Test-Pipeline stehen.
-> Das Frontend zeigt die Seiten **Arbeitsblätter** und **KI-Erstellung** mit lokalen
-> Beispieldaten; die übrigen Menüpunkte sind angelegt, aber noch leer.
-> KI-Analyse, Websuche und Varianten-Erzeugung sind im Frontend simuliert.
+> **Status (28.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
+> Das Frontend enthält alle Seiten des Figma-Mockups (Version 41): **Dashboard**, **Lehrpläne**, **Arbeitsblätter**, **KI-Erstellung**,
+> **Teilnehmende**, **Berichte** (Platzhalter), **Benutzerverwaltung** und **Einstellungen**.
+> KI-Erstellung und Lehrpläne nutzen das Backend (ohne Backend: Beispiel-Lernziele), die übrigen Seiten Beispieldaten im Browser.
+> **Neu: Die KI-Erstellung erzeugt echte Arbeitsblätter über das Backend** (Lernziel aus dem Lehrplan →
+> Gemini → Validator → Anzeige → Word-Export; ohne API-Key im Mock-Modus) – siehe
+> **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
+> Die Seite Arbeitsblätter arbeitet weiter mit lokalen Beispieldaten; Upload-Analyse, Websuche und
+> das „Anpassen“-Panel sind simuliert; die Buttons „Öffnen“, „PDF“ und „Alle zur Bibliothek
+> hinzufügen“ haben noch keine Funktion. Gespeichert wird noch nichts.
+>
+> Die Beispieldaten stammen aus den 14 Lehrplänen des Bildungsparks (TQ Lager, Metall, Gastro).
+> Was fachlich belegt ist und was Annahme bleibt, steht in **[docs/fachliche-grundlagen.md](docs/fachliche-grundlagen.md)** –
+> insbesondere die Bezeichnungen der Stufen T/A/F/B und die Liste der Berufsfelder sind vom
+> Bildungspark noch zu bestätigen.
+
+---
+
+## Quick Run: KI-Arbeitsblatt in 5 Minuten (ohne Docker)
+
+Voraussetzung: Node 22 und npm. Alle Befehle im Ordner des Repos.
+
+1. **Branch holen** (solange der Prototyp noch nicht in `main` ist):
+
+   ```bash
+   git fetch && git checkout feature/ki-arbeitsblatt
+   ```
+
+2. **Pakete installieren** (einmalig, je App):
+
+   ```bash
+   cd apps/backend && npm ci && cd ../frontend && npm ci && cd ../..
+   ```
+
+3. **Optional: Gemini-Key eintragen.** Im Repo-Root `.env` aus der Vorlage anlegen (landet nicht in Git) und den Key eintragen:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   In der `.env` die Zeile `GEMINI_API_KEY=` ausfüllen. Dieselbe Datei nutzt auch Docker Compose.
+   Kostenloser Key: <https://aistudio.google.com/apikey>. Ohne Key läuft alles im Mock-Modus mit einer festen Beispielantwort.
+
+4. **Backend starten** (Terminal 1, bleibt offen):
+
+   ```bash
+   cd apps/backend && npm run dev
+   ```
+
+5. **Frontend starten** (Terminal 2, bleibt offen):
+
+   ```bash
+   cd apps/frontend && npm run dev
+   ```
+
+6. **Ausprobieren:** <http://localhost:5173> → **KI-Erstellung** → Lernziel wählen (z. B. *Baustein 1 · Güter entladen*) →
+   Stufe **T** → **✦ 1 Variante generieren** → nach 5–20 Sekunden Ergebnis lesen → **📄 .docx** öffnet die Word-Datei.
+
+7. **Beenden:** in beiden Terminals `Ctrl+C`.
+
+Wenn etwas hakt: Tabelle „Wenn etwas schiefgeht“ in [docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md#43-wenn-etwas-schiefgeht).
+Welche Einstellungen gute Ergebnisse bringen: [Abschnitt 10 der Doku](docs/prototyp-ki-arbeitsblatt.md#10-einstellungen-und-tipps-für-gute-ergebnisse).
+
+### So hängt es zusammen
+
+```mermaid
+flowchart LR
+    B["Browser<br/>Seite KI-Erstellung"] -- "Lernziel, Stufe, Format, Sprache" --> S["Backend<br/>Express, Port 3000"]
+    S -- "Prompt + JSON-Schema" --> G["Google Gemini<br/>Sprachmodell"]
+    G -- "Arbeitsblatt als JSON" --> S
+    S -- "Arbeitsblatt + Validator-Hinweise" --> B
+    B -- "Klick auf .docx" --> S
+    S -- "Word-Datei" --> B
+```
+
+Ausführliches Diagramm mit allen Dateien: [docs/prototyp-ki-arbeitsblatt.md, Abschnitt 2](docs/prototyp-ki-arbeitsblatt.md#2-ablauf-in-einfachen-worten).
 
 ---
 
@@ -16,7 +88,7 @@ Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 | Backend | Node.js 22 · Express 4 · JavaScript (ESM) |
 | Datenbank | MySQL 8.4 (utf8mb4) |
 | Frontend | React 19 · TypeScript · Vite 6 · Tailwind CSS 4 |
-| KI | Gemini Flash (später Azure OpenAI) – austauschbar über `AI_PROVIDER` |
+| KI | Google Gemini über `@google/genai` (Standard `gemini-3.5-flash`, Fallback `gemini-3.5-flash-lite`; später Azure OpenAI) – austauschbar über `AI_PROVIDER`; ohne API-Key läuft ein Mock |
 | Tests Backend | Vitest (Unit) · Supertest (Routen) |
 | Tests Frontend | Vitest · React Testing Library |
 | E2E | Playwright |
@@ -43,12 +115,11 @@ docker compose up --build
 Das Frontend öffnet direkt die Seite **Arbeitsblätter**. Eine Anmeldung gibt es im Prototyp
 noch nicht; angezeigt wird immer die Beispielnutzerin Celine Hager (Administrator).
 
-Ohne Docker reicht für das Frontend allein:
+Ohne Docker (zwei Terminals; das Backend braucht für die KI-Routen keine MySQL):
 
 ```bash
-cd apps/frontend
-npm install
-npm run dev        # http://localhost:5173
+cd apps/backend  && npm ci && npm run dev   # http://localhost:3000 – liest die Root-.env (und optional apps/backend/.env)
+cd apps/frontend && npm ci && npm run dev   # http://localhost:5173 – leitet /api an :3000 weiter
 ```
 
 **Erster Start dauert ca. 1–2 Minuten** (MySQL initialisiert, Images werden gebaut).
@@ -75,6 +146,31 @@ docker compose --profile test run --rm e2e
 
 `-d` (detached) ist beim Entwickeln fast immer richtig: das Terminal bleibt frei,
 Logs kommen über `docker compose logs -f <dienst>`.
+
+---
+
+## Prototyp KI-Arbeitsblatt
+
+Auf der Seite **KI-Erstellung** wählt man ein Lernziel aus den Lehrplänen des Bildungsparks, dazu
+Niveaustufen (T/A/F/B), Format und Sprache. Das Backend baut daraus einen Prompt, lässt Gemini ein
+Arbeitsblatt als strukturiertes JSON erzeugen, prüft es gegen ein Schema und einen regelbasierten
+Validator und liefert es an das Frontend; ein Klick exportiert es als Word-Datei im Bildungspark-Stil.
+Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (Mock).
+
+| Endpunkt | Zweck |
+|---|---|
+| `POST /api/ai/arbeitsblatt` | `{ lernziel, stufe, format, sprache, thema?, erwartungen? }` → `{ worksheet, meta }` |
+| `POST /api/ai/arbeitsblatt/docx` | `{ worksheet }` → Word-Datei |
+
+| `GET /api/lehrplaene` | Importierte Lernziele der Lehrpläne (leer, solange `npm run import:lehrplaene` nicht gelaufen ist) |
+
+Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
+Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
+Der Prompt selbst liegt lesbar in `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md`.
+
+Optional lädt `npm run import:lehrplaene` (in `apps/backend`) alle 96 Lernziele aus den 14 Lehrplan-DOCX
+des Bildungsparks nach `apps/backend/data/lehrplaene.json` (gitignored); das Dropdown im Frontend nutzt sie
+dann statt der 12 Beispiel-Lernziele.
 
 ---
 
@@ -142,6 +238,11 @@ docker compose --profile prod --profile legacy up -d --build
 # --- Ohne Docker (wenn MySQL lokal laeuft) ---
 npm run dev:backend
 npm run dev:frontend
+
+# --- Datenbank (in apps/backend; Verbindung aus der .env) ---
+npm run db:migrate                 # Schema anlegen/aktualisieren (db/migrations/*.sql, laeuft auch beim Start)
+npm run db:seed                    # Beispiel-Arbeitsblaetter (24 mit Lehrplan-Import, sonst 16), nur in eine leere Tabelle
+npm run db:seed -- --reset         # alles loeschen und neu befuellen
 ```
 
 ---
@@ -157,7 +258,16 @@ cd e2e           && npm ci && npm run install:browsers && npm run test
 ```
 
 Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
-**übersprungen statt rot** – so bleibt `npm test` auch ohne DB nutzbar.
+**übersprungen statt rot** – so bleibt `npm test` auch ohne DB nutzbar. Mit laufendem
+Compose-Dienst `db` laufen sie so gegen die Testdatenbank:
+
+```bash
+cd apps/backend && DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run
+```
+
+Die E2E-Tests starten das Frontend zwar selbst (`webServer` in `playwright.config.js`),
+brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 – der
+`global-setup` bricht sonst ab. Ohne Docker also vorher `npm run dev:backend` mit lokaler MySQL.
 
 ---
 
@@ -174,27 +284,45 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 │   │   │   ├── db.js             MySQL-Pool (mysql2/promise)
 │   │   │   ├── ai/
 │   │   │   │   ├── provider.js   Provider-Abstraktion (Gemini ↔ Azure)
-│   │   │   │   ├── gemini.js     Gemini-Adapter
-│   │   │   │   └── azure.js      Azure-OpenAI-Adapter
+│   │   │   │   ├── gemini.js     Gemini-Adapter (@google/genai, JSON-Schema-Ausgabe)
+│   │   │   │   └── azure.js      Azure-OpenAI-Adapter (ungetestet)
+│   │   │   ├── arbeitsblatt/
+│   │   │   │   ├── schema.js     Schema des Arbeitsblatts (zod + JSON-Schema für Gemini)
+│   │   │   │   ├── prompt.js     Prompt-Builder; Regeln in prompts/arbeitsblatt-system.md
+│   │   │   │   ├── generate.js   Ablauf Prompt → Gemini → prüfen → Wiederholung → Validator
+│   │   │   │   ├── validator.js  Heuristiken (Satzlänge, Aufgabenanzahl, Formate, Verbotsliste)
+│   │   │   │   ├── mock.js       Beispiel-Arbeitsblatt ohne API-Key
+│   │   │   │   └── docx.js       Word-Export
+│   │   │   ├── lehrplan/
+│   │   │   │   └── parser.js     DOCX-Parser der Lehrpläne (für scripts/import-lehrplaene.js)
 │   │   │   └── routes/
 │   │   │       ├── health.js     GET /api/health
-│   │   │       └── ai.js         GET /api/ai/status, POST /api/ai/generate
+│   │   │       ├── ai.js         GET /api/ai/status, POST /api/ai/generate
+│   │   │       ├── arbeitsblatt.js  POST /api/ai/arbeitsblatt, POST /api/ai/arbeitsblatt/docx
+│   │   │       └── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
 │   │   └── tests/
-│   │       ├── unit/             Vitest, ohne DB
-│   │       └── integration/      Supertest + echte MySQL
+│   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
+│   │       ├── integration/      Supertest (+ echte MySQL für db.test.js)
+│   │       └── fixtures/         Testdaten (Lernziel, Arbeitsblatt)
 │   │
 │   └── frontend/             Prototyp-Frontend (React + TypeScript)
 │       ├── src/
 │       │   ├── main.tsx          Einstieg
 │       │   ├── App.tsx           Navigation und Seitenwahl
 │       │   ├── types.ts          Gemeinsame Typen (Level, Format, Worksheet …)
-│       │   ├── data/             Beispieldaten und Konstanten
-│       │   ├── lib/              Filter, Word-Export, Datum, Simulation
+│       │   ├── data/             Beispieldaten (aus den Lehrplänen) und Konstanten
+│       │   ├── lib/              Filter, Word-Export, Datum, Simulation, api.ts (Backend-Aufrufe)
 │       │   ├── components/       Wiederverwendbare Bausteine (Auswahl, Panels)
 │       │   ├── layout/           Seitenleiste und Kopfzeile
 │       │   └── pages/
 │       │       ├── arbeitsblaetter/  Liste, Upload, Vorschau, Verlauf, Anpassen
-│       │       └── ki-erstellung/    Formular, Websuche, Ergebnis
+│       │       ├── ki-erstellung/    Formular, Websuche, Ergebnis (GeneratedWorksheetCard)
+│       │       ├── dashboard/        Kennzahlen, Niveaustufen, Personas, zuletzt bearbeitet
+│       │       ├── lehrplaene/       Curriculum-Bibliothek, Online-Vorschau, Word-Export, → KI-Erstellung
+│       │       ├── teilnehmende/     Anonyme Profile, Lernweg, Anlegen/Bearbeiten, Zuweisen
+│       │       ├── berichte/         Platzhalter (späterer Sprint)
+│       │       ├── benutzerverwaltung/ Mitarbeiter-Zugänge (nur Admin)
+│       │       └── einstellungen/    Darstellung, Sprache, KI, Sitzung, Mein Konto
 │       └── tests/unit/       Vitest + React Testing Library (jsdom)
 │
 ├── e2e/                     Playwright-Tests
@@ -208,8 +336,11 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 │       ├── init/01-init.sql      Datenbanken + Schema (nur beim 1. Start)
 │       └── conf.d/               utf8mb4, Strict-Mode
 │
-├── ArbeitsblattverwaltungMockup/   Altes React/TS-Mockup (nur --profile legacy)
-├── docs/                            User Stories & Tickets
+├── ArbeitsblattverwaltungMockup/   Altes React/TS-Mockup aus Figma Make (nur --profile legacy)
+├── docs/
+│   ├── fachliche-grundlagen.md      Belegte Fakten, Annahmen, offene Fragen (Quelle für Seeds und Prompts)
+│   ├── prototyp-ki-arbeitsblatt.md  Prototyp KI-Arbeitsblatt: Ablauf, Glossar, Demo-Start, Demo-Skript
+│   └── user-stories-arbeitsblaetter.md   Mockup-Analyse und Ticket-Vorschlag vom 12.10.
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
@@ -222,13 +353,21 @@ Backend-Integrationstests brauchen eine MySQL. Ohne `DB_HOST` werden sie
 |---|---|---|
 | `MYSQL_PASSWORD` | `bildungspark-dev` | DB-Passwort des App-Users |
 | `MYSQL_PORT` | `3307` | Host-Port (3306 ist oft belegt) |
-| `DB_HOST` | `db` | **Im Compose `db`, nicht `localhost`** |
+| `DB_HOST` | `db` | **Im Compose `db`, nicht `localhost`**; ohne Docker `127.0.0.1` |
+| `DB_PORT` | `MYSQL_PORT` (3307) | Ohne Docker: Host-Port des Compose-Dienstes `db`; eigene MySQL meist `3306` |
 | `AI_PROVIDER` | `gemini` | `gemini` \| `azure` |
 | `GEMINI_API_KEY` | leer | Ohne Key läuft KI im Mock-Modus |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | `gemini-2.5-flash` ist seit Oktober 2026 für neue Keys nicht mehr verfügbar |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | Wird einmalig versucht, wenn das Modell mit 503 (überlastet) antwortet |
+| `AI_TIMEOUT_MS` | `60000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
 
 > **Ohne `GEMINI_API_KEY` läuft die KI im Mock-Modus.** Das ist Absicht:
 > So laufen Frontend, Supertest und Playwright ohne API-Key und ohne Kosten.
+> Das Backend liest ohne Docker zuerst `apps/backend/.env` (optional), dann die Root-`.env`;
+> die erste gesetzte Variable gewinnt. Eine einzige `.env` im Root reicht also für Docker und `npm run dev`.
+> Die Backend-Tests leeren den Key zusätzlich selbst (`vitest.config.js`), damit kein
+> Testlauf Gemini-Kontingent verbraucht – auch wenn lokal eine `.env` liegt.
 
 ---
 
@@ -243,12 +382,14 @@ AZURE_OPENAI_API_KEY=<key>
 AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
 
-Vorher das SDK installieren:
+Vorher das SDK installieren (`@google/genai` für Gemini ist bereits installiert):
 
 ```bash
 cd apps/backend
-npm i @azure/openai     # bzw. npm i @google/genai für Gemini
+npm i @azure/openai
 ```
+
+Der Azure-Adapter ist nur strukturell vorbereitet und noch nicht gegen einen echten Tenant getestet.
 
 ---
 
@@ -300,7 +441,8 @@ Container. Steht in `VITE_PROXY_TARGET` in der `docker-compose.yml`.
 
 ### E2E-Tests finden kein `node_modules`
 
-Das Volume `bildungspark_e2e_node_modules` muss existieren. Prüfen:
+Das E2E-Image installiert `@playwright/test` beim Build (`e2e/Dockerfile`), ein
+Volume gibt es dafür nicht. Nach Änderungen an `e2e/package.json` das Image neu bauen:
 
 ```bash
 docker compose --profile test build e2e
@@ -316,16 +458,25 @@ docker compose down -v && docker compose up --build
 
 ## Noch offen
 
-
-- [ ] Mapper für die Arbeitsblatt-Tabellen (`mysql2` → Repository-Layer)
-- [ ] Auth (JWT) für Dozent/Assistent/Admin
+- [x] Repository-Layer für Arbeitsblätter (`mysql2`), Migrationen und Seed – siehe `docs/persistenz-arbeitsblaetter.md` (28.10.)
+- [ ] Auth (JWT) für Dozent/Assistent/Admin – `JWT_SECRET` ist bereits in der Konfiguration, wird aber noch nicht benutzt
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
-- [ ] `apps/frontend/package-lock.json` erzeugen und committen (`npm install` im Ordner)
-- [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung, KI-Erstellung)
-- [ ] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen
-- [ ] Playwright-Version in `e2e/package.json` und `docker-compose.yml` synchron halten
-- [ ] `docker/mysql/init` nur für Erstinbetriebnahme; danach Migrationen
+- [x] `apps/frontend/package-lock.json` erzeugt und committet
+- [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
+- [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
+- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
+- [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
+- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern
+- [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
+- [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
+- [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
+- [x] Backend-Skripte `db:migrate` und `db:seed` (28.10.); ein `db:reset` ist `docker compose down -v` bzw. `npm run db:seed -- --reset`
+- [x] `@google/genai` installiert und gegen die echte API getestet (22.10.); `@azure/openai` später
+- [ ] Playwright-Version in `e2e/package.json` und `e2e/Dockerfile` synchron halten (aktuell 1.49.1)
+- [x] `docker/mysql/init` legt nur noch Datenbanken und Rechte an; Tabellen kommen aus `apps/backend/db/migrations` (28.10.)
+- [ ] Stufenbezeichnungen T/A/F/B und Liste der Berufsfelder vom Bildungspark bestätigen lassen (siehe `docs/fachliche-grundlagen.md`)
+- [ ] `ArbeitsblattverwaltungMockup/src/imports/*.pdf` sind Git-LFS-Zeiger ohne hinterlegte Objekte – LFS einrichten oder Dateien entfernen
 
 ---
 
-*Stack-Anpassung: 16.10.2026*
+*Stack-Anpassung: 16.10.2026 · Bereinigung von Beispieldaten und Dokumentation: 22.10.2026 · Prototyp KI-Arbeitsblatt: 22.10.2026 · Arbeitsblätter speichern (MySQL): 28.10.2026*

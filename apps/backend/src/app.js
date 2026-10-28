@@ -11,9 +11,11 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 
 import { config, describeConfig } from './config.js'
-import { ping } from './db.js'
 import { healthRouter } from './routes/health.js'
 import { aiRouter } from './routes/ai.js'
+import { arbeitsblattRouter } from './routes/arbeitsblatt.js'
+import { createLehrplaeneRouter } from './routes/lehrplaene.js'
+import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 
 export function createApp() {
   const app = express()
@@ -41,7 +43,12 @@ export function createApp() {
   }
 
   app.use('/api/health', healthRouter)
+  // Spezifischere Route zuerst, damit /api/ai/arbeitsblatt nicht im aiRouter landet
+  app.use('/api/ai/arbeitsblatt', arbeitsblattRouter)
   app.use('/api/ai', aiRouter)
+  app.use('/api/lehrplaene', createLehrplaeneRouter())
+  // Gespeicherte Arbeitsblaetter (MySQL) – ohne DB antworten die Routen mit 503
+  app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {

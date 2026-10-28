@@ -32,7 +32,7 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
               key={level}
               type="button"
               aria-pressed={active}
-              title={s.label}
+              title={s.beschreibung}
               onClick={() => onToggle(level)}
               className="flex-1 flex flex-col items-center gap-0.5 py-2 rounded text-xs font-mono font-medium transition-all"
               style={{
@@ -52,7 +52,7 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
             key={level}
             type="button"
             aria-pressed={active}
-            title={s.label}
+            title={s.beschreibung}
             onClick={() => onToggle(level)}
             className="flex flex-col items-center gap-1 p-3 rounded-lg transition-all"
             style={{

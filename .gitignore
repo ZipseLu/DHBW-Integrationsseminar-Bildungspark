@@ -18,6 +18,9 @@ test-results/
 blob-report/
 .playwright/
 
+# --- Importierte Lehrplaene (Dokumente des Bildungsparks, Repo ist oeffentlich) --
+apps/backend/data/
+
 # --- Uploads (lokal) ---------------------------------------------------------
 apps/backend/uploads/*
 !apps/backend/uploads/.gitkeep

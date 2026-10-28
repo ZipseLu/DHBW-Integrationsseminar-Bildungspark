@@ -33,7 +33,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.34.3 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG VITE_API_URL=http://localhost:3001/api
+ARG VITE_API_URL=http://localhost:3000/api
 ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm build
 
