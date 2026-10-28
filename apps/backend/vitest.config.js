@@ -18,9 +18,15 @@ export default defineConfig({
       AZURE_OPENAI_API_KEY: '',
       AZURE_OPENAI_ENDPOINT: '',
       AI_PROVIDER: 'gemini',
-      // Datenbank nur, wenn DB_* ausdruecklich gesetzt ist (CI, Compose) – die
-      // MYSQL_*-Werte einer lokalen Root-.env sollen keinen Testlauf auf die
-      // Entwicklungsdatenbank lenken.
+      // Datenbank nur, wenn DB_* im echten Prozess-Env steht (CI, Compose, Kommandozeile).
+      // Diese Datei laeuft im Elternprozess ohne dotenv – ein DB_HOST oder MYSQL_*, das nur
+      // in der Root-.env steht, wird hier zu '' und kann keinen Testlauf (der Arbeitsblaetter
+      // LOESCHT) auf die Entwicklungsdatenbank lenken. dotenv ueberschreibt '' nicht.
+      DB_HOST: process.env.DB_HOST ?? '',
+      DB_PORT: process.env.DB_PORT ?? '',
+      DB_NAME: process.env.DB_NAME ?? '',
+      DB_USER: process.env.DB_USER ?? '',
+      DB_PASSWORD: process.env.DB_PASSWORD ?? '',
       MYSQL_PORT: '',
       MYSQL_DATABASE: '',
       MYSQL_USER: '',

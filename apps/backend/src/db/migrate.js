@@ -86,7 +86,13 @@ export async function runMigrations({ dir = MIGRATIONS_DIR, log = () => {} } = {
         // sondern Anweisung für Anweisung; alle Dateien sind so geschrieben,
         // dass ein erneuter Lauf nach einem Abbruch unschädlich ist (IF NOT EXISTS).
         for (const statement of splitStatements(sql)) {
-          await connection.query(statement)
+          try {
+            await connection.query(statement)
+          } catch (error) {
+            const wrapped = new Error(`Migration ${name} fehlgeschlagen bei "${statement.slice(0, 80)}": ${error.message}`, { cause: error })
+            wrapped.code = error.code
+            throw wrapped
+          }
         }
         await connection.query('INSERT INTO schema_migrations (name) VALUES (?)', [name])
         applied.push(name)
@@ -94,7 +100,12 @@ export async function runMigrations({ dir = MIGRATIONS_DIR, log = () => {} } = {
 
       return { applied, skipped }
     } finally {
-      await connection.query('SELECT RELEASE_LOCK(?)', [LOCK_NAME])
+      try {
+        await connection.query('SELECT RELEASE_LOCK(?)', [LOCK_NAME])
+      } catch {
+        // Verbindung schon weg: GET_LOCK ist an die Sitzung gebunden und damit ohnehin frei.
+        // Der eigentliche Migrationsfehler soll nicht von diesem zweiten Fehler verdeckt werden.
+      }
     }
   })
 }

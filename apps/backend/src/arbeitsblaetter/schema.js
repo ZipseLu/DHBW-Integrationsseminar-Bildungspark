@@ -53,12 +53,24 @@ export const PatchSchema = z
     favorit: z.boolean().optional(),
     /** Nur bei `worksheet`: 'bearbeitet' (Standard) oder 'KI-angepasst' */
     aktion: z.enum(['bearbeitet', 'KI-angepasst']).optional(),
+    /** Nur bei `worksheet`: `meta` der Generierung, wenn die KI den neuen Inhalt erzeugt hat */
+    meta: KiMetaSchema.nullable().optional(),
     autor: kurzerText(120).optional(),
     notiz: kurzerText(500).optional(),
   })
   .refine((body) => body.worksheet !== undefined || body.status !== undefined || body.favorit !== undefined, {
     message: 'Mindestens eines der Felder worksheet, status oder favorit angeben',
   })
+  .refine((body) => body.meta == null || body.worksheet !== undefined, {
+    message: 'meta nur zusammen mit worksheet angeben',
+    path: ['meta'],
+  })
+
+/** Body von DELETE /api/arbeitsblaetter/:id (Archivieren) – beides optional */
+export const ArchivSchema = z.object({
+  autor: kurzerText(120).optional(),
+  notiz: kurzerText(500).optional(),
+})
 
 // --- Query von GET /api/arbeitsblaetter ------------------------------------
 

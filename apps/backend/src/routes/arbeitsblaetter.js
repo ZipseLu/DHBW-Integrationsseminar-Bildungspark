@@ -6,7 +6,7 @@
  *   POST   /api/arbeitsblaetter                  Arbeitsblatt speichern (z. B. das Ergebnis von POST /api/ai/arbeitsblatt)
  *   GET    /api/arbeitsblaetter/:id              Ein Blatt mit Inhalt (aktuelle Version)
  *   PATCH  /api/arbeitsblaetter/:id              Inhalt, Status oder Favorit ändern (schreibt Verlauf)
- *   DELETE /api/arbeitsblaetter/:id              Archivieren; mit ?endgueltig=true löschen
+ *   DELETE /api/arbeitsblaetter/:id              Archivieren (Body optional { autor, notiz }); mit ?endgueltig=true löschen
  *   GET    /api/arbeitsblaetter/:id/verlauf      Alle Versionen (neueste zuerst)
  *   GET    /api/arbeitsblaetter/:id/versionen/:nr  Eine Version mit Inhalt
  *   GET    /api/arbeitsblaetter/:id/docx         Aktuelle Version als Word-Datei
@@ -18,7 +18,7 @@ import { Router } from 'express'
 import { arbeitsblattFileName, buildArbeitsblattDocx, DOCX_MIME } from '../arbeitsblatt/docx.js'
 import { formatZodError, zodIssues } from '../arbeitsblatt/schema.js'
 import * as repo from '../arbeitsblaetter/repository.js'
-import { CreateSchema, ListQuerySchema, PatchSchema, isUuid } from '../arbeitsblaetter/schema.js'
+import { ArchivSchema, CreateSchema, ListQuerySchema, PatchSchema, isUuid } from '../arbeitsblaetter/schema.js'
 
 const DB_FEHLER = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'PROTOCOL_CONNECTION_LOST', 'ER_ACCESS_DENIED_ERROR', 'ER_BAD_DB_ERROR', 'ER_NO_SUCH_TABLE'])
 
@@ -115,7 +115,9 @@ export function createArbeitsblaetterRouter() {
         if (!(await repo.remove(req.params.id))) return notFound(res, req.params.id)
         return res.status(204).end()
       }
-      const arbeitsblatt = await repo.update(req.params.id, { status: 'archiviert', notiz: req.body?.notiz, autor: req.body?.autor })
+      const parsed = ArchivSchema.safeParse(req.body ?? {})
+      if (!parsed.success) return validationError(res, parsed.error, 'Die Archivierung ist ungültig:')
+      const arbeitsblatt = await repo.update(req.params.id, { status: 'archiviert', ...parsed.data })
       if (!arbeitsblatt) return notFound(res, req.params.id)
       res.json({ arbeitsblatt })
     }),
@@ -132,8 +134,8 @@ export function createArbeitsblaetterRouter() {
   router.get(
     '/:id/versionen/:nr',
     wrap(async (req, res) => {
-      const nr = Number.parseInt(req.params.nr, 10)
-      const version = Number.isInteger(nr) && nr > 0 ? await repo.findVersion(req.params.id, nr) : null
+      const nr = /^[1-9]\d{0,8}$/.test(req.params.nr) ? Number(req.params.nr) : null
+      const version = nr ? await repo.findVersion(req.params.id, nr) : null
       if (!version) return res.status(404).json({ error: 'not_found', message: `Version ${req.params.nr} von Arbeitsblatt ${req.params.id} existiert nicht` })
       res.json({ version })
     }),

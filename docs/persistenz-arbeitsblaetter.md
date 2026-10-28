@@ -73,13 +73,13 @@ Danach in `apps/backend`:
 
 ```bash
 npm run db:migrate            # Tabellen anlegen bzw. aktualisieren
-npm run db:seed               # 24 Beispiel-Blätter (6 Lernziele × 4 Stufen), nur in eine leere Tabelle
+npm run db:seed               # Beispiel-Blätter: 24 mit importierten Lehrplänen, sonst 16 (4 eingebaute Lernziele); nur in eine leere Tabelle
 npm run db:seed -- --reset    # alles löschen und neu befüllen
 npm run dev                   # Start: migriert selbst, meldet "MySQL erreichbar"
 ```
 
 Der Seed nutzt den Mock der Generierung (kein API-Key nötig) und die importierten Lehrpläne
-(`npm run import:lehrplaene`); ohne Import drei eingebaute Lernziele. Ohne erreichbare MySQL laufen
+(`npm run import:lehrplaene`, 6 Lernziele × 4 Stufen = 24 Blätter); ohne Import vier eingebaute Lernziele (16 Blätter, also mehr als eine Seite). Ohne erreichbare MySQL laufen
 die KI-Routen weiter, `/api/arbeitsblaetter` antwortet mit `503 db_unavailable` und einem Hinweis.
 
 ---
@@ -95,8 +95,8 @@ Basis `/api/arbeitsblaetter`. Fehler wie überall: `{ error, message, details? }
 | `GET /filteroptionen` | Werte für Dropdowns (nur nicht archivierte Blätter) | `{ berufsfelder[], bausteine[{berufsfeld, baustein, ausbildungsbaustein, anzahl}] }` |
 | `POST /` | Speichern – Body `{ worksheet, meta?, erstelltVon?, elternId?, status?, favorit?, notiz? }` | `201 { arbeitsblatt }` mit `inhalt`, Header `Location` |
 | `GET /:id` | Ein Blatt mit `inhalt` (aktuelle Version) | `{ arbeitsblatt }` |
-| `PATCH /:id` | `{ worksheet?, status?, favorit?, aktion?, autor?, notiz? }` – mindestens eines von worksheet/status/favorit | `{ arbeitsblatt }` |
-| `DELETE /:id` | Archivieren (Status + Verlaufseintrag) | `{ arbeitsblatt }` |
+| `PATCH /:id` | `{ worksheet?, status?, favorit?, aktion?, meta?, autor?, notiz? }` – mindestens eines von worksheet/status/favorit; `meta` nur mit `worksheet` | `{ arbeitsblatt }` |
+| `DELETE /:id` | Archivieren (Status + Verlaufseintrag); Body optional `{ autor?, notiz? }` | `{ arbeitsblatt }` |
 | `DELETE /:id?endgueltig=true` | Endgültig löschen (inkl. Verlauf) | `204` |
 | `GET /:id/verlauf` | Versionen, neueste zuerst (`?inhalt=true` mit Inhalt) | `{ eintraege[{version, aktion, autor, notiz, kiMeta, erstelltAm}] }` |
 | `GET /:id/versionen/:nr` | Eine Version mit Inhalt | `{ version }` |
@@ -110,7 +110,7 @@ Basis `/api/arbeitsblaetter`. Fehler wie überall: `{ error, message, details? }
 **Versionsregeln von `PATCH`:** neuer `worksheet` → Version +1 mit Aktion `bearbeitet` (oder
 `KI-angepasst`, wenn `aktion` so gesetzt ist); neuer `status` → Version +1 mit Aktion `freigegeben` /
 `archiviert` / `bearbeitet` (zurück auf Entwurf); nur `favorit` → keine neue Version.
-`kiGeneriert` ist wahr, sobald beim Speichern `meta` mitkommt (auch im Mock-Modus; `kiMeta.mocked` sagt, ob es eine Beispielantwort war).
+`kiGeneriert` ist wahr, sobald beim Speichern `meta` mitkommt oder eine Version `KI-angepasst` (bzw. mit `meta`) angelegt wird – auch im Mock-Modus; `kiMeta.mocked` sagt, ob es eine Beispielantwort war. Gleichzeitige Änderungen am selben Blatt werden per Zeilensperre nacheinander ausgeführt.
 
 **Beispiel – Ergebnis der Generierung speichern** (Frontend: `saveArbeitsblatt()` in `lib/api.ts`):
 
@@ -135,7 +135,7 @@ Funktionen in `apps/frontend/src/lib/api.ts`: `fetchArbeitsblaetter(filter)`, `f
 | Vorschau-Button | `fetchArbeitsblatt(id)` → `GeneratedWorksheetCard` wiederverwenden |
 | Verlauf-Button | `fetchArbeitsblattVerlauf(id)` |
 | docx-Button | `downloadGespeichertesDocx(blatt)` |
-| KI-Anpassung-Button | `generateArbeitsblatt(...)` → `updateArbeitsblatt(id, { worksheet, aktion: 'KI-angepasst' })` |
+| KI-Anpassung-Button | `generateArbeitsblatt(...)` → `updateArbeitsblatt(id, { worksheet, meta, aktion: 'KI-angepasst' })` |
 | Paginiert ab 15 | `fetchArbeitsblaetter({ seite })` → `seiten`, `gesamt` |
 | Speichern nach Generierung (Karte #8) | `saveArbeitsblatt({ worksheet, meta, erstelltVon })` |
 
@@ -143,7 +143,7 @@ Funktionen in `apps/frontend/src/lib/api.ts`: `fetchArbeitsblaetter(filter)`, `f
 
 ## 5. Tests und Dateien
 
-- `tests/integration/arbeitsblaetter-routes.test.js` – 26 Fälle gegen echte MySQL (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft.
+- `tests/integration/arbeitsblaetter-routes.test.js` – 30 Fälle gegen echte MySQL (bricht ab, wenn die verbundene Datenbank nicht auf `_test` endet) (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft.
 - `tests/unit/arbeitsblaetter-schema.test.js`, `arbeitsblaetter-repository.test.js`, `migrate.test.js` – ohne Datenbank.
 - Code: `src/routes/arbeitsblaetter.js` (HTTP), `src/arbeitsblaetter/schema.js` (zod), `src/arbeitsblaetter/repository.js` (SQL), `src/arbeitsblaetter/seed.js`, `src/db/migrate.js`, `db/migrations/001_arbeitsblaetter.sql`.
 

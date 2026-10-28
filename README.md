@@ -240,7 +240,7 @@ npm run dev:frontend
 
 # --- Datenbank (in apps/backend; Verbindung aus der .env) ---
 npm run db:migrate                 # Schema anlegen/aktualisieren (db/migrations/*.sql, laeuft auch beim Start)
-npm run db:seed                    # 24 Beispiel-Arbeitsblaetter, nur in eine leere Tabelle
+npm run db:seed                    # Beispiel-Arbeitsblaetter (24 mit Lehrplan-Import, sonst 16), nur in eine leere Tabelle
 npm run db:seed -- --reset         # alles loeschen und neu befuellen
 ```
 

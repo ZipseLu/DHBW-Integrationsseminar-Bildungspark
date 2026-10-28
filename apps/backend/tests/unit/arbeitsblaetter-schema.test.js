@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CreateSchema, ListQuerySchema, PatchSchema, isUuid, PRO_SEITE_STANDARD } from '../../src/arbeitsblaetter/schema.js'
+import { ArchivSchema, CreateSchema, ListQuerySchema, PatchSchema, isUuid, PRO_SEITE_STANDARD } from '../../src/arbeitsblaetter/schema.js'
 import { WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 
 describe('ListQuerySchema', () => {
@@ -63,6 +63,20 @@ describe('PatchSchema', () => {
   it('erlaubt als Aktion nur bearbeitet oder KI-angepasst', () => {
     expect(PatchSchema.safeParse({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst' }).success).toBe(true)
     expect(PatchSchema.safeParse({ worksheet: WORKSHEET_T_TEXT, aktion: 'erstellt' }).success).toBe(false)
+  })
+
+  it('nimmt meta nur zusammen mit worksheet an', () => {
+    expect(PatchSchema.safeParse({ worksheet: WORKSHEET_T_TEXT, meta: { mocked: true } }).success).toBe(true)
+    expect(PatchSchema.safeParse({ status: 'freigegeben', meta: { mocked: true } }).success).toBe(false)
+  })
+})
+
+describe('ArchivSchema', () => {
+  it('begrenzt Autor und Notiz und lehnt andere Typen ab', () => {
+    expect(ArchivSchema.safeParse({}).success).toBe(true)
+    expect(ArchivSchema.safeParse({ autor: 'T. Neumann', notiz: 'veraltet' }).success).toBe(true)
+    expect(ArchivSchema.safeParse({ notiz: 'x'.repeat(501) }).success).toBe(false)
+    expect(ArchivSchema.safeParse({ notiz: { a: 1 } }).success).toBe(false)
   })
 })
 

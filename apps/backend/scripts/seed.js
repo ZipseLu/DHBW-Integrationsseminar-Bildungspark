@@ -11,6 +11,10 @@ import { seedArbeitsblaetter } from '../src/arbeitsblaetter/seed.js'
 const args = process.argv.slice(2)
 const reset = args.includes('--reset')
 const lernziele = Number.parseInt(args.find((a) => a.startsWith('--lernziele='))?.split('=')[1] ?? '6', 10)
+if (!Number.isInteger(lernziele) || lernziele < 1) {
+  console.error('[seed] --lernziele muss eine ganze Zahl ≥ 1 sein.')
+  process.exit(1)
+}
 
 try {
   console.log(`[seed] Datenbank: ${describeConfig().db}`)

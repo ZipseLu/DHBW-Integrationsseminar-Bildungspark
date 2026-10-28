@@ -16,7 +16,7 @@ const AUTOREN = ['C. Hager', 'T. Neumann', 'S. Oturucu', 'A. Mustajbegovic', 'O.
 
 const bsp = (kompetenz, beispiel) => ({ kompetenz, beispiel })
 
-/** Fallback ohne Lehrplan-Import: drei Lernziele aus drei Berufsfeldern (docs/fachliche-grundlagen.md) */
+/** Fallback ohne Lehrplan-Import: vier Lernziele aus drei Berufsfeldern (docs/fachliche-grundlagen.md) – 16 Blätter, also mehr als eine Seite */
 export const FALLBACK_LERNZIELE = [
   {
     berufsfeld: 'Lagerlogistik, Handel & Versand', baustein: 1, ausbildungsbaustein: 'Wareneingang', titel: 'Güter entladen',
@@ -34,6 +34,15 @@ export const FALLBACK_LERNZIELE = [
       A: bsp('Beherrscht einige erlernte Arbeitsschritte bei der Vorbereitung von Obst und Gemüse', 'Wäscht und schält bekanntes Gemüse.'),
       F: bsp('Beherrscht erlernte Arbeitsschritte bei der Vorbereitung von Obst und Gemüse und kann diese in bekannten Situationen anwenden', 'Bereitet einen Obstsalat nach Rezept vor.'),
       B: bsp('Beherrscht die gängigen Arbeitsschritte bei der Vorbereitung von Obst und Gemüse und kann diese in neuen Situationen anwenden', 'Plant die Vorbereitung für ein neues Gericht.'),
+    },
+  },
+  {
+    berufsfeld: 'Lagerlogistik, Handel & Versand', baustein: 3, ausbildungsbaustein: 'Lagerung von Gütern', titel: 'Güter auszeichnen, sortieren, Lager- und Verkaufseinheiten bilden sowie Güter zur Lagerung vorbereiten',
+    niveaus: {
+      T: bsp('Beherrscht einen erlernten Arbeitsschritt bei der Auszeichnung und/oder Sortierung der Güter', 'Güter auszeichnen und sortieren'),
+      A: bsp('Beherrscht einige erlernte Arbeitsschritte bei der Auszeichnung und/oder Sortierung der Güter', 'Güter auszeichnen, sortieren und zu Lager- und Verkaufseinheiten bündeln'),
+      F: bsp('Beherrscht erlernte Arbeitsschritte bei der Auszeichnung, Sortierung und Bildung von Lager- und Verkaufseinheiten und kann diese in bekannten Situationen anwenden', 'Güter auszeichnen, sortieren, Lager- und Verkaufseinheiten bilden sowie Güter zur Lagerung vorbereiten'),
+      B: bsp('Beherrscht die gängigen Arbeitsschritte bei der Auszeichnung, Sortierung und Bildung von Lager- und Verkaufseinheiten und kann diese in neuen Situationen anwenden', 'Selbständig Güter auszeichnen, sortieren, Lager- und Verkaufseinheiten bilden und Ladungsträger aussuchen'),
     },
   },
   {
@@ -70,17 +79,22 @@ export function waehleLernziele(lernziele, anzahl) {
  * @returns {Promise<{ angelegt: number, uebersprungen: boolean, quelle: string }>}
  */
 export async function seedArbeitsblaetter({ lernziele: anzahl = 6, reset = false, log = () => {} } = {}) {
-  if (reset) {
-    await repo.deleteAll()
-    log('[seed] Alle vorhandenen Arbeitsblätter gelöscht (--reset).')
-  } else if ((await repo.count()) > 0) {
+  if (!Number.isInteger(anzahl) || anzahl < 1) throw new Error('lernziele muss eine ganze Zahl ≥ 1 sein')
+
+  if (!reset && (await repo.count()) > 0) {
     log('[seed] Es gibt schon Arbeitsblätter – nichts zu tun. Mit `npm run db:seed -- --reset` neu befüllen.')
     return { angelegt: 0, uebersprungen: true, quelle: null }
   }
 
+  // Lernziele zuerst laden – scheitert das (kaputte JSON-Datei), bleibt der Bestand unangetastet
   const importiert = await loadLehrplaene()
   const quelle = importiert ? 'data/lehrplaene.json' : 'eingebaute Beispiel-Lernziele'
   const auswahl = waehleLernziele(importiert?.lernziele ?? FALLBACK_LERNZIELE, anzahl)
+
+  if (reset) {
+    await repo.deleteAll()
+    log('[seed] Alle vorhandenen Arbeitsblätter gelöscht (--reset).')
+  }
 
   let angelegt = 0
   for (const [i, lernziel] of auswahl.entries()) {

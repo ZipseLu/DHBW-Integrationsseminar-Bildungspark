@@ -251,6 +251,8 @@ export type PatchArbeitsblattInput = {
   status?: ArbeitsblattStatus
   favorit?: boolean
   aktion?: 'bearbeitet' | 'KI-angepasst'
+  /** Nur mit `worksheet`: `meta` der Generierung, wenn die KI den neuen Inhalt erzeugt hat */
+  meta?: ArbeitsblattMeta | null
   autor?: string
   notiz?: string
 }
@@ -307,9 +309,17 @@ export async function updateArbeitsblatt(id: string, patch: PatchArbeitsblattInp
   return ((await response.json()) as { arbeitsblatt: GespeichertesArbeitsblattMitInhalt }).arbeitsblatt
 }
 
-/** DELETE /api/arbeitsblaetter/:id – archiviert (Standard) oder löscht endgültig */
-export async function deleteArbeitsblatt(id: string, { endgueltig = false }: { endgueltig?: boolean } = {}): Promise<void> {
-  await apiFetch(`/api/arbeitsblaetter/${encodeURIComponent(id)}${endgueltig ? '?endgueltig=true' : ''}`, { method: 'DELETE' })
+/** DELETE /api/arbeitsblaetter/:id – archiviert (Standard, optional mit Autor/Notiz im Verlauf) oder löscht endgültig */
+export async function deleteArbeitsblatt(
+  id: string,
+  { endgueltig = false, autor, notiz }: { endgueltig?: boolean; autor?: string; notiz?: string } = {},
+): Promise<void> {
+  const init: RequestInit = { method: 'DELETE' }
+  if (!endgueltig && (autor || notiz)) {
+    init.headers = { 'Content-Type': 'application/json' }
+    init.body = JSON.stringify({ autor, notiz })
+  }
+  await apiFetch(`/api/arbeitsblaetter/${encodeURIComponent(id)}${endgueltig ? '?endgueltig=true' : ''}`, init)
 }
 
 /** GET /api/arbeitsblaetter/:id/verlauf – Versionen, neueste zuerst (Button „Verlauf“) */

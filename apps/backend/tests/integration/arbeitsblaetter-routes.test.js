@@ -29,6 +29,11 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
   const app = createApp()
 
   beforeAll(async () => {
+    // Harte Sperre vor allem Destruktiven: nur gegen eine *_test-Datenbank laufen
+    const [{ db }] = await query('SELECT DATABASE() AS db')
+    if (!/_test$/i.test(db ?? '')) {
+      throw new Error(`Testlauf abgebrochen: "${db}" ist keine Testdatenbank – DB_NAME=bildungspark_test setzen.`)
+    }
     await runMigrations()
   })
 
@@ -47,11 +52,6 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(skipped).toContain('001_arbeitsblaetter.sql')
       const rows = await query('SELECT name FROM schema_migrations ORDER BY name')
       expect(rows.map((r) => r.name)).toContain('001_arbeitsblaetter.sql')
-    })
-
-    it('haben die Beispieltabellen vom 16.10. entfernt', async () => {
-      const rows = await query("SHOW TABLES LIKE 'level_contents'")
-      expect(rows).toHaveLength(0)
     })
   })
 
@@ -151,6 +151,9 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
 
       const nachTitel = await request(app).get('/api/arbeitsblaetter?sortierung=titel&proSeite=3')
       expect(nachTitel.body.eintraege.map((e) => e.titel)).toEqual(['Blatt 01', 'Blatt 02', 'Blatt 03'])
+
+      const aelteste = (await request(app).get('/api/arbeitsblaetter?sortierung=aelteste&proSeite=50')).body.eintraege.map((e) => e.geaendertAm)
+      expect(aelteste).toEqual([...aelteste].sort())
     })
 
     it('filtert nach Berufsfeld, Baustein, Ausbildungsbaustein, Stufe, Format, Sprache, Favorit und KI', async () => {
@@ -259,6 +262,40 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const alt = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1`)
       expect(alt.body.version.inhalt.titel).toBe('Der LKW ist da')
       expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/9`)).status).toBe(404)
+      expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1abc`)).status).toBe(404)
+
+      const mitInhalt = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf?inhalt=true`)
+      expect(mitInhalt.body.eintraege.map((e) => e.inhalt.titel)).toEqual(['Der LKW ist weg', 'Der LKW ist da'])
+      expect((await request(app).get(`/api/arbeitsblaetter/${UNBEKANNT}/verlauf`)).status).toBe(404)
+    })
+
+    it('KI-Anpassung mit meta macht ein manuelles Blatt zu einem KI-Blatt und protokolliert die Meta', async () => {
+      const blatt = await speichern(app)
+      expect(blatt.kiGeneriert).toBe(false)
+      const response = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst', meta: META })
+      expect(response.status).toBe(200)
+      expect(response.body.arbeitsblatt).toMatchObject({ kiGeneriert: true, version: 2 })
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'KI-angepasst', kiMeta: { model: 'gemini-3.5-flash', mocked: false } })
+      expect((await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true, meta: META })).status).toBe(400)
+    })
+
+    it('zwei gleichzeitige Aenderungen verlieren nichts und lassen das Blatt aenderbar (Zeilensperre)', async () => {
+      const blatt = await speichern(app)
+      const geaendert = { ...WORKSHEET_T_TEXT, titel: 'Parallel geändert' }
+      const [a, b] = await Promise.all([
+        request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: geaendert }),
+        request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true }),
+      ])
+      expect([a.status, b.status]).toEqual([200, 200])
+
+      const danach = (await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)).body.arbeitsblatt
+      expect(danach).toMatchObject({ titel: 'Parallel geändert', favorit: true, version: 2 })
+      expect(danach.inhalt.titel).toBe('Parallel geändert')
+
+      const weiter = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben' })
+      expect(weiter.status).toBe(200)
+      expect(weiter.body.arbeitsblatt.version).toBe(3)
     })
 
     it('Freigabe und Archivierung werden als Versionen protokolliert, KI-angepasst ist waehlbar', async () => {
@@ -272,8 +309,11 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const ki = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst' })
       expect(ki.body.arbeitsblatt.version).toBe(3)
 
+      const zurueck = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'entwurf' })
+      expect(zurueck.body.arbeitsblatt).toMatchObject({ status: 'entwurf', version: 4 })
+
       const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
-      expect(verlauf.body.eintraege.map((e) => e.aktion)).toEqual(['KI-angepasst', 'freigegeben', 'erstellt'])
+      expect(verlauf.body.eintraege.map((e) => e.aktion)).toEqual(['bearbeitet', 'KI-angepasst', 'freigegeben', 'erstellt'])
     })
 
     it('lehnt leere Aenderungen ab und meldet unbekannte Blaetter', async () => {
@@ -284,17 +324,39 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
   })
 
   describe('DELETE /api/arbeitsblaetter/:id', () => {
-    it('archiviert standardmaessig und loescht nur mit ?endgueltig=true', async () => {
+    it('archiviert standardmaessig (mit Autor und Notiz im Verlauf) und loescht nur mit ?endgueltig=true', async () => {
       const blatt = await speichern(app)
-      const archiviert = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`)
+      const archiviert = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ autor: 'T. Neumann', notiz: 'veraltet' })
       expect(archiviert.status).toBe(200)
       expect(archiviert.body.arbeitsblatt).toMatchObject({ status: 'archiviert', version: 2 })
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'archiviert', autor: 'T. Neumann', notiz: 'veraltet' })
 
       const weg = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)
       expect(weg.status).toBe(204)
       expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)).status).toBe(404)
       expect(await query('SELECT COUNT(*) AS n FROM arbeitsblatt_versionen WHERE arbeitsblatt_id = ?', [blatt.id])).toEqual([{ n: 0 }])
       expect((await request(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)).status).toBe(404)
+    })
+
+    it('lehnt eine zu lange Notiz beim Archivieren mit 400 ab', async () => {
+      const blatt = await speichern(app)
+      const response = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ notiz: 'x'.repeat(501) })
+      expect(response.status).toBe(400)
+      expect(response.body.error).toBe('validation_error')
+    })
+
+    it('macht beim endgueltigen Loeschen der Wurzel die aelteste Variante zur neuen Wurzel', async () => {
+      const wurzel = await speichern(app, { stufe: 'T' })
+      const a = await speichern(app, { stufe: 'A' }, { elternId: wurzel.id })
+      const f = await speichern(app, { stufe: 'F' }, { elternId: wurzel.id })
+
+      expect((await request(app).delete(`/api/arbeitsblaetter/${wurzel.id}?endgueltig=true`)).status).toBe(204)
+
+      const neuA = (await request(app).get(`/api/arbeitsblaetter/${a.id}`)).body.arbeitsblatt
+      const neuF = (await request(app).get(`/api/arbeitsblaetter/${f.id}`)).body.arbeitsblatt
+      expect(neuA.elternId).toBeNull()
+      expect(neuF.elternId).toBe(a.id)
     })
   })
 
@@ -332,9 +394,16 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
 })
 
 describe('waehleLernziele', () => {
-  it('verteilt die Auswahl gleichmaessig ueber die Berufsfelder', () => {
-    const auswahl = waehleLernziele([...FALLBACK_LERNZIELE, { ...FALLBACK_LERNZIELE[0], titel: 'Zweites Lager' }], 3)
-    expect(auswahl.map((lz) => lz.berufsfeld)).toEqual(FALLBACK_LERNZIELE.map((lz) => lz.berufsfeld))
+  it('verteilt die Auswahl reihum ueber die Berufsfelder', () => {
+    // FALLBACK: Lager (BS 1), Gastro, Lager (BS 3), Metall -> erst je Berufsfeld eines, dann das zweite Lager-Lernziel
+    expect(waehleLernziele(FALLBACK_LERNZIELE, 3).map((lz) => lz.berufsfeld)).toEqual([
+      'Lagerlogistik, Handel & Versand', 'Gastronomie & Hauswirtschaft', 'Metalltechnik & Montage',
+    ])
+    expect(waehleLernziele(FALLBACK_LERNZIELE, 4).map((lz) => lz.baustein)).toEqual([1, 2, 2, 3])
+  })
+
+  it('liefert hoechstens so viele Lernziele, wie es gibt', () => {
+    expect(waehleLernziele(FALLBACK_LERNZIELE, 50)).toHaveLength(FALLBACK_LERNZIELE.length)
   })
 })
 

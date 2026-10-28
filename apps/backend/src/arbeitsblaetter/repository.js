@@ -240,54 +240,96 @@ export async function create(input) {
  *  - neuer `worksheet`            -> neue Version mit Aktion 'bearbeitet' (oder 'KI-angepasst')
  *  - neuer `status`               -> neue Version mit Aktion 'freigegeben' | 'archiviert' | 'bearbeitet'
  *  - nur `favorit`                -> keine neue Version (reine Markierung)
+ *
+ * Lesen und Schreiben laufen in EINER Transaktion mit Zeilensperre (SELECT … FOR UPDATE):
+ * zwei gleichzeitige Änderungen am selben Blatt werden nacheinander ausgeführt, die zweite
+ * sieht den Stand der ersten. Ohne Sperre könnte ein paralleler Favorit-Klick die Version
+ * zurücksetzen und das Blatt dauerhaft unveränderbar machen (doppelte Versionsnummer).
  * @returns {Promise<object|null>}  Aktualisiertes Blatt oder null, wenn es fehlt
  */
 export async function update(id, patch) {
-  const aktuell = await findById(id)
-  if (!aktuell) return null
-
-  const jetzt = new Date()
-  const inhalt = patch.worksheet ?? aktuell.inhalt
-  const status = patch.status ?? aktuell.status
-  const favorit = patch.favorit ?? aktuell.favorit
-
-  let aktion = null
-  if (patch.worksheet) aktion = patch.aktion ?? 'bearbeitet'
-  if (patch.status && patch.status !== aktuell.status) {
-    aktion = { freigegeben: 'freigegeben', archiviert: 'archiviert', entwurf: 'bearbeitet' }[patch.status]
-  }
-  const version = aktion ? aktuell.version + 1 : aktuell.version
-
-  await withConnection(async (connection) => {
+  const geaendert = await withConnection(async (connection) => {
     await connection.beginTransaction()
     try {
-      await connection.execute(
-        `UPDATE arbeitsblaetter
-            SET titel = ?, berufsfeld = ?, baustein = ?, ausbildungsbaustein = ?, lernziel = ?, stufe = ?, format = ?, sprache = ?,
-                status = ?, favorit = ?, version = ?, geaendert_am = ?
-          WHERE id = ?`,
-        [
-          inhalt.titel, inhalt.berufsfeld, inhalt.baustein ?? null, inhalt.ausbildungsbaustein ?? null, inhalt.lernziel, inhalt.stufe,
-          inhalt.format, inhalt.sprache, status, favorit ? 1 : 0, version, jetzt, id,
-        ],
+      const [rows] = await connection.execute(
+        `SELECT ${SPALTEN}, v.inhalt
+           FROM arbeitsblaetter a
+           JOIN arbeitsblatt_versionen v ON v.arbeitsblatt_id = a.id AND v.version = a.version
+          WHERE a.id = ?
+          FOR UPDATE`,
+        [id],
       )
-      if (aktion) {
-        await insertVersion(connection, { arbeitsblattId: id, version, aktion, inhalt, kiMeta: null, autor: patch.autor, notiz: patch.notiz, zeitpunkt: jetzt })
+      if (rows.length === 0) {
+        await connection.rollback()
+        return false
+      }
+      const aktuell = toApi(rows[0], rows[0].inhalt)
+      const jetzt = new Date()
+      const inhalt = patch.worksheet ?? aktuell.inhalt
+      const status = patch.status ?? aktuell.status
+      const favorit = patch.favorit ?? aktuell.favorit
+
+      let aktion = null
+      if (patch.worksheet) aktion = patch.aktion ?? 'bearbeitet'
+      if (patch.status && patch.status !== aktuell.status) {
+        aktion = { freigegeben: 'freigegeben', archiviert: 'archiviert', entwurf: 'bearbeitet' }[patch.status]
+      }
+
+      if (!aktion) {
+        // Nur Markierung: Version und Listenspalten bleiben, wie sie sind
+        await connection.execute('UPDATE arbeitsblaetter SET favorit = ?, geaendert_am = ? WHERE id = ?', [favorit ? 1 : 0, jetzt, id])
+      } else {
+        const version = aktuell.version + 1
+        const kiMeta = patch.worksheet ? (patch.meta ?? null) : null
+        const kiGeneriert = aktuell.kiGeneriert || aktion === 'KI-angepasst' || Boolean(kiMeta)
+        await connection.execute(
+          `UPDATE arbeitsblaetter
+              SET titel = ?, berufsfeld = ?, baustein = ?, ausbildungsbaustein = ?, lernziel = ?, stufe = ?, format = ?, sprache = ?,
+                  status = ?, ki_generiert = ?, favorit = ?, version = ?, geaendert_am = ?
+            WHERE id = ?`,
+          [
+            inhalt.titel, inhalt.berufsfeld, inhalt.baustein ?? null, inhalt.ausbildungsbaustein ?? null, inhalt.lernziel, inhalt.stufe,
+            inhalt.format, inhalt.sprache, status, kiGeneriert ? 1 : 0, favorit ? 1 : 0, version, jetzt, id,
+          ],
+        )
+        await insertVersion(connection, { arbeitsblattId: id, version, aktion, inhalt, kiMeta, autor: patch.autor, notiz: patch.notiz, zeitpunkt: jetzt })
       }
       await connection.commit()
+      return true
     } catch (error) {
       await connection.rollback()
       throw error
     }
   })
 
-  return findById(id)
+  return geaendert ? findById(id) : null
 }
 
-/** Löscht endgültig (Versionen per ON DELETE CASCADE). true, wenn eine Zeile betroffen war. */
+/**
+ * Löscht endgültig (Versionen per ON DELETE CASCADE). true, wenn eine Zeile betroffen war.
+ * Hängen Varianten an dem Blatt, wird die älteste zur neuen Wurzel der Gruppe – sonst würde
+ * ON DELETE SET NULL die Gruppe in lauter einzelne Blätter zerlegen.
+ */
 export async function remove(id) {
-  const [result] = await getPool().execute('DELETE FROM arbeitsblaetter WHERE id = ?', [id])
-  return result.affectedRows > 0
+  return withConnection(async (connection) => {
+    await connection.beginTransaction()
+    try {
+      const [[neueWurzel]] = await connection.execute(
+        'SELECT id FROM arbeitsblaetter WHERE eltern_id = ? ORDER BY erstellt_am, id LIMIT 1 FOR UPDATE',
+        [id],
+      )
+      if (neueWurzel) {
+        await connection.execute('UPDATE arbeitsblaetter SET eltern_id = NULL WHERE id = ?', [neueWurzel.id])
+        await connection.execute('UPDATE arbeitsblaetter SET eltern_id = ? WHERE eltern_id = ?', [neueWurzel.id, id])
+      }
+      const [result] = await connection.execute('DELETE FROM arbeitsblaetter WHERE id = ?', [id])
+      await connection.commit()
+      return result.affectedRows > 0
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    }
+  })
 }
 
 /** Löscht alle Blätter samt Verlauf (Seed --reset, Tests) */
