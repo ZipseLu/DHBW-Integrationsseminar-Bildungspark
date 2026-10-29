@@ -17,12 +17,23 @@ test.describe('Infrastruktur-Smoke-Test', () => {
 
     await expect(page).toHaveTitle(/Arbeitsblattverwaltung/)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Arbeitsblätter')
-    await expect(page.getByText('12 Ergebnisse')).toBeVisible()
+  })
+
+  test('Seite Arbeitsblaetter laedt die Liste aus dem Backend', async ({ page }) => {
+    // FE-01: Die Liste kommt aus GET /api/arbeitsblaetter. Die CI-Datenbank ist leer
+    // (kein Seed), deshalb wird nicht die Anzahl geprueft, sondern dass die Daten
+    // vom Backend kommen und die Seite nicht auf Beispieldaten zurueckfaellt.
+    const antwort = page.waitForResponse((r) => r.url().includes('/api/arbeitsblaetter') && r.request().method() === 'GET')
+    await page.goto('/')
+
+    expect((await antwort).ok()).toBeTruthy()
+    await expect(page.getByText('Arbeitsblätter werden geladen')).toBeHidden()
+    await expect(page.getByText('es werden Beispieldaten angezeigt', { exact: false })).toHaveCount(0)
+    await expect(page.getByText('Noch keine Arbeitsblätter gespeichert', { exact: false }).or(page.getByRole('article').first())).toBeVisible()
   })
 
   test('Frontend erreicht das Backend ueber den /api-Proxy', async ({ page }) => {
-    // Der Prototyp nutzt noch lokale Beispieldaten und ruft das Backend nicht
-    // selbst auf. Deshalb wird der Proxy direkt ueber die Frontend-Origin geprueft.
+    // Health-Check direkt ueber die Frontend-Origin (Vite-Proxy -> Express)
     const response = await page.request.get('/api/health')
 
     expect(response.ok()).toBeTruthy()
