@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
 import { StatCard } from '@/components/Widgets'
 import { FORMAT_BADGE_COLORS, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
+import { dashboardAusBeispielen, dashboardAusGespeicherten, type DashboardDaten } from '@/lib/dashboardDaten'
+import { fehlertext, ladeGespeicherteArbeitsblaetter } from '@/lib/gespeicherteArbeitsblaetter'
 import type { Level, NavItem, Participant } from '@/types'
 
 /** Kurzbeschreibung des Bedarfs je Barrierefreiheits-Format (Persona-Karten) */
@@ -18,12 +20,44 @@ type Props = {
   onNavigate: (item: NavItem) => void
 }
 
+/** Woher die Zahlen kommen – wie auf der Seite Arbeitsblätter (FE-01) */
+type Quelle = { art: 'laden' } | { art: 'backend' } | { art: 'beispiel'; grund: string }
+
+const STATUS_LABEL = { entwurf: 'Entwurf', freigegeben: 'Freigegeben', archiviert: 'Archiviert' } as const
+const STATUS_FARBE = {
+  entwurf: { bg: '#EBF0F8', color: '#1E3A5F' },
+  freigegeben: { bg: '#D4EDDA', color: '#1A5C32' },
+  archiviert: { bg: '#FAD9C8', color: '#7A2E00' },
+} as const
+
 export function DashboardPage({ participants, onNavigate }: Props) {
   const [openLevels, setOpenLevels] = useState<Set<Level>>(new Set())
+  const [quelle, setQuelle] = useState<Quelle>({ art: 'laden' })
+  const [daten, setDaten] = useState<DashboardDaten | null>(null)
+  const [ladeVersuch, setLadeVersuch] = useState(0)
 
-  const berufsfelder = new Set(WORKSHEETS.map((w) => w.berufsbild)).size
-  const aiCount = WORKSHEETS.filter((w) => w.aiGenerated).length
-  const recent = [...WORKSHEETS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
+  // FE-06: Kennzahlen aus GET /api/arbeitsblaetter, sonst Beispieldaten mit Hinweis
+  useEffect(() => {
+    let aktiv = true
+    setQuelle({ art: 'laden' })
+    ladeGespeicherteArbeitsblaetter()
+      .then((blaetter) => {
+        if (!aktiv) return
+        setDaten(dashboardAusGespeicherten(blaetter))
+        setQuelle({ art: 'backend' })
+      })
+      .catch((error: unknown) => {
+        if (!aktiv) return
+        setDaten(dashboardAusBeispielen(WORKSHEETS))
+        setQuelle({ art: 'beispiel', grund: fehlertext(error) })
+      })
+    return () => {
+      aktiv = false
+    }
+  }, [ladeVersuch])
+
+  const laedt = quelle.art === 'laden' || daten === null
+  const gesamt = daten?.gesamt ?? 0
 
   function toggleLevel(level: Level) {
     setOpenLevels((prev) => {
@@ -36,9 +70,34 @@ export function DashboardPage({ participants, onNavigate }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Arbeitsblätter gesamt" value={WORKSHEETS.length} sub={`${berufsfelder} Berufsfelder`} accent />
-        <StatCard label="KI-generiert" value={aiCount} sub={`von insgesamt ${WORKSHEETS.length}`} />
+      {quelle.art === 'beispiel' && (
+        <div
+          role="alert"
+          className="rounded-lg px-4 py-3 text-sm flex items-start gap-3 -mb-4"
+          style={{ backgroundColor: '#FFF3CD', color: '#7A5C00', border: '1px solid #E8D48A' }}
+        >
+          <div className="flex-1">
+            <div className="font-semibold">Zahlen aus Beispieldaten – die gespeicherten Arbeitsblätter konnten nicht geladen werden.</div>
+            <div className="text-xs mt-1">{quelle.grund}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLadeVersuch((n) => n + 1)}
+            className="text-xs px-2.5 py-1.5 rounded font-medium flex-shrink-0"
+            style={{ backgroundColor: '#7A5C00', color: '#FFFFFF' }}
+          >
+            Erneut laden
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-4" aria-busy={laedt}>
+        <StatCard label="Arbeitsblätter gesamt" value={laedt ? '…' : gesamt} sub={laedt ? 'wird geladen' : `${daten.berufsfelder} Berufsfelder`} accent />
+        <StatCard
+          label="KI-generiert"
+          value={laedt ? '…' : daten.ki}
+          sub={laedt ? 'wird geladen' : daten.freigegeben === null ? `von insgesamt ${gesamt}` : `von ${gesamt} · ${daten.freigegeben} freigegeben`}
+        />
         <StatCard label="Aktive Teilnehmende" value={participants.length} sub="anonymisiert" />
       </div>
 
@@ -46,8 +105,8 @@ export function DashboardPage({ participants, onNavigate }: Props) {
         <h2 className="font-display text-lg font-semibold mb-4">Niveaustufen-Verteilung</h2>
         <div className="flex gap-6">
           {LEVELS.map((level) => {
-            const count = WORKSHEETS.filter((w) => Boolean(w.abschnitt.niveaus[level]?.kompetenz)).length
-            const pct = WORKSHEETS.length === 0 ? 0 : Math.round((count / WORKSHEETS.length) * 100)
+            const count = daten?.proStufe[level] ?? 0
+            const pct = gesamt === 0 ? 0 : Math.round((count / gesamt) * 100)
             const s = LEVEL_STYLES[level]
             return (
               <div key={level} className="flex-1 flex flex-col gap-2">
@@ -177,34 +236,51 @@ export function DashboardPage({ participants, onNavigate }: Props) {
             Alle anzeigen →
           </button>
         </div>
+        {laedt && (
+          <div role="status" className="px-6 py-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            Wird geladen …
+          </div>
+        )}
+        {!laedt && daten.zuletzt.length === 0 && (
+          <div className="px-6 py-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            Noch keine Arbeitsblätter gespeichert. Erstelle das erste in der KI-Erstellung.
+          </div>
+        )}
         <ul>
-          {recent.map((w, i) => (
-            <li key={w.id} style={{ borderBottom: i < recent.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <button
-                type="button"
-                onClick={() => onNavigate('arbeitsblaetter')}
-                className="w-full flex items-center gap-4 px-6 py-3.5 text-left hover:opacity-80 transition-opacity"
-              >
-                <span className="text-xs font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                  BS {w.baustein}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{w.title}</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                    {w.ausbildungsbaustein} · {w.berufsbild}
-                  </div>
-                </div>
-                {w.aiGenerated && (
-                  <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>
-                    KI
+          {!laedt &&
+            daten.zuletzt.map((w, i) => (
+              <li key={w.key} style={{ borderBottom: i < daten.zuletzt.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('arbeitsblaetter')}
+                  className="w-full flex items-center gap-4 px-6 py-3.5 text-left hover:opacity-80 transition-opacity"
+                >
+                  <span className="text-xs font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
+                    BS {w.baustein ?? '–'}
                   </span>
-                )}
-                <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
-                  {w.date}
-                </span>
-              </button>
-            </li>
-          ))}
+                  {w.stufe && <LevelBadge level={w.stufe} />}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{w.titel}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                      {w.untertitel}
+                    </div>
+                  </div>
+                  {w.status && (
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: STATUS_FARBE[w.status].bg, color: STATUS_FARBE[w.status].color }}>
+                      {STATUS_LABEL[w.status]}
+                    </span>
+                  )}
+                  {w.ki && (
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>
+                      KI
+                    </span>
+                  )}
+                  <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
+                    {w.datum}
+                  </span>
+                </button>
+              </li>
+            ))}
         </ul>
       </section>
     </div>
