@@ -323,3 +323,22 @@ describe('KI-Erstellung – Speichern (FE-02)', () => {
     expect(within(region).getAllByRole('button', { name: '💾 Speichern' })[0]).toBeEnabled()
   })
 })
+
+describe('KI-Erstellung – React-Keys (FE-03)', () => {
+  it('meldet keine doppelten Keys, wenn zwei Varianten gleiche Stufe und gleiches Format haben', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Das Backend liefert fuer beide Anfragen Stufe T und Format text – frueher entstand
+    // dadurch zweimal der Key "T-text" ("Encountered two children with the same key").
+    mockBackend()
+    openKiErstellung()
+    fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
+    fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
+
+    await screen.findByText('✓ 2 Varianten erstellt')
+    expect(screen.getAllByRole('article', { name: /Der LKW ist da/ })).toHaveLength(2)
+
+    const keyWarnungen = consoleError.mock.calls.filter((call) => call.some((arg) => String(arg).includes('same key')))
+    expect(keyWarnungen).toEqual([])
+    consoleError.mockRestore()
+  })
+})
