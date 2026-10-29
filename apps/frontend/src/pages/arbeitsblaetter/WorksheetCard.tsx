@@ -53,6 +53,7 @@ export function WorksheetCard({
               →
             </span>
             <h3 className="text-sm font-normal">{w.title}</h3>
+            {w.backend && <StatusBadge status={w.backend.status} />}
             {w.aiGenerated && (
               <span className="text-xs font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }} title="KI-generiert">
                 KI
@@ -178,9 +179,11 @@ export function WorksheetCard({
                       <div className="text-xs mb-2 leading-snug" style={{ color: 'var(--foreground)' }}>
                         {row.kompetenz}
                       </div>
-                      <div className="text-xs px-2 py-1.5 rounded leading-snug italic" style={{ backgroundColor: s.bg, color: s.text }}>
-                        Beispiel: {row.beispiel}
-                      </div>
+                      {row.beispiel && (
+                        <div className="text-xs px-2 py-1.5 rounded leading-snug italic" style={{ backgroundColor: s.bg, color: s.text }}>
+                          Beispiel: {row.beispiel}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -190,5 +193,20 @@ export function WorksheetCard({
         </div>
       )}
     </article>
+  )
+}
+
+const STATUS_STYLES = {
+  entwurf: { label: 'Entwurf', bg: '#EBF0F8', color: '#1E3A5F' },
+  freigegeben: { label: 'Freigegeben', bg: '#D4EDDA', color: '#1A5C32' },
+  archiviert: { label: 'Archiviert', bg: '#FAD9C8', color: '#7A2E00' },
+} as const
+
+function StatusBadge({ status }: { status: keyof typeof STATUS_STYLES }) {
+  const st = STATUS_STYLES[status]
+  return (
+    <span className="text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>
+      {st.label}
+    </span>
   )
 }

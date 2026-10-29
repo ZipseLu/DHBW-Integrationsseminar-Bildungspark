@@ -26,9 +26,13 @@ function stubGenerate() {
   )
 }
 
+// Ohne Datenbank antwortet /api/arbeitsblaetter mit 503 – die Seite zeigt dann Beispieldaten
+const dbUnavailable = () =>
+  new Response(JSON.stringify({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+
 beforeEach(() => {
   // Die KI-Erstellung fragt beim Oeffnen GET /api/lehrplaene ab – ohne Import: leere Liste
-  vi.stubGlobal('fetch', vi.fn(async () => emptyLehrplaene()))
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).startsWith('/api/arbeitsblaetter') ? dbUnavailable() : emptyLehrplaene())))
 })
 
 afterEach(() => {
@@ -37,6 +41,12 @@ afterEach(() => {
 
 function renderApp() {
   render(<App />)
+}
+
+/** Startseite Arbeitsblaetter rendern und warten, bis die Liste (hier: Beispieldaten) geladen ist */
+async function renderArbeitsblaetter() {
+  renderApp()
+  await screen.findByRole('article', { name: 'Begleitpapiere prüfen' })
 }
 
 function navigate(label: string) {
@@ -76,29 +86,35 @@ describe('Navigation', () => {
 })
 
 describe('Arbeitsblätter', () => {
-  it('filtert die Liste ueber die Suche', () => {
-    renderApp()
+  it('zeigt Beispieldaten mit Hinweis, wenn die Datenbank nicht erreichbar ist', async () => {
+    await renderArbeitsblaetter()
+    expect(screen.getByRole('alert')).toHaveTextContent('es werden Beispieldaten angezeigt')
+    expect(screen.getByRole('alert')).toHaveTextContent('Die Datenbank ist nicht verfügbar.')
+  })
+
+  it('filtert die Liste ueber die Suche', async () => {
+    await renderArbeitsblaetter()
     fireEvent.change(screen.getByLabelText('Arbeitsblätter durchsuchen'), { target: { value: 'anrichten' } })
     expect(screen.getByText('1 Ergebnisse')).toBeInTheDocument()
     expect(screen.getByRole('article', { name: 'Speisen anrichten' })).toBeInTheDocument()
   })
 
-  it('zeigt einen Hinweis, wenn nichts gefunden wird', () => {
-    renderApp()
+  it('zeigt einen Hinweis, wenn nichts gefunden wird', async () => {
+    await renderArbeitsblaetter()
     fireEvent.change(screen.getByLabelText('Arbeitsblätter durchsuchen'), { target: { value: 'xyz' } })
     expect(screen.getByText('Keine Arbeitsblätter gefunden.')).toBeInTheDocument()
   })
 
-  it('klappt den Aufbau mit allen vier Niveaustufen auf', () => {
-    renderApp()
+  it('klappt den Aufbau mit allen vier Niveaustufen auf', async () => {
+    await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
     fireEvent.click(within(card).getByRole('button', { name: /Aufbau/ }))
     expect(within(card).getByText('BINNENDIFFERENZIERUNG NACH NIVEAUSTUFEN')).toBeInTheDocument()
     expect(within(card).getAllByText(/^Beispiel:/)).toHaveLength(4)
   })
 
-  it('oeffnet Vorschau und Verlauf im Seitenpanel', () => {
-    renderApp()
+  it('oeffnet Vorschau und Verlauf im Seitenpanel', async () => {
+    await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
     fireEvent.click(within(card).getByRole('button', { name: /Verlauf/ }))
 
@@ -109,8 +125,8 @@ describe('Arbeitsblätter', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('markiert Favoriten und filtert auf "Nur Favoriten"', () => {
-    renderApp()
+  it('markiert Favoriten und filtert auf "Nur Favoriten"', async () => {
+    await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
     fireEvent.click(within(card).getByRole('button', { name: 'Als Favorit markieren' }))
     expect(within(card).getByRole('button', { name: 'Als Favorit markieren' })).toHaveAttribute('aria-pressed', 'true')
@@ -122,7 +138,7 @@ describe('Arbeitsblätter', () => {
   })
 
   it('erzeugt im Anpassen-Panel vier Varianten', async () => {
-    renderApp()
+    await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Güter entladen' })
     fireEvent.click(within(card).getByRole('button', { name: /Anpassen/ }))
 
