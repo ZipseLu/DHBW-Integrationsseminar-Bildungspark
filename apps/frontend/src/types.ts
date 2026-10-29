@@ -47,6 +47,19 @@ export type Worksheet = {
   sprache: Sprache
   /** Niveaustufen, für die dieses Arbeitsblatt hinterlegt ist */
   niveaus: Level[]
+  /**
+   * Nur bei Blättern aus dem Backend (GET /api/arbeitsblaetter). `id` ist dann
+   * eine laufende Nummer für die Anzeige, die echte Kennung steht in `backend.id`.
+   */
+  backend?: GespeichertInfo
+}
+
+/** Verwaltungsdaten eines gespeicherten Arbeitsblatts */
+export type GespeichertInfo = {
+  id: string
+  status: 'entwurf' | 'freigegeben' | 'archiviert'
+  version: number
+  favorit: boolean
 }
 
 export type SavedDocument = {

@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { HISTORY_ACTION_STYLES, LEVEL_STYLES, niveausOf } from '@/data/constants'
 import { WORKSHEET_HISTORY } from '@/data/worksheets'
-import type { Worksheet } from '@/types'
+import { fetchArbeitsblattVerlauf } from '@/lib/api'
+import { fehlertext, historyAusVerlauf } from '@/lib/gespeicherteArbeitsblaetter'
+import type { HistoryEntry, Worksheet } from '@/types'
 
 export type DetailTab = 'vorschau' | 'verlauf'
 
@@ -31,7 +34,8 @@ export function WorksheetDetailPanel({ worksheet: w, tab, onTabChange, onClose, 
             </div>
             <h2 className="font-display text-lg font-semibold leading-snug">{w.title}</h2>
             <div className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              {w.ausbildungsbaustein} · {w.participants} Teilnehmer
+              {w.ausbildungsbaustein}
+              {w.backend ? ` · Version ${w.backend.version}` : ` · ${w.participants} Teilnehmer`}
             </div>
           </div>
           <CloseButton onClick={onClose} />
@@ -57,7 +61,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, onTabChange, onClose, 
       </div>
 
       <div className="flex-1 overflow-auto px-6 py-5" role="tabpanel">
-        {tab === 'vorschau' ? <WordPreview worksheet={w} /> : <HistoryTimeline worksheetId={w.id} />}
+        {tab === 'vorschau' ? <WordPreview worksheet={w} /> : <HistoryTimeline worksheet={w} />}
       </div>
 
       <div className="px-6 py-4 flex gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
@@ -134,8 +138,12 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
                   <td key={l} style={{ verticalAlign: 'top', padding: 8, backgroundColor: '#FFFEF9', borderBottom: '1px solid #D5CEBB' }}>
                     <div style={{ ...smallCaps, fontSize: 7.5, color: '#6B6354', letterSpacing: '0.08em', marginBottom: 3 }}>Kompetenz</div>
                     <div style={{ fontSize: 10, marginBottom: 8, lineHeight: 1.45 }}>{row.kompetenz}</div>
-                    <div style={{ ...smallCaps, fontSize: 7.5, color: s.text, letterSpacing: '0.08em', marginBottom: 3 }}>Aufgabe / Beispiel</div>
-                    <div style={{ fontSize: 10, color: s.text, fontStyle: 'italic', backgroundColor: s.bg, padding: '4px 6px', lineHeight: 1.45 }}>{row.beispiel}</div>
+                    {row.beispiel && (
+                      <>
+                        <div style={{ ...smallCaps, fontSize: 7.5, color: s.text, letterSpacing: '0.08em', marginBottom: 3 }}>Aufgabe / Beispiel</div>
+                        <div style={{ fontSize: 10, color: s.text, fontStyle: 'italic', backgroundColor: s.bg, padding: '4px 6px', lineHeight: 1.45 }}>{row.beispiel}</div>
+                      </>
+                    )}
                   </td>
                 )
               })}
@@ -164,9 +172,43 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
   )
 }
 
-function HistoryTimeline({ worksheetId }: { worksheetId: number }) {
-  const entries = WORKSHEET_HISTORY[worksheetId] ?? []
+type VerlaufZustand = { art: 'laden' } | { art: 'fertig'; entries: HistoryEntry[] } | { art: 'fehler'; text: string }
 
+function HistoryTimeline({ worksheet: w }: { worksheet: Worksheet }) {
+  const backendId = w.backend?.id
+  const [zustand, setZustand] = useState<VerlaufZustand>(() =>
+    backendId ? { art: 'laden' } : { art: 'fertig', entries: WORKSHEET_HISTORY[w.id] ?? [] },
+  )
+
+  useEffect(() => {
+    if (!backendId) return
+    let aktiv = true
+    setZustand({ art: 'laden' })
+    fetchArbeitsblattVerlauf(backendId)
+      .then((eintraege) => aktiv && setZustand({ art: 'fertig', entries: historyAusVerlauf(eintraege) }))
+      .catch((error: unknown) => aktiv && setZustand({ art: 'fehler', text: fehlertext(error) }))
+    return () => {
+      aktiv = false
+    }
+  }, [backendId])
+
+  if (zustand.art === 'laden') {
+    return (
+      <div role="status" className="text-sm py-10 text-center" style={{ color: 'var(--muted-foreground)' }}>
+        Verlauf wird geladen …
+      </div>
+    )
+  }
+
+  if (zustand.art === 'fehler') {
+    return (
+      <div role="alert" className="text-sm rounded-lg px-4 py-3" style={{ backgroundColor: '#FAD9C8', color: '#7A2E00' }}>
+        Der Verlauf konnte nicht geladen werden: {zustand.text}
+      </div>
+    )
+  }
+
+  const entries = zustand.entries
   if (entries.length === 0) {
     return (
       <div className="text-sm py-10 text-center" style={{ color: 'var(--muted-foreground)' }}>
