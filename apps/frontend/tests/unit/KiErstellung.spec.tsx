@@ -64,19 +64,26 @@ type Handlers = {
   generate?: (body: Record<string, unknown>) => Response | Promise<Response>
   docx?: () => Response
   lehrplaene?: () => Response
+  save?: (body: Record<string, unknown>) => Response | Promise<Response>
 }
 
 /** Gemocktes Backend: beantwortet die drei Endpunkte, die die Seite aufruft */
 function mockBackend(handlers: Handlers = {}) {
+  let saveNr = 0
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === '/api/lehrplaene') return handlers.lehrplaene?.() ?? jsonResponse({ anzahl: 0, lernziele: [] })
     if (url === '/api/ai/arbeitsblatt/docx') return handlers.docx?.() ?? jsonResponse({ error: 'nicht_gemockt', message: 'kein docx-Mock' }, 500)
     if (url === '/api/ai/arbeitsblatt') return handlers.generate ? handlers.generate(JSON.parse(String(init?.body))) : jsonResponse(RESULT)
+    if (url === '/api/arbeitsblaetter' && init?.method === 'POST') {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>
+      return handlers.save ? handlers.save(body) : jsonResponse({ arbeitsblatt: { id: `id-${++saveNr}`, inhalt: body.worksheet } }, 201)
+    }
     return jsonResponse({ error: 'not_found', message: url }, 404)
   })
 }
 
 const generateCalls = () => fetchMock.mock.calls.filter((call) => call[0] === '/api/ai/arbeitsblatt')
+const saveCalls = () => fetchMock.mock.calls.filter((call) => call[0] === '/api/arbeitsblaetter' && (call[1] as RequestInit | undefined)?.method === 'POST')
 
 beforeEach(() => {
   fetchMock = vi.fn()
@@ -235,5 +242,84 @@ describe('KI-Erstellung – Generierung', () => {
     expect(docxCall).toBeDefined()
     expect(requestBody(docxCall as unknown[])).toHaveProperty('worksheet.titel', 'Der LKW ist da')
     expect(vi.mocked(saveAs).mock.calls[0][1]).toBe('Lagerlogistik_BS1_Güter_entladen_T-text.docx')
+  })
+})
+
+describe('KI-Erstellung – Speichern (FE-02)', () => {
+  async function generiere(varianten: 1 | 2 = 1) {
+    mockBackendForSave()
+    openKiErstellung()
+    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'LKW am Tor' } })
+    if (varianten === 2) fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
+    fireEvent.click(screen.getByRole('button', { name: varianten === 2 ? '✦ 2 Varianten generieren' : '✦ 1 Variante generieren' }))
+    return screen.findByRole('region', { name: 'Erstellte Varianten' })
+  }
+
+  let saveHandler: Handlers['save']
+  function mockBackendForSave() {
+    mockBackend({
+      generate: (body) => jsonResponse({ ...RESULT, worksheet: { ...RESULT.worksheet, stufe: body.stufe as 'T' | 'A', titel: `Blatt ${String(body.stufe)}` } }),
+      save: saveHandler,
+    })
+  }
+
+  beforeEach(() => {
+    saveHandler = undefined
+  })
+
+  it('speichert eine Variante mit KI-Metadaten und Ersteller', async () => {
+    const region = await generiere()
+    await within(region).findByText('✓ 1 Variante erstellt')
+
+    fireEvent.click(within(region).getByRole('button', { name: '💾 Speichern' }))
+    expect(await within(region).findByRole('button', { name: '✓ Gespeichert' })).toBeDisabled()
+
+    expect(saveCalls()).toHaveLength(1)
+    const body = requestBody(saveCalls()[0])
+    expect(body).toMatchObject({ erstelltVon: 'Celine Hager', notiz: 'KI-Erstellung: LKW am Tor', elternId: null })
+    expect(body).toHaveProperty('worksheet.titel', 'Blatt A')
+    expect(body).toHaveProperty('meta.mocked', true)
+    expect(within(region).getByRole('button', { name: '✓ Alle in der Bibliothek' })).toBeDisabled()
+  })
+
+  it('"Alle zur Bibliothek hinzufügen" speichert nacheinander und verknüpft die Varianten', async () => {
+    const region = await generiere(2)
+    await within(region).findByText('✓ 2 Varianten erstellt')
+
+    fireEvent.click(within(region).getByRole('button', { name: '💾 Alle zur Bibliothek hinzufügen' }))
+    expect(await within(region).findByRole('button', { name: '✓ Alle in der Bibliothek' })).toBeDisabled()
+
+    expect(saveCalls()).toHaveLength(2)
+    expect(requestBody(saveCalls()[0]).elternId).toBeNull()
+    // Das erste gespeicherte Blatt (Mock-ID id-1) ist Eltern-Blatt der zweiten Variante
+    expect(requestBody(saveCalls()[1]).elternId).toBe('id-1')
+    expect(within(region).getAllByRole('button', { name: '✓ Gespeichert' })).toHaveLength(2)
+  })
+
+  it('zeigt einen Fehler und erlaubt einen neuen Versuch', async () => {
+    saveHandler = () => jsonResponse({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503)
+    const region = await generiere()
+    await within(region).findByText('✓ 1 Variante erstellt')
+
+    fireEvent.click(within(region).getByRole('button', { name: '💾 Speichern' }))
+    expect(await within(region).findByText('Nicht gespeichert: Die Datenbank ist nicht verfügbar.')).toBeInTheDocument()
+    expect(within(region).getByRole('button', { name: '💾 Speichern' })).toBeEnabled()
+  })
+
+  it('sperrt das Speichern, solange noch generiert wird', async () => {
+    const pending: Array<(value: Response) => void> = []
+    mockBackend({ generate: () => new Promise<Response>((resolve) => pending.push(resolve)) })
+    openKiErstellung()
+    fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
+    fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
+
+    pending[0](jsonResponse(RESULT))
+    const region = await screen.findByRole('region', { name: 'Erstellte Varianten' })
+    expect(await within(region).findByRole('button', { name: '💾 Speichern' })).toBeDisabled()
+    expect(within(region).queryByRole('button', { name: /Alle zur Bibliothek/ })).not.toBeInTheDocument()
+
+    pending[1](jsonResponse(RESULT))
+    await within(region).findByText('✓ 2 Varianten erstellt')
+    expect(within(region).getAllByRole('button', { name: '💾 Speichern' })[0]).toBeEnabled()
   })
 })

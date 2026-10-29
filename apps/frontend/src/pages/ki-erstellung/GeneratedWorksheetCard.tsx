@@ -79,8 +79,19 @@ function AufgabeBlock({ aufgabe, accent }: { aufgabe: Aufgabe; accent: string })
   )
 }
 
-/** Anzeige eines KI-generierten Arbeitsblatts mit Validator-Hinweisen und Word-Download */
-export function GeneratedWorksheetCard({ result, onVorschau }: { result: ArbeitsblattResult; onVorschau: () => void }) {
+/** Speicherstand einer Variante (FE-02, POST /api/arbeitsblaetter) */
+export type SpeicherZustand = { art: 'offen' } | { art: 'speichert' } | { art: 'gespeichert'; id: string } | { art: 'fehler'; text: string }
+
+type Props = {
+  result: ArbeitsblattResult
+  onVorschau: () => void
+  speicherZustand?: SpeicherZustand
+  /** Fehlt, solange noch generiert wird – dann ist „Speichern“ gesperrt */
+  onSpeichern?: () => void
+}
+
+/** Anzeige eines KI-generierten Arbeitsblatts mit Validator-Hinweisen, Speichern und Word-Download */
+export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = { art: 'offen' }, onSpeichern }: Props) {
   const { worksheet, meta } = result
   const s = LEVEL_STYLES[worksheet.stufe]
   const opt = formatOption(worksheet.format)
@@ -199,6 +210,19 @@ export function GeneratedWorksheetCard({ result, onVorschau }: { result: Arbeits
               </button>
               <button
                 type="button"
+                onClick={onSpeichern}
+                disabled={!onSpeichern || speicherZustand.art === 'speichert' || speicherZustand.art === 'gespeichert'}
+                className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-70"
+                style={
+                  speicherZustand.art === 'gespeichert'
+                    ? { backgroundColor: '#D4EDDA', color: '#1A5C32', border: '1px solid #C3E6CB' }
+                    : { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+                }
+              >
+                {speicherZustand.art === 'gespeichert' ? '✓ Gespeichert' : speicherZustand.art === 'speichert' ? 'Wird gespeichert…' : '💾 Speichern'}
+              </button>
+              <button
+                type="button"
                 onClick={handleDownload}
                 disabled={downloading}
                 className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
@@ -207,6 +231,11 @@ export function GeneratedWorksheetCard({ result, onVorschau }: { result: Arbeits
                 {downloading ? 'Wird erstellt…' : '📄 .docx'}
               </button>
             </div>
+            {speicherZustand.art === 'fehler' && (
+              <span className="text-xs" style={{ color: '#7A2E00' }} role="alert">
+                Nicht gespeichert: {speicherZustand.text}
+              </span>
+            )}
             {downloadError && (
               <span className="text-xs" style={{ color: '#7A2E00' }} role="alert">
                 {downloadError}
