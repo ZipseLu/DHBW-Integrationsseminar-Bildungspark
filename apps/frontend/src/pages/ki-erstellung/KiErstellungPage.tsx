@@ -1,15 +1,24 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
 import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
 import { BERUFSBILDER, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { TRANSFORM_PREVIEWS } from '@/data/previews'
+import { CURRENT_USER } from '@/data/users'
 import { WORKSHEETS } from '@/data/worksheets'
-import { ApiError, fetchLehrplaene, generateArbeitsblatt, lernzielFromWorksheet, type ArbeitsblattResult, type LernzielInput } from '@/lib/api'
+import {
+  ApiError,
+  fetchLehrplaene,
+  generateArbeitsblatt,
+  lernzielFromWorksheet,
+  saveArbeitsblatt,
+  type ArbeitsblattResult,
+  type LernzielInput,
+} from '@/lib/api'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
-import { GeneratedWorksheetCard } from './GeneratedWorksheetCard'
+import { GeneratedWorksheetCard, type SpeicherZustand } from './GeneratedWorksheetCard'
 import { WebSearchSection } from './WebSearchSection'
 
 const labelClass = 'block text-xs font-mono font-medium mb-1.5'
@@ -24,7 +33,7 @@ const kurz = (text: string, max = 70) => (text.length > max ? `${text.slice(0, m
 const LOKALE_LERNZIELE: LernzielOption[] = WORKSHEETS.map((w) => ({ ...lernzielFromWorksheet(w), key: `lokal-${w.id}`, kurztitel: w.title }))
 
 /** Eckdaten der letzten Generierung – bleiben stehen, auch wenn das Formular danach geaendert wird */
-type Generated = { thema: string; berufsbild: string; sprache: Sprache; lernziel: LernzielOption; total: number }
+type Generated = { nr: number; thema: string; berufsbild: string; sprache: Sprache; lernziel: LernzielOption; total: number }
 
 type Progress = { current: number; total: number; label: string }
 
@@ -85,7 +94,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
     if (!lernziel || running) return
 
     const variants = levels.flatMap((level) => formats.map((format) => ({ level, format })))
-    const snapshot: Generated = { thema: thema.trim(), berufsbild, sprache, lernziel, total: variants.length }
+    const snapshot: Generated = { nr: (generated?.nr ?? 0) + 1, thema: thema.trim(), berufsbild, sprache, lernziel, total: variants.length }
     const { key: _key, kurztitel: _kurztitel, ...request } = lernziel
     const trimmedErwartungen = erwartungen.trim()
 
@@ -299,7 +308,9 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
         </form>
       </section>
 
-      {generated && <GeneratedVariants generated={generated} results={results} progress={progress} error={error} />}
+      {generated && (
+        <GeneratedVariants key={generated.nr} generated={generated} results={results} progress={progress} error={error} erstelltVon={CURRENT_USER.name} />
+      )}
     </div>
   )
 }
@@ -311,13 +322,65 @@ type GeneratedVariantsProps = {
   results: ArbeitsblattResult[]
   progress: Progress | null
   error: GenerationError | null
+  /** Name der angemeldeten Person – steht als Ersteller im Verlauf */
+  erstelltVon: string
 }
 
-function GeneratedVariants({ generated, results, progress, error }: GeneratedVariantsProps) {
+const fehlerText = (caught: unknown) => (caught instanceof ApiError ? caught.message : 'Unbekannter Fehler beim Speichern.')
+
+function GeneratedVariants({ generated, results, progress, error, erstelltVon }: GeneratedVariantsProps) {
   const finished = progress === null
   const anyMocked = results.some((r) => r.meta.mocked)
   const stufen = [...new Set(results.map((r) => r.worksheet.stufe))]
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
+
+  // FE-02: Speicherstand je Variante (Index in `results`). Die Ref spiegelt den State,
+  // damit „Alle speichern" beim Durchlaufen immer den aktuellen Stand sieht.
+  const [speicher, setSpeicher] = useState<Record<number, SpeicherZustand>>({})
+  const speicherRef = useRef<Record<number, SpeicherZustand>>({})
+  // Varianten einer Generierung gehören zusammen: das erste gespeicherte Blatt ist das Eltern-Blatt
+  const elternIdRef = useRef<string | null>(null)
+  const [alleLaeuft, setAlleLaeuft] = useState(false)
+
+  function setZustand(index: number, zustand: SpeicherZustand) {
+    speicherRef.current = { ...speicherRef.current, [index]: zustand }
+    setSpeicher(speicherRef.current)
+  }
+
+  async function speichern(index: number): Promise<boolean> {
+    const aktuell = speicherRef.current[index]
+    if (aktuell?.art === 'gespeichert') return true
+    if (aktuell?.art === 'speichert') return false
+    const result = results[index]
+    setZustand(index, { art: 'speichert' })
+    try {
+      const blatt = await saveArbeitsblatt({
+        worksheet: result.worksheet,
+        meta: result.meta,
+        erstelltVon,
+        elternId: elternIdRef.current,
+        notiz: generated.thema ? `KI-Erstellung: ${generated.thema}` : 'KI-Erstellung',
+      })
+      elternIdRef.current ??= blatt.id
+      setZustand(index, { art: 'gespeichert', id: blatt.id })
+      return true
+    } catch (caught) {
+      setZustand(index, { art: 'fehler', text: fehlerText(caught) })
+      return false
+    }
+  }
+
+  async function alleSpeichern() {
+    setAlleLaeuft(true)
+    // Nacheinander, damit das erste Blatt Eltern-Blatt der übrigen wird
+    for (let index = 0; index < results.length; index += 1) {
+      await speichern(index)
+    }
+    setAlleLaeuft(false)
+  }
+
+  const anzahlGespeichert = results.filter((_, index) => speicher[index]?.art === 'gespeichert').length
+  const alleGespeichert = results.length > 0 && anzahlGespeichert === results.length
 
   let status: string
   if (!finished) status = `Variante ${progress.current} von ${progress.total} wird erstellt…`
@@ -330,8 +393,28 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
         <div className="text-sm font-semibold" style={{ color: '#1A5C32' }} role="status">
           {status}
         </div>
-        <div className="text-xs font-mono mt-0.5" style={{ color: '#2A7A4B' }}>
-          „{generated.thema || generated.lernziel.kurztitel}" · {generated.berufsbild} · {generated.sprache}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-xs font-mono mt-0.5" style={{ color: '#2A7A4B' }}>
+            „{generated.thema || generated.lernziel.kurztitel}" · {generated.berufsbild} · {generated.sprache}
+          </div>
+          {finished && results.length > 0 && (
+            <div className="flex items-center gap-2">
+              {anzahlGespeichert > 0 && !alleGespeichert && (
+                <span className="text-xs font-mono" style={{ color: '#2A7A4B' }}>
+                  {anzahlGespeichert} von {results.length} gespeichert
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => void alleSpeichern()}
+                disabled={alleGespeichert || alleLaeuft}
+                className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-70"
+                style={{ backgroundColor: '#1A5C32', color: '#FFFFFF' }}
+              >
+                {alleGespeichert ? '✓ Alle in der Bibliothek' : alleLaeuft ? 'Wird gespeichert…' : '💾 Alle zur Bibliothek hinzufügen'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -366,12 +449,15 @@ function GeneratedVariants({ generated, results, progress, error }: GeneratedVar
                 </span>
               </div>
               {results
-                .filter((result) => result.worksheet.stufe === stufe)
-                .map((result) => (
+                .map((result, index) => ({ result, index }))
+                .filter(({ result }) => result.worksheet.stufe === stufe)
+                .map(({ result, index }) => (
                   <GeneratedWorksheetCard
-                    key={`${result.worksheet.stufe}-${result.worksheet.format}`}
+                    key={index}
                     result={result}
                     onVorschau={() => setPreview({ level: result.worksheet.stufe, format: result.worksheet.format })}
+                    speicherZustand={speicher[index] ?? { art: 'offen' }}
+                    onSpeichern={finished ? () => void speichern(index) : undefined}
                   />
                 ))}
             </div>
