@@ -164,6 +164,10 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 
 | `GET /api/lehrplaene` | Importierte Lernziele der Lehrpläne (leer, solange `npm run import:lehrplaene` nicht gelaufen ist) |
 
+**Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
+anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
+Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
+
 Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
 Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
 Der Prompt selbst liegt lesbar in `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md`.
@@ -299,7 +303,8 @@ brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 –
 │   │   │       ├── health.js     GET /api/health
 │   │   │       ├── ai.js         GET /api/ai/status, POST /api/ai/generate
 │   │   │       ├── arbeitsblatt.js  POST /api/ai/arbeitsblatt, POST /api/ai/arbeitsblatt/docx
-│   │   │       └── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
+│   │   │       ├── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
+│   │   │       └── teilnehmende.js  /api/teilnehmende (Profile + Lernweg, BE-02)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
 │   │       ├── integration/      Supertest (+ echte MySQL für db.test.js)
@@ -466,7 +471,7 @@ docker compose down -v && docker compose up --build
 - [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
 - [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
-- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern
+- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API fertig (`/api/teilnehmende`, BE-02, 30.10.)**, Frontend-Anbindung (FE-12) offen
 - [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
