@@ -16,6 +16,7 @@ import { aiRouter } from './routes/ai.js'
 import { arbeitsblattRouter } from './routes/arbeitsblatt.js'
 import { createLehrplaeneRouter } from './routes/lehrplaene.js'
 import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
+import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 
 export function createApp() {
   const app = express()
@@ -49,6 +50,8 @@ export function createApp() {
   app.use('/api/lehrplaene', createLehrplaeneRouter())
   // Gespeicherte Arbeitsblaetter (MySQL) – ohne DB antworten die Routen mit 503
   app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
+  // Teilnehmende mit Lernweg (MySQL, BE-02) – ohne DB ebenfalls 503
+  app.use('/api/teilnehmende', createTeilnehmendeRouter())
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {
