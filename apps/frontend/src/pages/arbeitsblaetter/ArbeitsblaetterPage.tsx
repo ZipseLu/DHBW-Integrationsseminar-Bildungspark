@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { WORKSHEETS } from '@/data/worksheets'
 import { downloadGespeichertesDocx, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
 import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
 import { downloadWorksheetDocx } from '@/lib/docx'
-import { fehlertext, ladeGespeicherteArbeitsblaetter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
+import { fehlertext, loadSavedWorksheets, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { EMPTY_FILTER, ausbildungsbausteinOptions, bausteinOptions, filterWorksheets, type WorksheetFilter } from '@/lib/worksheetFilter'
 import type { SavedDocument, StaffUser, Worksheet } from '@/types'
 import { SavedDocumentsList } from './SavedDocumentsList'
@@ -22,26 +22,26 @@ type Props = {
 }
 
 /**
- * Woher die Liste kommt:
- *  - 'laden'    Anfrage an GET /api/arbeitsblaetter läuft
- *  - 'backend'  gespeicherte Blätter aus der Datenbank
- *  - 'beispiel' Backend oder Datenbank nicht erreichbar → Beispieldaten, mit Hinweis
+ * Where the list comes from:
+ *  - 'loading'   GET /api/arbeitsblaetter request is running
+ *  - 'backend'   saved worksheets from the database
+ *  - 'sample'    backend/database unreachable → sample data with notice
  */
-type Quelle = { art: 'laden' } | { art: 'backend' } | { art: 'beispiel'; grund: string }
+type Source = { art: 'loading' } | { art: 'backend' } | { art: 'sample'; grund: string }
 
 async function download(w: Worksheet) {
   try {
     if (w.backend) await downloadGespeichertesDocx({ id: w.backend.id, titel: w.title })
     else await downloadWorksheetDocx(w)
   } catch (error) {
-    console.error('Word-Export fehlgeschlagen', error)
-    window.alert('Die Word-Datei konnte nicht erstellt werden.')
+    console.error('Word export failed', error)
+    window.alert('The Word file could not be created.')
   }
 }
 
 export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favoriteIds, onFavoriteIdsChange }: Props) {
   const [worksheets, setWorksheets] = useState<Worksheet[]>([])
-  const [quelle, setQuelle] = useState<Quelle>({ art: 'laden' })
+  const [quelle, setQuelle] = useState<Source>({ art: 'loading' })
   const [ladeVersuch, setLadeVersuch] = useState(0)
   const [aktionsFehler, setAktionsFehler] = useState<string | null>(null)
   const [hinweis, setHinweis] = useState<string | null>(null)
@@ -51,10 +51,23 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
   const [transformSource, setTransformSource] = useState<TransformSource | null>(null)
 
+  /** True only on the first load, so the loading state does not hide the
+   *  already displayed list on every search/filter change. */
+  const firstLoad = useRef(true)
+
   useEffect(() => {
     let aktiv = true
-    setQuelle({ art: 'laden' })
-    ladeGespeicherteArbeitsblaetter()
+    // Search term and filters are passed as q + query parameters to the
+    // backend's online search (GET /api/arbeitsblaetter). On the first load a
+    // loading state is shown; on later changes the list stays visible until
+    // the new response arrives.
+    if (firstLoad.current) {
+      setQuelle({ art: 'loading' })
+      firstLoad.current = false
+    }
+    // Search term and filters are passed as q + query parameters to the
+    // backend's online search (GET /api/arbeitsblaetter).
+    loadSavedWorksheets(filter.search, filter)
       .then((blaetter) => {
         if (!aktiv) return
         setWorksheets(blaetter.map((b, i) => worksheetAusGespeichertem(b, i + 1)))
@@ -63,15 +76,19 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
       .catch((error: unknown) => {
         if (!aktiv) return
         setWorksheets([...WORKSHEETS])
-        setQuelle({ art: 'beispiel', grund: fehlertext(error) })
+        setQuelle({ art: 'sample', grund: fehlertext(error) })
       })
     return () => {
       aktiv = false
     }
-  }, [ladeVersuch])
+  }, [ladeVersuch, filter])
 
   const isFavorite = (w: Worksheet) => (w.backend ? w.backend.favorit : favoriteIds.includes(w.id))
 
+  // The filtered list. `q` and the other filters are already sent to the
+  // backend (online search); local re-filtering ensures the display is
+  // correct even when the backend is unreachable (then sample data are shown)
+  // or when the backend delivers raw data not yet narrowed down.
   const filtered = useMemo(() => filterWorksheets(worksheets, filter), [worksheets, filter])
   const visible = useMemo(
     () => (onlyFavorites ? filtered.filter((w) => (w.backend ? w.backend.favorit : favoriteIds.includes(w.id))) : filtered),
@@ -89,7 +106,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
       onFavoriteIdsChange(favoriteIds.includes(w.id) ? favoriteIds.filter((x) => x !== w.id) : [...favoriteIds, w.id])
       return
     }
-    // Sofort anzeigen, bei Fehler zurücksetzen
+    // Optimistic update, roll back on error
     const neu = !w.backend.favorit
     setAktionsFehler(null)
     setFavorit(w.id, neu)
@@ -106,7 +123,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
     setWorksheets((alle) => uebernehmeGespeichertes(alle, blatt))
     if (blatt.status === 'archiviert') {
       setDetail(null)
-      setHinweis(`„${blatt.titel}“ wurde archiviert. Der Verlauf bleibt in der Datenbank erhalten.`)
+      setHinweis(`"${blatt.titel}" wurde archiviert. Der Verlauf bleibt in der Datenbank erhalten.`)
       return
     }
     setHinweis(null)
@@ -127,7 +144,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
         resultCount={visible.length}
       />
 
-      {quelle.art === 'beispiel' && (
+      {quelle.art === 'sample' && (
         <div
           role="alert"
           className="rounded-lg px-4 py-3 text-sm flex items-start gap-3"
@@ -163,14 +180,14 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
         </div>
       )}
 
-      <div className="flex flex-col gap-2" aria-busy={quelle.art === 'laden'}>
-        {quelle.art === 'laden' && (
+      <div className="flex flex-col gap-2" aria-busy={quelle.art === 'loading'}>
+        {quelle.art === 'loading' && (
           <div role="status" className="py-10 text-center text-sm rounded-lg" style={leerStil}>
             Arbeitsblätter werden geladen …
           </div>
         )}
 
-        {quelle.art !== 'laden' &&
+        {quelle.art !== 'loading' &&
           visible.map((w) => (
             <WorksheetCard
               key={w.backend?.id ?? w.id}
@@ -193,7 +210,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
           </div>
         )}
 
-        {quelle.art !== 'laden' && worksheets.length > 0 && visible.length === 0 && (
+        {quelle.art !== 'loading' && worksheets.length > 0 && visible.length === 0 && (
           <div className="py-10 text-center text-sm rounded-lg" style={leerStil}>
             Keine Arbeitsblätter gefunden.
           </div>

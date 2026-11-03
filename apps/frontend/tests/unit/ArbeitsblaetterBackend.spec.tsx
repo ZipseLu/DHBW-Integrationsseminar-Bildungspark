@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_USER } from '@/data/users'
 import type { GespeichertesArbeitsblatt } from '@/lib/api'
-import { historyAusVerlauf, ladeGespeicherteArbeitsblaetter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
+import { historyAusVerlauf, loadSavedWorksheets, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 
 /**
@@ -173,14 +173,14 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
       .mockResolvedValueOnce(json(seite([blatt()], 1, 2)))
       .mockResolvedValueOnce(json(seite([blatt({ id: '33333333-3333-4333-8333-333333333333' })], 2, 2)))
     vi.stubGlobal('fetch', fetchMock)
-    const alle = await ladeGespeicherteArbeitsblaetter()
+    const alle = await loadSavedWorksheets()
     expect(alle).toHaveLength(2)
     expect(String(fetchMock.mock.calls[1][0])).toContain('seite=2')
   })
 
   it('meldet eine unerwartete Antwort als Fehler', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ anzahl: 0 })))
-    await expect(ladeGespeicherteArbeitsblaetter()).rejects.toThrow('unerwartete Antwort')
+    await expect(loadSavedWorksheets()).rejects.toThrow('unexpected response')
   })
 
   it('übernimmt Autor, Aktion und Notiz in den Verlauf', () => {
