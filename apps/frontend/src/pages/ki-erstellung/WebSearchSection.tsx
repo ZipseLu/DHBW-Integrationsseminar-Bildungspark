@@ -102,7 +102,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
             </button>
 
             {!open && selectedUrl && (
-              <div className="rounded px-3 py-2 text-xs font-mono" style={{ backgroundColor: '#EBF0F8', color: 'var(--primary)' }}>
+              <div className="rounded px-3 py-2 text-xs font-mono" style={{ backgroundColor: 'var(--tint-info)', color: 'var(--primary-text)' }}>
                 ✓ 1 Dokument ausgewählt – Anpassungsoptionen eingeklappt
               </div>
             )}
@@ -112,9 +112,9 @@ export function WebSearchSection({ thema }: { thema: string }) {
                 const isSelected = selectedUrl === r.url
                 return (
                   <div key={r.url} className="rounded-lg overflow-hidden" style={{ border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border)' }}>
-                    <div className="flex items-start gap-3 px-3 py-3" style={{ backgroundColor: isSelected ? '#EBF0F8' : 'var(--card)' }}>
+                    <div className="flex items-start gap-3 px-3 py-3" style={{ backgroundColor: isSelected ? 'var(--tint-info)' : 'var(--card)' }}>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold mb-0.5 leading-snug" style={{ color: 'var(--primary)' }}>
+                        <div className="text-xs font-semibold mb-0.5 leading-snug" style={{ color: 'var(--primary-text)' }}>
                           {r.title}
                         </div>
                         <a
@@ -122,7 +122,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs mb-1.5 flex items-center gap-1 hover:opacity-70 w-fit max-w-full"
-                          style={{ color: '#2A7A4B', textDecoration: 'none' }}
+                          style={{ color: 'var(--success)', textDecoration: 'none' }}
                         >
                           <span aria-hidden="true">🔗</span>
                           <span className="underline underline-offset-2 truncate">{r.url}</span>
@@ -151,12 +151,12 @@ export function WebSearchSection({ thema }: { thema: string }) {
 
                     {isSelected && (
                       <div className="px-3 pb-4 pt-3 flex flex-col gap-3" style={{ backgroundColor: '#F4F7FC', borderTop: '1px solid var(--border)' }}>
-                        <div className="text-xs font-mono font-medium" style={{ color: 'var(--primary)' }}>
+                        <div className="text-xs font-mono font-medium" style={{ color: 'var(--primary-text)' }}>
                           ✦ Dieses Dokument anpassen
                         </div>
                         <div>
                           <div className="text-xs font-mono mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                            ZIELNIVEAUS <span className="opacity-60">(mehrere möglich)</span>
+                            ZIELNIVEAUS <span className="font-normal">(mehrere möglich)</span>
                           </div>
                           <LevelPicker
                             size="compact"
@@ -187,7 +187,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
                           <GenerateButton running={adapt.running} count={levels.length * formats.length} onClick={() => adapt.start()} />
                         ) : (
                           <div className="flex flex-col gap-2">
-                            <div className="text-xs font-mono font-medium" style={{ color: '#1A5C32' }} role="status">
+                            <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
                               ✓ Alle Varianten bereit
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">

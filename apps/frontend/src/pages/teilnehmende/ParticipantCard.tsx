@@ -48,12 +48,12 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
           )}
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5" aria-label="Lernweg">
+        <div className="hidden lg:flex items-center gap-1.5" role="group" aria-label="Lernweg">
           {p.berufsbilder.map((b, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <StationChip station={b} />
               {i < p.berufsbilder.length - 1 && (
-                <span className="text-xs" style={{ color: 'var(--border)' }} aria-hidden="true">
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }} aria-hidden="true">
                   →
                 </span>
               )}
@@ -126,16 +126,16 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
               type="button"
               onClick={onEdit}
               className="text-xs px-3 py-2 rounded font-medium ml-auto hover:opacity-80 transition-opacity"
-              style={{ border: '1px solid var(--primary)', color: 'var(--primary)' }}
+              style={{ border: '1px solid var(--primary-text)', color: 'var(--primary-text)' }}
             >
               ✎ Bearbeiten
             </button>
             {confirmDelete ? (
               <>
-                <span className="text-xs" style={{ color: '#E53E3E' }}>
+                <span className="text-xs" style={{ color: 'var(--danger)' }}>
                   Wirklich löschen?
                 </span>
-                <button type="button" onClick={onDelete} className="text-xs px-3 py-2 rounded font-medium" style={{ backgroundColor: '#E53E3E', color: 'white' }}>
+                <button type="button" onClick={onDelete} className="text-xs px-3 py-2 rounded font-medium" style={{ backgroundColor: '#C53030', color: 'white' }}>
                   Ja, löschen
                 </button>
                 <button type="button" onClick={() => setConfirmDelete(false)} className="text-xs px-3 py-2 rounded" style={{ border: '1px solid var(--border)' }}>
@@ -147,7 +147,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
                 type="button"
                 onClick={() => setConfirmDelete(true)}
                 className="text-xs px-3 py-2 rounded font-medium hover:opacity-80 transition-opacity"
-                style={{ border: '1px solid #E53E3E', color: '#E53E3E' }}
+                style={{ border: '1px solid var(--danger)', color: 'var(--danger)' }}
               >
                 ✕ Löschen
               </button>
@@ -173,7 +173,7 @@ function StationChip({ station: b }: { station: BerufStation }) {
     <div
       className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono"
       title={`${b.berufsbild} · ${b.status}`}
-      style={{ backgroundColor: bg, color, opacity: b.status === 'ausstehend' ? 0.6 : 1 }}
+      style={{ backgroundColor: bg, color, border: b.status === 'ausstehend' ? '1px dashed var(--border)' : '1px solid transparent' }}
     >
       <span className={b.status === 'aktiv' ? 'inline-block animate-pulse' : undefined}>{icon}</span>
       <span>{shortName(b.berufsbild)}</span>
@@ -222,11 +222,18 @@ function ActiveWorksheets({ station, collapsed, onToggle }: { station: BerufStat
               <li
                 key={w.id}
                 className="flex items-center gap-2.5 py-1.5 px-2.5 rounded"
-                style={{ backgroundColor: isDone ? '#F0FBF4' : isCurrent ? s.bg : 'transparent', opacity: !isDone && !isCurrent ? 0.5 : 1 }}
+                style={{
+                  backgroundColor: isDone ? 'var(--tint-success)' : isCurrent ? 'var(--card)' : 'transparent',
+                  border: isCurrent ? `1px solid ${s.text}` : '1px solid transparent',
+                }}
               >
                 <div
                   className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-bold"
-                  style={{ backgroundColor: isDone ? DONE_STRONG : isCurrent ? s.text : 'var(--border)', color: 'white', fontSize: 9 }}
+                  style={
+                    isDone || isCurrent
+                      ? { backgroundColor: isDone ? DONE_STRONG : s.text, color: 'white', fontSize: 9 }
+                      : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)', border: '1px solid var(--border)', fontSize: 9 }
+                  }
                 >
                   {isDone ? '✓' : i + 1}
                 </div>
@@ -237,13 +244,13 @@ function ActiveWorksheets({ station, collapsed, onToggle }: { station: BerufStat
                   </span>
                 </div>
                 {isDone && (
-                  <span className="flex-shrink-0 text-xs font-mono" style={{ color: DONE_STRONG }}>
+                  <span className="flex-shrink-0 text-xs font-mono" style={{ color: 'var(--success)' }}>
                     ✓ erledigt
                   </span>
                 )}
                 {isCurrent && (
-                  <span className="flex-shrink-0 text-xs font-mono animate-pulse" style={{ color: s.text }}>
-                    ● aktuell
+                  <span className="flex-shrink-0 text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }}>
+                    <span className="inline-block animate-pulse" aria-hidden="true">●</span> aktuell
                   </span>
                 )}
               </li>
@@ -275,8 +282,9 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
         <div
           className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold"
           style={{
-            backgroundColor: b.status === 'abgeschlossen' ? DONE_STRONG : b.status === 'aktiv' ? ls.text : 'var(--border)',
+            backgroundColor: b.status === 'abgeschlossen' ? DONE_STRONG : b.status === 'aktiv' ? ls.text : 'var(--muted)',
             color: b.status === 'ausstehend' ? 'var(--muted-foreground)' : 'white',
+            border: b.status === 'ausstehend' ? '1px solid var(--border)' : 'none',
           }}
         >
           {b.status === 'abgeschlossen' ? '✓' : index + 1}
@@ -287,9 +295,8 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
       <div
         className="flex-1 rounded-lg p-3"
         style={{
-          border: `1px solid ${b.status === 'aktiv' ? ls.text : 'var(--border)'}`,
-          backgroundColor: b.status === 'aktiv' ? ls.bg : 'var(--card)',
-          opacity: b.status === 'ausstehend' ? 0.6 : 1,
+          border: b.status === 'aktiv' ? `1.5px solid ${ls.text}` : b.status === 'ausstehend' ? '1px dashed var(--border)' : '1px solid var(--border)',
+          backgroundColor: 'var(--card)',
         }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -306,7 +313,7 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
                 title={`${ls.label} · ${opt.label}`}
               >
                 <span style={{ fontWeight: 700 }}>Persona {PERSONA_MAP[b.level][b.format]}</span>
-                <span style={{ opacity: 0.75 }}>
+                <span>
                   · {opt.icon} {opt.label}
                 </span>
               </span>
@@ -330,7 +337,7 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
                 aria-expanded={open}
                 onClick={() => setOpen((o) => !o)}
                 className="mt-2 text-xs font-mono flex items-center gap-1 hover:opacity-70 transition-opacity"
-                style={{ color: 'var(--primary)' }}
+                style={{ color: 'var(--primary-text)' }}
               >
                 <span aria-hidden="true" style={{ transform: open ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>
                   ▶
@@ -346,9 +353,9 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
                     <li
                       key={w.id}
                       className="flex items-center gap-2 py-1 px-2 rounded text-xs"
-                      style={{ backgroundColor: isDone ? '#F0FBF4' : 'var(--muted)', opacity: isDone ? 1 : 0.6 }}
+                      style={{ backgroundColor: isDone ? 'var(--tint-success)' : 'var(--muted)' }}
                     >
-                      <span style={{ color: isDone ? DONE_STRONG : ls.text, fontWeight: 700 }}>{isDone ? '✓' : i + 1}</span>
+                      <span style={{ color: isDone ? 'var(--success)' : 'var(--muted-foreground)', fontWeight: 700 }}>{isDone ? '✓' : i + 1}</span>
                       <span className="flex-1 truncate">{w.title}</span>
                       <span className="font-mono" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
                         BS {w.baustein}

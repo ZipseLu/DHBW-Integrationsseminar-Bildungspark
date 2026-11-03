@@ -1,5 +1,6 @@
-import { BERUFSBILD_LAGER } from '@/data/constants'
+import { BERUFSBILD_LAGER, LEVELS, LEVEL_STYLES } from '@/data/constants'
 import type { AppSettings } from '@/types'
+import { AA_TEXT, mitKontrast } from '@/lib/kontrast'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   darkMode: false,
@@ -28,6 +29,8 @@ const LIGHT = {
   '--muted': '#ebe5d6',
   '--muted-foreground': '#6b6354',
   '--border': '#d5cebb',
+  '--tint-success': '#F0FBF4',
+  '--tint-info': '#EBF0F8',
 }
 
 const DARK = {
@@ -36,18 +39,56 @@ const DARK = {
   '--card': '#242019',
   '--card-foreground': '#F5F1E8',
   '--muted': '#2C2820',
-  '--muted-foreground': '#9B9283',
+  '--muted-foreground': '#A69D8D',
   '--border': '#3A352C',
+  '--tint-success': '#1E3326',
+  '--tint-info': '#1B2633',
 }
+
+/** Heller Text auf Akzent- und Primärflächen (Buttons, Sidebar) */
+const TEXT_AUF_FARBE = ['#FDFAF3', '#FFFFFF']
+const DANGER = '#E53E3E'
+const SUCCESS = '#2A7A4B'
+
+/**
+ * Alle Theme-Variablen für die gewählten Einstellungen (FE-15).
+ *
+ * - `--accent` / `--primary`: Flächenfarben, bei Bedarf abgedunkelt, damit
+ *   heller Text darauf 4,5 : 1 erreicht.
+ * - `--accent-text` / `--primary-text` / `--danger` / `--success`: Textfarben,
+ *   die auf Hintergrund, Karte und Muted-Flächen 4,5 : 1 erreichen – im
+ *   Dunkelmodus aufgehellt statt abgedunkelt.
+ * - `--ring`: Fokusrahmen in der lesbaren Primärfarbe.
+ */
+export function themeFarben(settings: AppSettings): Record<string, string> {
+  const basis = settings.darkMode ? DARK : LIGHT
+  const flaechen = [basis['--background'], basis['--card'], basis['--muted'], basis['--tint-success'], basis['--tint-info']]
+  const richtung = settings.darkMode ? 'heller' : 'dunkler'
+  const textFarbe = (farbe: string) => mitKontrast(farbe, flaechen, AA_TEXT, richtung)
+  const primaryText = textFarbe(settings.primaryColor)
+  return {
+    ...basis,
+    '--accent': mitKontrast(settings.accentColor, TEXT_AUF_FARBE),
+    '--primary': mitKontrast(settings.primaryColor, TEXT_AUF_FARBE),
+    '--accent-text': textFarbe(settings.accentColor),
+    '--primary-text': primaryText,
+    '--danger': textFarbe(DANGER),
+    '--success': textFarbe(SUCCESS),
+    '--ring': primaryText,
+    // Stufenfarben als Text auf Seitenflächen, z. B. var(--stufe-T-text)
+    ...Object.fromEntries(LEVELS.map((level) => [`--stufe-${level}-text`, textFarbe(LEVEL_STYLES[level].text)])),
+  }
+}
+
+/** Textfarbe einer Niveaustufe auf Seiten- und Kartenflächen (hell und dunkel lesbar) */
+export const stufeTextVar = (level: string) => `var(--stufe-${level}-text)`
 
 /** Setzt Farben und Hell/Dunkel als CSS-Variablen auf <html> */
 export function applyTheme(settings: AppSettings, root: HTMLElement = document.documentElement): void {
-  root.style.setProperty('--accent', settings.accentColor)
-  root.style.setProperty('--primary', settings.primaryColor)
-  root.style.setProperty('--ring', settings.primaryColor)
-  for (const [name, value] of Object.entries(settings.darkMode ? DARK : LIGHT)) {
+  for (const [name, value] of Object.entries(themeFarben(settings))) {
     root.style.setProperty(name, value)
   }
+  root.style.colorScheme = settings.darkMode ? 'dark' : 'light'
 }
 
 const STORAGE_KEY = 'bildungspark.einstellungen'

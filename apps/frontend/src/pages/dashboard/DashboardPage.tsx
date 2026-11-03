@@ -136,7 +136,7 @@ export function DashboardPage({ participants, onNavigate }: Props) {
               Aufgeteilt nach Niveaustufe und Barrierefreiheitsbedarf · § 60 SGB IX
             </div>
           </div>
-          <button type="button" onClick={() => onNavigate('teilnehmer')} className="text-xs font-medium hover:opacity-70" style={{ color: 'var(--accent)' }}>
+          <button type="button" onClick={() => onNavigate('teilnehmer')} className="text-xs font-medium hover:opacity-70" style={{ color: 'var(--accent-text)' }}>
             Alle Teilnehmenden →
           </button>
         </div>
@@ -162,11 +162,11 @@ export function DashboardPage({ participants, onNavigate }: Props) {
                     >
                       {level}
                     </span>
-                    <span className="text-sm font-semibold" style={{ color: s.text }}>
+                    <span className="text-sm font-semibold" style={{ color: isOpen ? s.text : 'var(--foreground)' }}>
                       {s.label}
                     </span>
                   </div>
-                  <p className="text-xs leading-snug flex-1" style={{ color: 'var(--muted-foreground)' }}>
+                  <p className="text-xs leading-snug flex-1" style={{ color: isOpen ? s.text : 'var(--muted-foreground)' }}>
                     {s.beschreibung}
                   </p>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -176,7 +176,7 @@ export function DashboardPage({ participants, onNavigate }: Props) {
                     <span
                       className="text-xs font-mono"
                       aria-hidden="true"
-                      style={{ color: s.text, display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+                      style={{ color: isOpen ? s.text : 'var(--foreground)', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
                     >
                       ▾
                     </span>
@@ -200,11 +200,11 @@ export function DashboardPage({ participants, onNavigate }: Props) {
                             <div className="min-w-0">
                               <div className="text-xs font-semibold">Persona {letter}</div>
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                <span className="text-xs font-mono font-bold" style={{ color: s.text }}>
+                                <span className="text-xs font-mono font-bold">
                                   {level} – {s.label}
                                 </span>
-                                <span style={{ color: 'var(--border)' }}>·</span>
-                                <span className="text-xs font-mono" style={{ color: fc.color }}>
+                                <span style={{ color: 'var(--muted-foreground)' }} aria-hidden="true">·</span>
+                                <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
                                   {fmt.icon} {fmt.label}
                                 </span>
                               </div>
@@ -232,7 +232,7 @@ export function DashboardPage({ participants, onNavigate }: Props) {
       <section className="rounded-lg" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} aria-label="Zuletzt bearbeitet">
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="font-display text-lg font-semibold">Zuletzt bearbeitet</h2>
-          <button type="button" className="text-xs font-medium hover:opacity-70" style={{ color: 'var(--accent)' }} onClick={() => onNavigate('arbeitsblaetter')}>
+          <button type="button" className="text-xs font-medium hover:opacity-70" style={{ color: 'var(--accent-text)' }} onClick={() => onNavigate('arbeitsblaetter')}>
             Alle anzeigen →
           </button>
         </div>

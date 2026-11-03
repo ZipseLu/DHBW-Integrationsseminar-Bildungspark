@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { LEVEL_STYLES, formatOption } from '@/data/constants'
+import { stufeTextVar } from '@/lib/settings'
+import { formatOption } from '@/data/constants'
 import { variantenLabel } from '@/lib/selection'
 import type { Format, Level } from '@/types'
 
@@ -21,7 +22,7 @@ export function VariantSummary({ levels, formats, extras, children }: Props) {
       <div>
         KI erstellt <strong style={{ color: 'var(--foreground)' }}>{variantenLabel(levels.length * formats.length)}</strong>:{' '}
         {levels.map((l) => (
-          <span key={l} className="font-bold" style={{ color: LEVEL_STYLES[l].text }}>
+          <span key={l} className="font-bold" style={{ color: stufeTextVar(l) }}>
             {l}{' '}
           </span>
         ))}

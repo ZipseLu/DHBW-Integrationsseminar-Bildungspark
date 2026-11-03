@@ -35,7 +35,7 @@ export function TransformPanel({ source, onClose }: Props) {
     <SlideOver label={`KI-Anpassung ${source.title}`} width={480} onClose={onClose}>
       <div className="px-6 py-5 flex items-start justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <div className="text-xs font-mono mb-1" style={{ color: 'var(--accent)' }}>
+          <div className="text-xs font-mono mb-1" style={{ color: 'var(--accent-text)' }}>
             ✦ KI-Anpassung
           </div>
           <h2 className="font-display text-lg font-semibold leading-snug" style={{ maxWidth: 360 }}>
@@ -109,7 +109,7 @@ export function TransformPanel({ source, onClose }: Props) {
 
         {task.done && (
           <div className="flex flex-col gap-3">
-            <div className="text-xs font-mono font-semibold" style={{ color: '#1A5C32' }} role="status">
+            <div className="text-xs font-mono font-semibold" style={{ color: 'var(--success)' }} role="status">
               ✓ {variantenLabel(count)} bereit
             </div>
             <div className="flex flex-col gap-2">
@@ -125,7 +125,7 @@ export function TransformPanel({ source, onClose }: Props) {
                         <span className="text-xs font-medium" style={{ color: s.text }}>
                           {opt.icon} {opt.label}
                         </span>
-                        <span className="ml-auto text-xs font-mono" style={{ color: s.text, opacity: 0.7 }}>
+                        <span className="ml-auto text-xs font-mono" style={{ color: s.text }}>
                           {sprache}
                         </span>
                       </div>

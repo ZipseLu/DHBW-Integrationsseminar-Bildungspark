@@ -14,7 +14,7 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
 
   return (
     <aside
-      className={`${compact ? 'w-16' : 'w-60'} flex-shrink-0 flex flex-col transition-all`}
+      className={`${compact ? 'w-16' : 'w-60'} flex-shrink-0 flex flex-col fokus-hell transition-[width]`}
       style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
     >
       <div className={compact ? 'px-2 pt-8 pb-6 text-center' : 'px-6 pt-8 pb-6'} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -24,7 +24,7 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
           </div>
         ) : (
           <>
-            <div className="text-xs font-mono tracking-widest uppercase opacity-60 mb-1">Bildungspark</div>
+            <div className="text-xs font-mono tracking-widest uppercase opacity-80 mb-1">Bildungspark</div>
             <div className="font-display text-xl font-semibold leading-tight">Arbeitsblatt&shy;verwaltung</div>
           </>
         )}
@@ -41,14 +41,14 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
               aria-current={isActive ? 'page' : undefined}
               aria-label={compact ? item.label : undefined}
               title={compact ? item.label : undefined}
-              className={`flex items-center ${compact ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded text-sm text-left w-full transition-all`}
+              className={`flex items-center ${compact ? 'justify-center' : 'gap-3'} px-3 py-2.5 rounded text-sm text-left w-full transition-colors`}
               style={{
                 backgroundColor: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+                color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.82)',
                 fontWeight: isActive ? 500 : 400,
               }}
             >
-              <span className="text-base w-5 text-center opacity-80" aria-hidden="true">
+              <span className="text-base w-5 text-center" aria-hidden="true">
                 {item.icon}
               </span>
               {!compact && item.label}
@@ -69,7 +69,7 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
           {!compact && (
             <div className="min-w-0">
               <div className="text-sm font-medium text-white truncate">{user.name}</div>
-              <div className="text-xs opacity-50">{ROLE_LABELS[user.role]}</div>
+              <div className="text-xs opacity-80">{ROLE_LABELS[user.role]}</div>
             </div>
           )}
         </div>

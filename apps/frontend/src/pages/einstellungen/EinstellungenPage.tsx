@@ -153,7 +153,7 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
             Einstellungen speichern
           </button>
           {saved && (
-            <span className="text-sm font-mono" style={{ color: '#2A7A4B' }} role="status">
+            <span className="text-sm font-mono" style={{ color: 'var(--success)' }} role="status">
               ✓ Gespeichert
             </span>
           )}
@@ -180,7 +180,12 @@ function ColorChoice({ label, colors, value, onChange }: { label: string; colors
             aria-pressed={value.toLowerCase() === color.toLowerCase()}
             onClick={() => onChange(color)}
             className="w-8 h-8 rounded-full transition-transform hover:scale-110"
-            style={{ backgroundColor: color, outline: value.toLowerCase() === color.toLowerCase() ? `3px solid ${color}` : 'none', outlineOffset: 2 }}
+            style={{
+              backgroundColor: color,
+              // Auswahl als Ring per box-shadow, damit der Tastatur-Fokusrahmen (outline) sichtbar bleibt
+              boxShadow: value.toLowerCase() === color.toLowerCase() ? `0 0 0 2px var(--card), 0 0 0 5px ${color}` : 'none',
+              outlineOffset: 7,
+            }}
           />
         ))}
         <label className="flex items-center gap-2">
@@ -222,7 +227,7 @@ function AccountSection({ user }: { user: StaffUser }) {
     setSuccess(true)
   }
 
-  const fieldStyle = { ...inputStyle, border: `1px solid ${error ? '#E53E3E' : 'var(--border)'}` }
+  const fieldStyle = { ...inputStyle, border: `1px solid ${error ? 'var(--danger)' : 'var(--border)'}` }
   const clear = () => {
     setError('')
     setSuccess(false)

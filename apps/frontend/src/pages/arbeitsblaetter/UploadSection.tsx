@@ -107,7 +107,7 @@ export function UploadSection({ savedBy, onSave }: Props) {
   return (
     <section className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}>
       <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span style={{ color: 'var(--accent)' }} aria-hidden="true">
+        <span style={{ color: 'var(--accent-text)' }} aria-hidden="true">
           ↑
         </span>
         <h2 className="font-display text-base font-semibold">Vorhandenes Arbeitsblatt hochladen & anpassen</h2>
@@ -147,7 +147,7 @@ export function UploadSection({ savedBy, onSave }: Props) {
         )}
 
         {error && (
-          <div role="alert" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FEF2F2', color: '#E53E3E', border: '1px solid #FECACA' }}>
+          <div role="alert" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FEF2F2', color: '#A61B1B', border: '1px solid #FECACA' }}>
             {error}
           </div>
         )}
@@ -209,7 +209,7 @@ export function UploadSection({ savedBy, onSave }: Props) {
                     <span className="text-base" aria-hidden="true">
                       💾
                     </span>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--primary)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--primary-text)' }}>
                       Direkt speichern
                     </span>
                   </div>
@@ -227,7 +227,7 @@ export function UploadSection({ savedBy, onSave }: Props) {
                     <span className="text-base" aria-hidden="true">
                       ✦
                     </span>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--accent-text)' }}>
                       KI anpassen
                     </span>
                   </div>
@@ -265,7 +265,7 @@ export function UploadSection({ savedBy, onSave }: Props) {
 
             {transform.done && (
               <div className="flex flex-col gap-3">
-                <div className="text-xs font-mono font-medium" style={{ color: '#1A5C32' }} role="status">
+                <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
                   ✓ Alle Varianten bereit
                 </div>
                 <div className="grid grid-cols-2 gap-2">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { stufeTextVar } from '@/lib/settings'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
 import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
@@ -133,7 +134,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
     <div className="flex flex-col gap-6">
       <section className="rounded-lg p-6" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 mb-5">
-          <span className="text-lg" style={{ color: 'var(--accent)' }} aria-hidden="true">
+          <span className="text-lg" style={{ color: 'var(--accent-text)' }} aria-hidden="true">
             ✦
           </span>
           <h2 className="font-display text-xl font-semibold">Neues Arbeitsblatt mit KI erstellen</h2>
@@ -185,7 +186,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           {lernziel ? (
             <div className="text-xs -mt-2" style={{ color: 'var(--muted-foreground)' }}>
               Lehrplan: {lernziel.ausbildungsbaustein} · Lernziel: {lernziel.titel}
-              <span className="opacity-70">
+              <span>
                 {' '}
                 · Quelle: {katalogQuelle === 'import' ? `${katalog.length} importierte Lernziele` : `${katalog.length} Beispiel-Lernziele (Import mit npm run import:lehrplaene)`}
               </span>
@@ -198,7 +199,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
 
           <div>
             <label htmlFor="ki-thema" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-              THEMA / TITEL <span className="opacity-60">(optional)</span>
+              THEMA / TITEL <span className="font-normal">(optional)</span>
             </label>
             <input
               id="ki-thema"
@@ -213,7 +214,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
 
           <div>
             <label htmlFor="ki-erwartungen" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-              ERWARTUNGEN AN DAS ARBEITSBLATT <span className="opacity-60">(optional)</span>
+              ERWARTUNGEN AN DAS ARBEITSBLATT <span className="font-normal">(optional)</span>
             </label>
             <textarea
               id="ki-erwartungen"
@@ -234,7 +235,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-                NIVEAUSTUFEN <span className="opacity-60">(mehrere möglich)</span>
+                NIVEAUSTUFEN <span className="font-normal">(mehrere möglich)</span>
               </div>
               <LevelPicker size="compact" selected={levels} onToggle={(l) => setLevels((prev) => toggleKeepOne(prev, l))} />
             </div>
@@ -248,7 +249,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
 
           <div>
             <div className={`${labelClass} mb-2`} style={{ color: 'var(--muted-foreground)' }}>
-              BARRIEREFREIHEITS-FORMATE <span className="opacity-60">(mehrere möglich)</span>
+              BARRIEREFREIHEITS-FORMATE <span className="font-normal">(mehrere möglich)</span>
             </div>
             <FormatPicker selected={formats} onToggle={(f) => setFormats((prev) => toggleKeepOne(prev, f))} />
           </div>
@@ -441,10 +442,10 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon }:
           return (
             <div key={stufe} className="flex flex-col gap-3">
               <div className="flex items-baseline gap-2 pb-1" style={{ borderBottom: `1.5px solid ${s.text}` }}>
-                <span className="text-sm font-mono font-bold" style={{ color: s.text }}>
+                <span className="text-sm font-mono font-bold" style={{ color: stufeTextVar(stufe) }}>
                   {stufe}
                 </span>
-                <span className="text-xs font-medium" style={{ color: s.text }}>
+                <span className="text-xs font-medium" style={{ color: stufeTextVar(stufe) }}>
                   {s.label}
                 </span>
               </div>
@@ -479,7 +480,7 @@ function VariantPreview({ generated, target, onClose }: { generated: Generated; 
     <SlideOver label={`Vorschau ${generated.thema || 'Neues Arbeitsblatt'}`} width={480} onClose={onClose}>
       <div className="px-6 py-5 flex items-start justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <div className="text-xs font-mono mb-1" style={{ color: s.text }}>
+          <div className="text-xs font-mono mb-1" style={{ color: stufeTextVar(target.level) }}>
             {target.level} · {s.label} · {opt.icon} {opt.label}
           </div>
           <h2 className="font-display text-lg font-semibold leading-snug">{generated.thema || 'Neues Arbeitsblatt'}</h2>
