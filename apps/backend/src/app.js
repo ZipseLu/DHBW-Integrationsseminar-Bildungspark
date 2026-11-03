@@ -19,6 +19,7 @@ import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
 import { createAuthRouter } from './routes/auth.js'
+import { createZuordnungenRouter } from './routes/zuordnungen.js'
 import { authentifiziere } from './auth/anmeldung.js'
 
 export function createApp() {
@@ -60,6 +61,9 @@ export function createApp() {
   app.use('/api/lehrplaene', createLehrplaeneRouter())
   // Gespeicherte Arbeitsblaetter (MySQL) – ohne DB antworten die Routen mit 503
   app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
+  // Zuordnungen und Lernstand (BE-04) vor den Profilen: /lernstand und /:kennung/zuordnungen…,
+  // alles andere unter /api/teilnehmende geht an den Teilnehmenden-Router weiter
+  app.use('/api/teilnehmende', createZuordnungenRouter())
   // Teilnehmende mit Lernweg (MySQL, BE-02) – ohne DB ebenfalls 503
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
   // Staff accounts (table users, BE-03) – admins only as soon as a token is sent (BE-01)

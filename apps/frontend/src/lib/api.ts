@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver'
-import type { Format, Level, Sprache, StaffRole, Worksheet } from '@/types'
+import type { Format, Level, Sprache, StaffRole, StationStatus, Worksheet } from '@/types'
 
 /**
  * Zugriff auf das Backend (Express, Port 3000).
@@ -431,4 +431,93 @@ export async function fetchAktuellesKonto(): Promise<Konto> {
 /** Abmelden: Token verwerfen – das Backend führt keine Sitzung */
 export function logout(): void {
   setAuthToken(null)
+}
+
+// --- Zuordnungen und Lernstand: /api/teilnehmende/:kennung/… (BE-04) ----------
+
+export type ZuordnungStatus = 'offen' | 'erledigt'
+
+/** Ein Arbeitsblatt, das einer/einem Teilnehmenden zugeordnet ist – mit den Eckdaten des Blatts */
+export type Zuordnung = {
+  id: string
+  kennung: string
+  status: ZuordnungStatus
+  zugeordnetAm: string
+  erledigtAm: string | null
+  /** Name aus der Anmeldung (BE-01), sonst null */
+  zugeordnetVon: string | null
+  arbeitsblatt: Pick<
+    GespeichertesArbeitsblatt,
+    'id' | 'titel' | 'berufsfeld' | 'baustein' | 'ausbildungsbaustein' | 'lernziel' | 'stufe' | 'format' | 'sprache' | 'status'
+  >
+}
+
+export type LernstandAnzahl = { erledigt: number; offen: number; gesamt: number }
+
+/** Lernstand in einem Berufsfeld; Reihenfolge der Liste = Reihenfolge des Lernwegs */
+export type LernstandBerufsfeld = {
+  berufsfeld: string
+  /** Station im Lernweg; null, wenn Blätter aus einem Berufsfeld außerhalb des Lernwegs zugeordnet sind */
+  station: { position: number; status: StationStatus; stufe: Level; format: Format } | null
+  /** erledigt / gesamt in Prozent (0, wenn nichts zugeordnet ist) */
+  fortschritt: number
+  anzahl: LernstandAnzahl
+  /** am längsten offene Zuordnung */
+  alsNaechstes: Zuordnung | null
+  /** älteste Zuordnung zuerst */
+  offen: Zuordnung[]
+  /** zuletzt erledigte zuerst */
+  erledigt: Zuordnung[]
+}
+
+export type Lernstand = {
+  kennung: string
+  anzahl: LernstandAnzahl
+  /** nächstes Blatt der aktiven Station, sonst das nächste offene entlang des Lernwegs */
+  alsNaechstes: Zuordnung | null
+  berufsfelder: LernstandBerufsfeld[]
+}
+
+const teilnehmerPfad = (kennung: string) => `/api/teilnehmende/${encodeURIComponent(kennung)}`
+
+/** GET /api/teilnehmende/:kennung/zuordnungen – älteste zuerst, optional nur offene oder erledigte */
+export async function fetchZuordnungen(kennung: string, status?: ZuordnungStatus): Promise<Zuordnung[]> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen${status ? `?status=${status}` : ''}`)
+  return ((await response.json()) as { eintraege: Zuordnung[] }).eintraege
+}
+
+/**
+ * POST /api/teilnehmende/:kennung/zuordnungen – ordnet ein gespeichertes Arbeitsblatt zu.
+ * Fehler: 404 (Person oder Blatt unbekannt), 409 (schon zugeordnet oder Blatt archiviert).
+ */
+export async function zuordnen(kennung: string, arbeitsblattId: string): Promise<Zuordnung> {
+  const response = await postJson(`${teilnehmerPfad(kennung)}/zuordnungen`, { arbeitsblattId })
+  return ((await response.json()) as { zuordnung: Zuordnung }).zuordnung
+}
+
+/** PATCH …/zuordnungen/:id – abhaken („erledigt“) oder wieder öffnen */
+export async function setZuordnungStatus(kennung: string, id: string, status: ZuordnungStatus): Promise<Zuordnung> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  return ((await response.json()) as { zuordnung: Zuordnung }).zuordnung
+}
+
+/** DELETE …/zuordnungen/:id – Zuordnung entfernen (das Arbeitsblatt bleibt) */
+export async function deleteZuordnung(kennung: string, id: string): Promise<void> {
+  await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** GET /api/teilnehmende/:kennung/lernstand – erledigt/offen je Berufsfeld und „als Nächstes“ (Profil) */
+export async function fetchLernstand(kennung: string): Promise<Lernstand> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/lernstand`)
+  return ((await response.json()) as { lernstand: Lernstand }).lernstand
+}
+
+/** GET /api/teilnehmende/lernstand – Lernstand aller Teilnehmenden (Übersicht, Dashboard) */
+export async function fetchLernstandAlle(): Promise<Lernstand[]> {
+  const response = await apiFetch('/api/teilnehmende/lernstand')
+  return ((await response.json()) as { eintraege: Lernstand[] }).eintraege
 }

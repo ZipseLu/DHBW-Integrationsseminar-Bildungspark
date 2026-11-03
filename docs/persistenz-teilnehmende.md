@@ -17,7 +17,7 @@ Felder wie `name` mit `400` ab, statt sie still zu verwerfen.
 - Je Profil ist jedes Berufsfeld höchstens einmal im Lernweg, und höchstens eine Station ist `aktiv`.
 - Der **Gesamtfortschritt** wird nicht gespeichert: Er ist der Fortschritt der aktiven Station (alle abgeschlossen → 100, sonst 0).
 - Löschen eines Profils löscht seinen Lernweg mit (`ON DELETE CASCADE`).
-- `blaetter_erledigt` wird bis BE-04 (Zuordnung Arbeitsblatt ↔ Teilnehmende) von Hand gepflegt.
+- `blaetter_erledigt` und `fortschritt` bleiben Werte aus dem Profil-Dialog. Erledigte und offene Arbeitsblätter aus den Zuordnungen liefert seit BE-04 `GET /api/teilnehmende/:kennung/lernstand` (`docs/zuordnungen-lernstand.md`).
 
 ## Endpunkte
 

@@ -6,6 +6,7 @@ import {
   ApiError,
   apiFetch,
   deleteArbeitsblatt,
+  deleteZuordnung,
   downloadArbeitsblattDocx,
   downloadGespeichertesDocx,
   fetchArbeitsblaetter,
@@ -14,6 +15,9 @@ import {
   fetchArbeitsblattVerlauf,
   fetchAktuellesKonto,
   fetchLehrplaene,
+  fetchLernstand,
+  fetchLernstandAlle,
+  fetchZuordnungen,
   generateArbeitsblatt,
   getAuthToken,
   login,
@@ -21,7 +25,9 @@ import {
   saveArbeitsblatt,
   setAbmeldeHandler,
   setAuthToken,
+  setZuordnungStatus,
   updateArbeitsblatt,
+  zuordnen,
   type Arbeitsblatt,
   type ArbeitsblattMeta,
 } from '@/lib/api'
@@ -329,5 +335,64 @@ describe('Anmeldung (/api/auth, BE-01)', () => {
     expect(authHeader()).toBeNull()
     expect(getAuthToken()).toBeNull()
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('Zuordnungen und Lernstand (BE-04)', () => {
+  const ZUORDNUNG = {
+    id: ID,
+    kennung: 'IW3-4421',
+    status: 'offen',
+    zugeordnetAm: '2026-11-03T08:00:00.000Z',
+    erledigtAm: null,
+    zugeordnetVon: 'C. Hager',
+    arbeitsblatt: { id: ID, titel: 'Lieferschein prüfen', berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'A' },
+  }
+
+  it('fetchZuordnungen kodiert die Kennung und filtert nach Status', async () => {
+    antworte(json({ eintraege: [ZUORDNUNG], gesamt: 1 }))
+    antworte(json({ eintraege: [], gesamt: 0 }))
+    expect(await fetchZuordnungen('IW3-4421')).toEqual([ZUORDNUNG])
+    await fetchZuordnungen('IW3/1', 'offen')
+    expect(aufruf(0).url).toBe('/api/teilnehmende/IW3-4421/zuordnungen')
+    expect(aufruf(1).url).toBe('/api/teilnehmende/IW3%2F1/zuordnungen?status=offen')
+  })
+
+  it('zuordnen schickt nur die Arbeitsblatt-ID per POST', async () => {
+    antworte(json({ zuordnung: ZUORDNUNG }, 201))
+    expect(await zuordnen('IW3-4421', ID)).toEqual(ZUORDNUNG)
+    expect(aufruf().url).toBe('/api/teilnehmende/IW3-4421/zuordnungen')
+    expect(aufruf().init.method).toBe('POST')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ arbeitsblattId: ID })
+  })
+
+  it('zuordnen meldet eine doppelte Zuordnung als ApiError 409', async () => {
+    antworte(json({ error: 'conflict', code: 'bereits_zugeordnet', message: 'Das Arbeitsblatt ist IW3-4421 schon zugeordnet' }, 409))
+    await expect(zuordnen('IW3-4421', ID)).rejects.toMatchObject({ status: 409, message: 'Das Arbeitsblatt ist IW3-4421 schon zugeordnet' })
+  })
+
+  it('setZuordnungStatus hakt per PATCH ab', async () => {
+    antworte(json({ zuordnung: { ...ZUORDNUNG, status: 'erledigt', erledigtAm: '2026-11-04T10:00:00.000Z' } }))
+    expect((await setZuordnungStatus('IW3-4421', ID, 'erledigt')).status).toBe('erledigt')
+    expect(aufruf().url).toBe(`/api/teilnehmende/IW3-4421/zuordnungen/${ID}`)
+    expect(aufruf().init.method).toBe('PATCH')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ status: 'erledigt' })
+  })
+
+  it('deleteZuordnung löscht per DELETE', async () => {
+    antworte(new Response(null, { status: 204 }))
+    await deleteZuordnung('IW3-4421', ID)
+    expect(aufruf().url).toBe(`/api/teilnehmende/IW3-4421/zuordnungen/${ID}`)
+    expect(aufruf().init.method).toBe('DELETE')
+  })
+
+  it('fetchLernstand und fetchLernstandAlle packen die Antwort aus', async () => {
+    const lernstand = { kennung: 'IW3-4421', anzahl: { erledigt: 1, offen: 1, gesamt: 2 }, alsNaechstes: ZUORDNUNG, berufsfelder: [] }
+    antworte(json({ lernstand }))
+    antworte(json({ eintraege: [lernstand], gesamt: 1 }))
+    expect(await fetchLernstand('IW3-4421')).toEqual(lernstand)
+    expect(await fetchLernstandAlle()).toEqual([lernstand])
+    expect(aufruf(0).url).toBe('/api/teilnehmende/IW3-4421/lernstand')
+    expect(aufruf(1).url).toBe('/api/teilnehmende/lernstand')
   })
 })
