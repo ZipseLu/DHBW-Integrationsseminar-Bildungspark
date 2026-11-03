@@ -92,6 +92,7 @@ export type WebResult = {
   url: string
   snippet: string
   source: string
+  fileType?: string
 }
 
 /** Status eines Berufsfelds im Lernweg einer/eines Teilnehmenden */

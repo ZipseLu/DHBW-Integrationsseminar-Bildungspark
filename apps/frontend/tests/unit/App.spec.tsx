@@ -30,9 +30,25 @@ function stubGenerate() {
 const dbUnavailable = () =>
   new Response(JSON.stringify({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
 
+const webSearchResults = (query: string) =>
+  new Response(
+    JSON.stringify({
+      query,
+      results: [
+        { title: `Arbeitsblatt: ${query}`, url: `www.example.de/${encodeURIComponent(query.toLowerCase())}.pdf`, snippet: `Snippet zu ${query}`, source: 'example.de', fileType: 'pdf' },
+      ],
+      count: 1,
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  )
+
 beforeEach(() => {
   // Die KI-Erstellung fragt beim Oeffnen GET /api/lehrplaene ab – ohne Import: leere Liste
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).startsWith('/api/arbeitsblaetter') ? dbUnavailable() : emptyLehrplaene())))
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (String(url).startsWith('/api/arbeitsblaetter')) return dbUnavailable()
+    if (String(url).startsWith('/api/web-search')) return webSearchResults(String(url))
+    return emptyLehrplaene()
+  }))
 })
 
 afterEach(() => {
@@ -194,13 +210,13 @@ describe('KI-Erstellung', () => {
     expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
   })
 
-  it('zeigt simulierte Suchtreffer', async () => {
+  it('zeigt Suchtreffer vom Backend (Web-Suche)', async () => {
     renderApp()
     navigate('KI-Erstellung')
 
     fireEvent.change(screen.getByLabelText('Suchbegriff für die Internetsuche'), { target: { value: 'Hygiene' } })
     fireEvent.click(screen.getByRole('button', { name: /Suchen/ }))
 
-    expect(await screen.findByText('5 Ergebnisse für „Hygiene"')).toBeInTheDocument()
+    expect(await screen.findByText('1 Ergebnisse für „Hygiene"')).toBeInTheDocument()
   })
 })

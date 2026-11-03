@@ -4,11 +4,12 @@ import { FormatPicker, LevelPicker } from '@/components/Pickers'
 import { GenerateButton, Spinner, VariantSummary } from '@/components/VariantSummary'
 import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { toggleKeepOne } from '@/lib/selection'
-import { useSimulatedTask } from '@/lib/simulation'
-import { simulateWebResults } from '@/lib/webSearch'
+import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
-/** "Ähnliche Dokumente im Internet suchen" – Ergebnisse sind im Prototyp simuliert */
+/** "Ähnliche Dokumente im Internet suchen" – Ergebnisse kommen vom Backend
+ *  (GET /api/web-search?q=…), das echte Such-APIs (SerpApi, Google Custom Search)
+ *  oder im Mock-Modus simulierte Treffer liefert. */
 export function WebSearchSection({ thema }: { thema: string }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<WebResult[]>([])
@@ -18,20 +19,28 @@ export function WebSearchSection({ thema }: { thema: string }) {
   const [levels, setLevels] = useState<Level[]>([...LEVELS])
   const [formats, setFormats] = useState<Format[]>(['text'])
 
-  const search = useSimulatedTask('websuche')
-  const adapt = useSimulatedTask('varianten')
+  const [searchRunning, setSearchRunning] = useState(false)
+  const [variantsReady, setVariantsReady] = useState(false)
 
   const effectiveQuery = query.trim() || thema.trim()
 
-  function runSearch() {
+  async function runSearch() {
     if (!effectiveQuery) return
     const q = effectiveQuery
     setResults([])
     setResultsFor(q)
     setOpen(true)
     setSelectedUrl(null)
-    adapt.reset()
-    search.start(() => setResults(simulateWebResults(q)))
+    setVariantsReady(false)
+    setSearchRunning(true)
+    try {
+      setResults(await searchWebResults(q))
+    } catch (error) {
+      console.error('Websuche fehlgeschlagen', error)
+      window.alert('Die Websuche ist derzeit nicht verfügbar.')
+    } finally {
+      setSearchRunning(false)
+    }
   }
 
   return (
@@ -55,7 +64,6 @@ export function WebSearchSection({ thema }: { thema: string }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              // Enter darf das umgebende Formular nicht absenden
               if (e.key === 'Enter') {
                 e.preventDefault()
                 runSearch()
@@ -67,26 +75,26 @@ export function WebSearchSection({ thema }: { thema: string }) {
           <button
             type="button"
             onClick={runSearch}
-            disabled={search.running || !effectiveQuery}
+            disabled={searchRunning || !effectiveQuery}
             className="px-4 py-2 rounded text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 flex items-center gap-1.5"
             style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
-            {search.running ? <Spinner className="text-xs" /> : <span aria-hidden="true">🔍</span>}
-            {search.running ? 'Suche…' : 'Suchen'}
+            {searchRunning ? <Spinner className="text-xs" /> : <span aria-hidden="true">🔍</span>}
+            {searchRunning ? 'Suche…' : 'Suchen'}
           </button>
         </div>
 
-        {search.running && (
+        {searchRunning && (
           <div className="py-6 flex flex-col items-center gap-2" style={{ color: 'var(--muted-foreground)' }} role="status">
             <Spinner className="text-2xl" />
             <span className="text-xs">Suche nach ähnlichen Dokumenten…</span>
           </div>
         )}
 
-        {!search.running && results.length > 0 && (
+        {!searchRunning && results.length > 0 && (
           <div className="flex flex-col gap-2">
             <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
-              Prototyp: Die Treffer sind Beispiele, die Links führen nicht zu echten Dokumenten.
+              Die Treffer kommen vom Backend (echte Suchergebnisse oder im Mock-Modus simuliert).
             </div>
             <button
               type="button"
@@ -127,6 +135,11 @@ export function WebSearchSection({ thema }: { thema: string }) {
                           <span aria-hidden="true">🔗</span>
                           <span className="underline underline-offset-2 truncate">{r.url}</span>
                         </a>
+                        {r.fileType && (
+                          <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                            Dateityp: {r.fileType}
+                          </div>
+                        )}
                         <div className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
                           {r.snippet}
                         </div>
@@ -134,10 +147,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       <button
                         type="button"
                         aria-pressed={isSelected}
-                        onClick={() => {
-                          setSelectedUrl(isSelected ? null : r.url)
-                          adapt.reset()
-                        }}
+                        onClick={() => { setSelectedUrl(isSelected ? null : r.url) }}
                         className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded font-medium transition-all"
                         style={{
                           backgroundColor: isSelected ? 'var(--primary)' : 'var(--muted)',
@@ -163,7 +173,6 @@ export function WebSearchSection({ thema }: { thema: string }) {
                             selected={levels}
                             onToggle={(l) => {
                               setLevels((prev) => toggleKeepOne(prev, l))
-                              adapt.reset()
                             }}
                           />
                         </div>
@@ -176,15 +185,18 @@ export function WebSearchSection({ thema }: { thema: string }) {
                             selected={formats}
                             onToggle={(f) => {
                               setFormats((prev) => toggleKeepOne(prev, f))
-                              adapt.reset()
                             }}
                           />
                         </div>
 
                         <VariantSummary levels={levels} formats={formats} />
 
-                        {!adapt.done ? (
-                          <GenerateButton running={adapt.running} count={levels.length * formats.length} onClick={() => adapt.start()} />
+                        {!variantsReady ? (
+                          <GenerateButton
+                            running={searchRunning}
+                            count={levels.length * formats.length}
+                            onClick={() => setVariantsReady(true)}
+                          />
                         ) : (
                           <div className="flex flex-col gap-2">
                             <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
@@ -229,8 +241,8 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       </div>
                     )}
                   </div>
-                )
-              })}
+                )}
+              )}
           </div>
         )}
       </div>

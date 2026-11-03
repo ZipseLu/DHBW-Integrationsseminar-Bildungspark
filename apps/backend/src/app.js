@@ -18,6 +18,7 @@ import { createLehrplaeneRouter } from './routes/lehrplaene.js'
 import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
+import { webSearchRouter } from './routes/web-search.js'
 
 export function createApp() {
   const app = express()
@@ -55,6 +56,9 @@ export function createApp() {
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
   // Staff accounts (table users, BE-03) – admins only, once the login (BE-01) exists
   app.use('/api/benutzer', createBenutzerRouter())
+
+  // Websuche nach Arbeitsblättern (Mock ohne Key, echt mit SerpApi/Google)
+  app.use('/api/web-search', webSearchRouter)
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {

@@ -1,43 +1,51 @@
 import type { WebResult } from '@/types'
+import { apiFetch, ApiError } from '@/lib/api'
 
 /**
- * Simulierte Internetsuche fuer den Prototyp.
- * Die Treffer sind Platzhalter und verlinken auf nicht existierende Seiten.
+ * Websuche nach Arbeitsblättern über das Backend (GET /api/web-search?q=...).
+ *
+ * Das Backend führt die Suche im Internet durch (SerpApi oder Google Custom Search,
+ * je nach WEB_SEARCH_PROVIDER) oder läuft im Mock-Modus ohne API-Key.
+ *
+ * Ohne erreichbares Backend wird auf lokale, simulierte Treffer zurückgefallen,
+ * damit die Oberfläche auch ohne Backend funktionsfähig bleibt.
  */
-export function simulateWebResults(query: string): WebResult[] {
+
+const MOCK_SOURCES = [
+  { name: 'lehrer-online.de', pattern: 'Arbeitsblatt: {q} – Aufgaben & Lösungen (PDF)', snippet: 'Direkt downloadbares Arbeitsblatt zu "{q}" mit Aufgaben auf verschiedenen Niveaustufen inkl. Lösungsblatt. Kostenlos, als PDF und Word verfügbar.' },
+  { name: '4teachers.de', pattern: '{q} – Differenziertes Arbeitsblatt (Word, kostenlos)', snippet: 'Differenziertes Arbeitsblatt zu "{q}" in drei Schwierigkeitsstufen. Als bearbeitbares Word-Dokument direkt herunterladbar und anpassbar.' },
+  { name: 'ihk-bildungshaus.de', pattern: 'IHK: Lernaufgabe "{q}" für Ausbildungsbetriebe', snippet: 'Offizielle IHK-Lernaufgabe zu "{q}" – geeignet für die betriebliche Ausbildung, mit Kompetenzraster und Bewertungsbogen.' },
+  { name: 'bibb.de', pattern: 'BIBB: Ausbildungsmaterial "{q}" (offizielle Quelle)', snippet: 'Bundesinstitut für Berufsbildung (BIBB): Offizielles Ausbildungsmaterial zu "{q}" mit Lernzielen, Kompetenzbeschreibungen und praxisorientierten Aufgaben.' },
+]
+
+function localMockResults(query: string): WebResult[] {
   const q = query.trim()
   const slug = encodeURIComponent(q.toLowerCase().replace(/\s+/g, '-'))
+  return MOCK_SOURCES.map((s, i) => ({
+    title: s.pattern.replace('{q}', q),
+    url: `www.${s.name}/material/${slug}/arbeitsblatt-${i + 1}.pdf`,
+    snippet: s.snippet.replace('{q}', q),
+    source: s.name,
+  }))
+}
 
-  return [
-    {
-      title: `Arbeitsblatt: ${q} – Aufgaben & Lösungen (PDF)`,
-      url: `www.lehrer-online.de/unterricht/berufsbildung/materialien/${slug}/arbeitsblatt.pdf`,
-      snippet: `Direkt downloadbares Arbeitsblatt zu „${q}" mit Aufgaben auf verschiedenen Niveaustufen inkl. Lösungsblatt. Kostenlos, als PDF und Word verfügbar.`,
-      source: 'lehrer-online.de',
-    },
-    {
-      title: `${q} – Differenziertes Arbeitsblatt (Word, kostenlos)`,
-      url: `www.4teachers.de/material/download/${slug}-arbeitsblatt-differenziert.docx`,
-      snippet: `Differenziertes Arbeitsblatt zu „${q}" in drei Schwierigkeitsstufen. Als bearbeitbares Word-Dokument direkt herunterladbar und anpassbar.`,
-      source: '4teachers.de',
-    },
-    {
-      title: `IHK: Lernaufgabe „${q}" für Ausbildungsbetriebe`,
-      url: `www.ihk-bildungshaus.de/ausbildung/lernmaterialien/${slug}/lernaufgabe.pdf`,
-      snippet: `Offizielle IHK-Lernaufgabe zu „${q}" – geeignet für die betriebliche Ausbildung, mit Kompetenzraster und Bewertungsbogen.`,
-      source: 'ihk-bildungshaus.de',
-    },
-    {
-      title: `${q}: Unterrichtseinheit mit Arbeitsblättern (ZIP)`,
-      url: `www.berufsbildung-online.de/downloads/unterrichtseinheiten/${slug}.zip`,
-      snippet: `Komplette Unterrichtseinheit zu „${q}" als ZIP-Paket: Arbeitsblätter, Präsentation, Lehrerhandreichung und Bewertungsbögen in einem Download.`,
-      source: 'berufsbildung-online.de',
-    },
-    {
-      title: `BIBB: Ausbildungsmaterial „${q}" (offizielle Quelle)`,
-      url: `www.bibb.de/de/berufsbildung/material/${slug}/arbeitsblatt-ausbildung.pdf`,
-      snippet: `Bundesinstitut für Berufsbildung (BIBB): Offizielles Ausbildungsmaterial zu „${q}" mit Lernzielen, Kompetenzbeschreibungen und praxisorientierten Aufgaben.`,
-      source: 'bibb.de',
-    },
-  ]
+/**
+ * Sucht im Web nach Arbeitsblättern. Nutzt das Backend; bei nicht erreichbarem
+ * Backend werden lokale simulierte Treffer zurückgegeben.
+ */
+export async function searchWebResults(query: string): Promise<WebResult[]> {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+
+  try {
+    const response = await apiFetch(`/api/web-search?q=${encodeURIComponent(trimmed)}`)
+    const body = (await response.json()) as { results?: WebResult[]; count?: number }
+    return Array.isArray(body.results) ? body.results : []
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 0) {
+      // Backend nicht erreichbar -> lokale simulierte Treffer
+      return localMockResults(trimmed)
+    }
+    throw error
+  }
 }
