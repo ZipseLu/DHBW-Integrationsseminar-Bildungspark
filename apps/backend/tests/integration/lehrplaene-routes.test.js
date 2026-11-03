@@ -7,9 +7,12 @@ import { join } from 'node:path'
 import { createLehrplaeneRouter } from '../../src/routes/lehrplaene.js'
 import { createApp } from '../../src/app.js'
 
+// Leere Datenbank – diese Tests prüfen nur den Weg über die Datei (Datenbank: lehrplaene-db.test.js)
+const LEERE_DB = { listLernziele: async () => [], stand: async () => null }
+
 function appWith(file) {
   const app = express()
-  app.use('/api/lehrplaene', createLehrplaeneRouter({ file }))
+  app.use('/api/lehrplaene', createLehrplaeneRouter({ file, repository: LEERE_DB }))
   return app
 }
 

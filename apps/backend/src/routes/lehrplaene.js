@@ -1,13 +1,19 @@
 /**
- * GET /api/lehrplaene – die importierten Lernziele der Lehrplaene.
+ * GET /api/lehrplaene – die Lernziele der Lehrpläne.
  *
- * Quelle ist apps/backend/data/lehrplaene.json, erzeugt mit
- * `npm run import:lehrplaene` (siehe scripts/import-lehrplaene.js). Die Datei
- * liegt nicht im Repository. Fehlt sie, antwortet die Route mit einer leeren
- * Liste und einem Hinweis – das Frontend nutzt dann seine Beispiel-Lernziele.
+ * Quelle ist die Datenbank (Migration 004: lehrplaene, lernziele, lernziel_niveaus),
+ * befüllt mit `npm run import:lehrplaene` oder `npm run db:seed`. Ist die Datenbank
+ * nicht erreichbar oder noch leer, liest die Route wie bisher apps/backend/data/lehrplaene.json –
+ * so läuft die KI-Erstellung auch ohne Docker mit allen Lernzielen. Fehlt beides, kommt
+ * eine leere Liste mit Hinweis; das Frontend nutzt dann seine Beispiel-Lernziele.
+ *
+ * Antwort: { herkunft: 'datenbank' | 'datei' | null, stand, anzahl, lernziele, hinweis? }
+ * Die JSON-Datei liegt nicht im Repository (Lehrpläne des Bildungsparks, Repo öffentlich).
  */
 import { readFile } from 'node:fs/promises'
 import { Router } from 'express'
+import { dbError } from '../http/fehler.js'
+import * as lehrplanRepo from '../lehrplan/repository.js'
 
 export const LEHRPLAENE_FILE = new URL('../../data/lehrplaene.json', import.meta.url)
 
@@ -25,22 +31,46 @@ export async function loadLehrplaene(file = LEHRPLAENE_FILE) {
   return data
 }
 
-export function createLehrplaeneRouter({ file = LEHRPLAENE_FILE } = {}) {
+/** Lernziele aus der Datenbank; null, wenn sie nicht erreichbar oder noch leer ist */
+async function ausDatenbank(repository) {
+  try {
+    const lernziele = await repository.listLernziele()
+    if (lernziele.length === 0) return null
+    return { herkunft: 'datenbank', stand: await repository.stand(), anzahl: lernziele.length, lernziele }
+  } catch (error) {
+    if (dbError(error)) return null
+    throw error
+  }
+}
+
+export function createLehrplaeneRouter({ file = LEHRPLAENE_FILE, repository = lehrplanRepo } = {}) {
   const router = Router()
-  let cache = null
+  // Die Datei nur einmal lesen; nach einem neuen Import Backend neu starten
+  let dateiCache = null
 
   router.get('/', async (_req, res, next) => {
     try {
-      // Einmal lesen und im Speicher behalten; nach einem neuen Import Backend neu starten
-      cache ??= await loadLehrplaene(file)
-      if (!cache) {
+      const datenbank = await ausDatenbank(repository)
+      if (datenbank) return res.json(datenbank)
+
+      dateiCache ??= await loadLehrplaene(file)
+      if (dateiCache) {
         return res.json({
-          anzahl: 0,
-          lernziele: [],
-          hinweis: 'Keine Lehrplandaten importiert – in apps/backend `npm run import:lehrplaene` ausführen.',
+          herkunft: 'datei',
+          stand: dateiCache.stand ?? null,
+          quelle: dateiCache.quelle ?? null,
+          anzahl: dateiCache.lernziele.length,
+          lernziele: dateiCache.lernziele,
+          hinweis: 'Lehrpläne kommen aus data/lehrplaene.json – `npm run db:seed` übernimmt sie in die Datenbank.',
         })
       }
-      res.json({ stand: cache.stand ?? null, quelle: cache.quelle ?? null, anzahl: cache.lernziele.length, lernziele: cache.lernziele })
+      res.json({
+        herkunft: null,
+        stand: null,
+        anzahl: 0,
+        lernziele: [],
+        hinweis: 'Keine Lehrplandaten importiert – in apps/backend `npm run import:lehrplaene` ausführen.',
+      })
     } catch (error) {
       next(error)
     }
