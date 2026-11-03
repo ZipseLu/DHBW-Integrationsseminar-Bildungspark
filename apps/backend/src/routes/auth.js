@@ -21,9 +21,10 @@ import { validationError, wrap as wrapFuer } from '../http/fehler.js'
 
 const wrap = wrapFuer('auth')
 
-// Hash of a random password, compared against when the email is unknown (created on first use)
-let dummyHash = null
-const vergleichsHash = () => (dummyHash ??= hashPasswort(randomUUID()))
+// Hash of a random password, compared against when the email is unknown. Created once when the
+// module loads, so even the first failed login takes as long as all the others.
+const vergleichsHash = hashPasswort(randomUUID())
+vergleichsHash.catch(() => {}) // a failure surfaces when awaited in the route, not as an unhandled rejection
 
 const fehlgeschlagen = (res) =>
   res.status(401).json({ error: 'unauthorized', code: 'anmeldung_fehlgeschlagen', message: 'E-Mail-Adresse oder Passwort ist falsch' })
@@ -38,7 +39,7 @@ export function createAuthRouter() {
       if (!parsed.success) return validationError(res, parsed.error, 'Anmeldung nicht möglich:')
 
       const konto = await repo.findForLogin(parsed.data.email)
-      const passt = await pruefePasswort(parsed.data.passwort, konto?.passwortHash ?? (await vergleichsHash()))
+      const passt = await pruefePasswort(parsed.data.passwort, konto?.passwortHash ?? (await vergleichsHash))
       if (!konto || !passt) return fehlgeschlagen(res)
 
       const { passwortHash: _hash, ...benutzer } = konto
