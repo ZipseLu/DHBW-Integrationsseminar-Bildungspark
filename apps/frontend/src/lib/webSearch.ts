@@ -7,8 +7,9 @@ import { apiFetch, ApiError } from '@/lib/api'
  * Das Backend führt die Suche im Internet durch (SerpApi oder Google Custom Search,
  * je nach WEB_SEARCH_PROVIDER) oder läuft im Mock-Modus ohne API-Key.
  *
- * Ohne erreichbares Backend wird auf lokale, simulierte Treffer zurückgefallen,
- * damit die Oberfläche auch ohne Backend funktionsfähig bleibt.
+ * Wenn das Backend nicht erreichbar ist oder die Suche nicht konfiguriert ist,
+ * werden lokale simulierte Treffer zurückgegeben, damit die Oberfläche
+ * funktionsfähig bleibt.
  */
 
 const MOCK_SOURCES = [
@@ -26,12 +27,14 @@ function localMockResults(query: string): WebResult[] {
     url: `www.${s.name}/material/${slug}/arbeitsblatt-${i + 1}.pdf`,
     snippet: s.snippet.replace('{q}', q),
     source: s.name,
+    mocked: true,
   }))
 }
 
 /**
  * Sucht im Web nach Arbeitsblättern. Nutzt das Backend; bei nicht erreichbarem
- * Backend werden lokale simulierte Treffer zurückgegeben.
+ * Backend oder nicht konfigurierter Suche werden lokale simulierte Treffer
+ * zurückgegeben.
  */
 export async function searchWebResults(query: string): Promise<WebResult[]> {
   const trimmed = query.trim()
@@ -42,8 +45,9 @@ export async function searchWebResults(query: string): Promise<WebResult[]> {
     const body = (await response.json()) as { results?: WebResult[]; count?: number }
     return Array.isArray(body.results) ? body.results : []
   } catch (error) {
-    if (error instanceof ApiError && error.status === 0) {
-      // Backend nicht erreichbar -> lokale simulierte Treffer
+    // Backend nicht erreichbar oder Suche nicht konfiguriert (503) ->
+    // lokale simulierte Treffer, damit die Oberfläche funktioniert.
+    if (error instanceof ApiError && (error.status === 0 || error.status === 503)) {
       return localMockResults(trimmed)
     }
     throw error

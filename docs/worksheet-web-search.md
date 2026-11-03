@@ -1,89 +1,91 @@
-# Web search for worksheets
+# Web search for worksheets (real Google search)
 
 **Status:** 03.11.2026 · **Branch:** `feature/online-arbeitsblattssuche` · **Ticket:** "Online kann nach Arbeitsblättern mit Suchbegriffen gesucht werden"
 
 ## Acceptance criterion
 
-Worksheets can be searched online by search terms. The frontend sends the search term to the backend, which performs a real web search (via SerpApi or Google Custom Search JSON API) and returns structured results – titles, URLs, snippets, source and file type (PDF, DOCX, …).
+Worksheets can be searched online by search terms. The frontend sends the search term to the backend (`GET /api/web-search?q=...`), which performs a **real web search** via Google Custom Search JSON API (or SerpApi) and returns structured results – titles, URLs, snippets, source and file type (PDF, DOCX, …).
 
-## Starting point
+Without an API key, the backend runs in **mock mode** and returns simulated placeholders. To get real Google results, you must configure the Google Custom Search JSON API (see below).
 
-The "web search" in worksheet creation (`WebSearchSection`) previously delivered only **simulated placeholders** (`simulateWebResults`) with fake URLs that lead nowhere. No real web search was performed.
+## Three providers
 
-## Solution
-
-The frontend calls the backend endpoint `GET /api/web-search?q=...`, which in turn calls a real search API:
-
-| Provider | Endpoint | Required env vars | Cost |
+| Provider | Endpoint | Required env vars | Results |
 |---|---|---|---|
-| `mock` (default) | – | none | Free, simulated results |
-| `serpapi` | `https://serpapi.com/search.json` | `WEB_SEARCH_API_KEY` | Free tier, then paid |
-| `google` | `https://www.googleapis.com/customsearch/v1` | `WEB_SEARCH_API_KEY`, `WEB_SEARCH_ENGINE_ID` | Free tier (100 queries/day), then paid |
+| `mock` (default) | none | none | Simulated placeholders, no real web search |
+| `serpapi` | `https://serpapi.com/search.json` | `WEB_SEARCH_API_KEY` | Real web results |
+| `google` | `https://www.googleapis.com/customsearch/v1` | `WEB_SEARCH_API_KEY` + `WEB_SEARCH_ENGINE_ID` | **Real Google results** |
 
-Search operators (Google-style) are passed through as part of the `q` parameter:
+## Setup: Echte Google-Suche (Google Custom Search JSON API)
 
-| Operator | Example | Effect |
+Damit die Suche wirklich im Web über Google sucht (nicht nur in bestimmten Seiten oder der Datenbank), müssen Sie die Google Custom Search JSON API einrichten:
+
+### Schritt 1: Google Cloud Projekt erstellen
+
+1. Gehen Sie auf die [Google Cloud Console](https://console.cloud.google.com/)
+2. Erstellen Sie ein neues Projekt (oder wählen Sie ein bestehendes)
+3. Aktivieren Sie die **Custom Search API**:
+   - APIs & Dienste → Bibliothek → "Custom Search API" suchen und aktivieren
+
+### Schritt 2: API Key erstellen
+
+1. APIs & Dienste → Zugangsdaten → Anmeldeinformationen erstellen → API Key
+2. Kopieren Sie den Key in die `.env`: `WEB_SEARCH_API_KEY=<Ihr-Key>`
+
+### Schritt 3: Programmierte Suchmaschine (Search Engine) erstellen
+
+1. Gehen Sie auf [Google Programmable Search Engine](https://programmablesearchengine.google.com/)
+2. Erstellen Sie eine neue Suchmaschine
+3. Unter "Suchen in" können Sie "Das gesamte Web" wählen (dann suchen Sie wirklich im ganzen Web, nicht nur auf bestimmten Seiten)
+4. Kopieren Sie die **Suchmaschinen-ID** (Search Engine ID) in die `.env`: `WEB_SEARCH_ENGINE_ID=<Ihre-ID>`
+
+### Schritt 4: `.env` konfigurieren
+
+```dotenv
+WEB_SEARCH_PROVIDER=google
+WEB_SEARCH_API_KEY=<Ihr-API-Key-von-Schritt-2>
+WEB_SEARCH_ENGINE_ID=<Ihre-Suchmaschinen-ID-von-Schritt-3>
+WEB_SEARCH_MAX_RESULTS=10
+```
+
+### Schritt 5: Docker neu bauen und starten
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Die `WEB_SEARCH_*` Variablen werden aus der Root-`.env` in den Backend-Container durchgereicht (siehe `docker-compose.yml`).
+
+## Kosten
+
+Die Google Custom Search JSON API hat ein **kostenloses Kontingent** (100 Abfragen pro Tag). Danach fällt eine Gebühr pro 1.000 Abfragen an. Details: [Google Cloud Pricing](https://cloud.google.com/custom-search/docs/overview#pricing)
+
+## Suchoperatoren (Google-Hacks)
+
+Die Suchanfrage wird 1:1 an die Google API übergeben, daher funktionieren Suchoperatoren:
+
+| Operator | Beispiel | Wirkung |
 |---|---|---|
-| `filetype:` | `Gabelstapler filetype:pdf` | Limits to the given file type |
-| `intitle:` | `intitle:"Arbeitsblatt"` | Searches only in titles |
-| `"..."` | `"Kochen lernen"` | Exact phrase match |
+| `filetype:` | `Gemüse schneiden filetype:pdf` | Nur PDF/DOCX |
+| `intitle:` | `intitle:"Arbeitsblatt"` | Nur in Titeln suchen |
+| `"..."` | `"Kochen lernen"` | Exakte Wortgruppe |
 
-### Files (backend)
-
-| File | Purpose |
-|---|---|
-| `apps/backend/src/web-search/service.js` | `searchWeb(query)` – dispatches to mock / SerpApi / Google, extracts `fileType` from URLs |
-| `apps/backend/src/web-search/schema.js` | Zod validation for the `q` query parameter |
-| `apps/backend/src/routes/web-search.js` | `GET /api/web-search?q=...` – returns `{ query, results[], count }` |
-| `apps/backend/src/config.js` | `config.webSearch` – provider, API key, engine ID, max results |
-| `apps/backend/src/app.js` | Registers `webSearchRouter` at `/api/web-search` |
-
-### Files (frontend)
-
-| File | Purpose |
-|---|---|
-| `apps/frontend/src/lib/webSearch.ts` | `searchWebResults(query)` – calls `GET /api/web-search`, falls back to local mocks if backend is unreachable |
-| `apps/frontend/src/pages/ki-erstellung/WebSearchSection.tsx` | Calls `searchWebResults` instead of local `simulateWebResults`; displays `fileType` for each result |
-| `apps/frontend/src/types.ts` | `WebResult.fileType?: string` |
-
-### Behavior
-
-| Situation | Behavior |
-|---|---|
-| `WEB_SEARCH_PROVIDER=mock` (default) | Simulated but structurally real results; no API key, no costs |
-| `WEB_SEARCH_PROVIDER=serpapi` + key | Real SerpApi search; results from the live web |
-| `WEB_SEARCH_PROVIDER=google` + key + engine ID | Real Google Custom Search; results from the live web |
-| Backend unreachable | Frontend falls back to local simulated results |
-
-### Testing
-
-- Backend: `cd apps/backend && npm run test:unit` → all tests pass (10 web-search tests + existing suite; one pre-existing unrelated failure in `arbeitsblatt-generate.test.js` regarding the Gemini model name).
-- Frontend: `cd apps/frontend && npm run test:run` → all 206 tests pass, `npm run typecheck` without errors.
-
-### Example
-
+Beispiel-Request:
 ```
-GET /api/web-search?q=Gabelstapler+Sicherheit+filetype:pdf
+GET /api/web-search?q=Gemüse+schneiden+filetype:pdf
 ```
 
-Response:
-```json
-{
-  "query": "Gabelstapler Sicherheit filetype:pdf",
-  "results": [
-    {
-      "title": "Arbeitsblatt: Gabelstapler Sicherheit",
-      "url": "https://example.de/arbeitsblatt.pdf",
-      "snippet": "Direkt downloadbares Arbeitsblatt …",
-      "source": "example.de",
-      "fileType": "pdf"
-    }
-  ],
-  "count": 1
-}
-```
+## Frontend-Verhalten
 
-## Open points
+| Situation | Anzeige im Frontend |
+|---|---|
+| `WEB_SEARCH_PROVIDER=mock` (Standard) | Gelber Hinweis: "Simulierte Treffer (Mock-Modus)" |
+| Echte Google-Suche konfiguriert | Grün: "Echte Websuchergebnisse vom Backend" |
+| Backend nicht erreichbar | Lokale simulierte Treffer als Fallback |
 
-- Downloading the found PDF/DOCX files (Ansatz B from your Python example) is not yet implemented – only the search results (URLs) are returned. Download would be a separate step.
-- Authentication (JWT) for saving web-found worksheets to the library is still open.
+## Testen
+
+- Backend: `cd apps/backend && npm run test:unit` → alle Web-Search-Tests grün
+- Frontend: `cd apps/frontend && npm run test:run` → alle 206 Tests grün, `npm run typecheck` sauber
+- Manuell mit Docker: `docker compose up -d --build`, dann auf `http://localhost:5173` → KI-Erstellung → Websuche

@@ -97,12 +97,17 @@ services:
       # --- KI-Provider ---
       AI_PROVIDER: "${AI_PROVIDER:-gemini}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
-      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.5-flash}"
-      GEMINI_FALLBACK_MODEL: "${GEMINI_FALLBACK_MODEL:-gemini-3.5-flash-lite}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      GEMINI_FALLBACK_MODEL: "${GEMINI_FALLBACK_MODEL:-gemini-2.5-flash-lite}"
       AI_TIMEOUT_MS: "${AI_TIMEOUT_MS:-60000}"
       AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
       AZURE_OPENAI_API_KEY: "${AZURE_OPENAI_API_KEY:-}"
       AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
+      # --- Web-Suche nach Arbeitsblättern (Mock ohne Key, echt mit SerpApi/Google) ---
+      WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-mock}"
+      WEB_SEARCH_API_KEY: "${WEB_SEARCH_API_KEY:-}"
+      WEB_SEARCH_ENGINE_ID: "${WEB_SEARCH_ENGINE_ID:-}"
+      WEB_SEARCH_MAX_RESULTS: "${WEB_SEARCH_MAX_RESULTS:-10}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
       TZ: "Europe/Berlin"

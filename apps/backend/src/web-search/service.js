@@ -46,7 +46,7 @@ function extractFileType(url) {
   return match ? match[1].toLowerCase() : null
 }
 
-/** Mock-Ergebnisse ohne API-Key (strukturell wie echte Treffer) */
+/** Mock-Ergebnisse ohne API-Key (strukturell wie echte Treffer, aber simuliert) */
 function mockResults(query, maxResults) {
   const q = query.trim()
   const slug = encodeURIComponent(q.toLowerCase().replace(/\s+/g, '-'))
@@ -63,6 +63,7 @@ function mockResults(query, maxResults) {
     snippet: s.snippet.replace('{q}', q),
     source: s.name,
     fileType: 'pdf',
+    mocked: true,
   }))
 
   return results.slice(0, maxResults)

@@ -21,6 +21,8 @@ export function WebSearchSection({ thema }: { thema: string }) {
 
   const [searchRunning, setSearchRunning] = useState(false)
   const [variantsReady, setVariantsReady] = useState(false)
+  /** Wahr, wenn mindestens ein Treffer aus dem Mock-Modus stammt (keine echte Websuche) */
+  const [mockMode, setMockMode] = useState(false)
 
   const effectiveQuery = query.trim() || thema.trim()
 
@@ -32,12 +34,15 @@ export function WebSearchSection({ thema }: { thema: string }) {
     setOpen(true)
     setSelectedUrl(null)
     setVariantsReady(false)
+    setMockMode(false)
     setSearchRunning(true)
     try {
-      setResults(await searchWebResults(q))
+      const fetched = await searchWebResults(q)
+      setResults(fetched)
+      setMockMode(fetched.some((r) => r.mocked === true))
     } catch (error) {
       console.error('Websuche fehlgeschlagen', error)
-      window.alert('Die Websuche ist derzeit nicht verfügbar.')
+      window.alert('Die Websuche ist derzeit nicht verfügbar. Bitte später erneut versuchen.')
     } finally {
       setSearchRunning(false)
     }
@@ -93,9 +98,17 @@ export function WebSearchSection({ thema }: { thema: string }) {
 
         {!searchRunning && results.length > 0 && (
           <div className="flex flex-col gap-2">
-            <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
-              Die Treffer kommen vom Backend (echte Suchergebnisse oder im Mock-Modus simuliert).
-            </div>
+            {mockMode && (
+              <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
+                ⚠ Simulierte Treffer (Mock-Modus). Für echte Google-Suche setzen Sie
+                WEB_SEARCH_PROVIDER=google und WEB_SEARCH_API_KEY + WEB_SEARCH_ENGINE_ID in der .env.
+              </div>
+            )}
+            {!mockMode && (
+              <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#D4EDDA', color: '#1A5C32' }}>
+                ✓ Echte Websuchergebnisse vom Backend.
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}
@@ -124,6 +137,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-semibold mb-0.5 leading-snug" style={{ color: 'var(--primary-text)' }}>
                           {r.title}
+                          {r.mocked && <span className="text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>· simuliert</span>}
                         </div>
                         <a
                           href={`https://${r.url}`}
@@ -241,8 +255,8 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       </div>
                     )}
                   </div>
-                )}
-              )}
+                )
+              })}
           </div>
         )}
       </div>
