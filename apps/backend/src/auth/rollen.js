@@ -1,13 +1,13 @@
 /**
- * Rollenprüfung für Routen (vorbereitet in BE-03, scharf geschaltet mit BE-01/BE-06).
+ * Role check for routes (prepared in BE-03, enforced once BE-01/BE-06 are done).
  *
- * Vertrag mit BE-01: Die Anmelde-Middleware prüft das Token und setzt
+ * Contract with BE-01: the login middleware verifies the token and sets
  *   req.benutzer = { id, rolle }   (rolle: 'admin' | 'dozent' | 'assistent')
  *
- * Solange es keine Anmeldung gibt, fehlt `req.benutzer` – dann lässt die
- * Prüfung die Anfrage durch, genau wie alle anderen Routen des Prototyps.
- * BE-06 („Schreibende Endpunkte absichern“) verlangt dann für jede Anfrage
- * eine Anmeldung; ab da greift `erfordereRolle` immer.
+ * As long as there is no login, `req.benutzer` is missing – the check then lets
+ * the request through, exactly like every other route of the prototype.
+ * BE-06 ("secure write endpoints") will require a login for every request;
+ * from then on `erfordereRolle` always applies.
  */
 export function erfordereRolle(...rollen) {
   return (req, res, next) => {

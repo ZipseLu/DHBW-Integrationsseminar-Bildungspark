@@ -1,16 +1,16 @@
 /**
- * Routen der Benutzerverwaltung (BE-03, MySQL, Tabelle `users`).
+ * Routes of the user administration (BE-03, MySQL, table `users`).
  *
- *   GET    /api/benutzer       alle Konten (ohne Passwort-Hash)
- *   POST   /api/benutzer       Konto anlegen (409, wenn die E-Mail vergeben ist)
- *   GET    /api/benutzer/:id   ein Konto
- *   PATCH  /api/benutzer/:id   Name, E-Mail, Rolle und/oder Passwort ändern
- *   DELETE /api/benutzer/:id   Konto löschen
+ *   GET    /api/benutzer       all accounts (without password hash)
+ *   POST   /api/benutzer       create an account (409 if the email is taken)
+ *   GET    /api/benutzer/:id   one account
+ *   PATCH  /api/benutzer/:id   change name, email, role and/or password
+ *   DELETE /api/benutzer/:id   delete an account
  *
- * Regeln: das letzte Admin-Konto kann weder gelöscht noch herabgestuft werden (409);
- * das eigene Konto kann nicht gelöscht werden (409, sobald BE-01 req.benutzer setzt).
- * Nur für Admins – die Prüfung greift, sobald die Anmeldung (BE-01) da ist (src/auth/rollen.js).
- * Ohne erreichbare MySQL antworten alle Routen mit 503 `db_unavailable`.
+ * Rules: the last admin account can be neither deleted nor downgraded (409);
+ * your own account cannot be deleted (409, once BE-01 sets req.benutzer).
+ * Admins only – the check applies once the login (BE-01) exists (src/auth/rollen.js).
+ * Without a reachable MySQL, all routes respond with 503 `db_unavailable`.
  * Details: docs/benutzerverwaltung-api.md
  */
 import { Router } from 'express'

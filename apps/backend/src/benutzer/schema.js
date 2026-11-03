@@ -1,9 +1,9 @@
 /**
- * Schemas der Benutzerverwaltung (BE-03).
+ * Schemas of the user administration (BE-03).
  *
- * Konten der Mitarbeitenden des Bildungsparks (Tabelle `users`). Rollen wie im
- * Frontend: admin, dozent, assistent. Objekte sind `strict`, damit Tippfehler
- * in Feldnamen (z. B. `role` statt `rolle`) auffallen statt still verworfen zu werden.
+ * Staff accounts of the Bildungspark (table `users`). Roles as in the frontend:
+ * admin, dozent, assistent. Objects are `strict`, so typos in field names
+ * (e.g. `role` instead of `rolle`) are rejected instead of silently dropped.
  */
 import { z } from 'zod'
 
@@ -17,7 +17,7 @@ const email = z.preprocess(
 )
 const passwort = z.string().min(MIN_PASSWORT, `muss mindestens ${MIN_PASSWORT} Zeichen haben`).max(200)
 
-/** Body von POST /api/benutzer */
+/** Body of POST /api/benutzer */
 export const CreateSchema = z.strictObject({
   name,
   email,
@@ -25,7 +25,7 @@ export const CreateSchema = z.strictObject({
   passwort,
 })
 
-/** Body von PATCH /api/benutzer/:id – mindestens ein Feld */
+/** Body of PATCH /api/benutzer/:id – at least one field */
 export const PatchSchema = z
   .strictObject({
     name: name.optional(),

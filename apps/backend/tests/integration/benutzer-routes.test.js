@@ -10,8 +10,8 @@ import { findForLogin } from '../../src/benutzer/repository.js'
 import { createBenutzerRouter } from '../../src/routes/benutzer.js'
 
 /**
- * Benutzerverwaltung (BE-03) gegen eine echte MySQL – nur mit DB_HOST und nur gegen
- * eine *_test-Datenbank; sonst übersprungen.
+ * User administration (BE-03) against a real MySQL – only with DB_HOST set and only
+ * against a *_test database; skipped otherwise.
  */
 const hasDb = Boolean(process.env.DB_HOST)
 const UNBEKANNT = '00000000-0000-4000-8000-000000000000'

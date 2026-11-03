@@ -1,24 +1,24 @@
 /**
- * Passwörter hashen und prüfen (BE-03, wiederverwendbar für die Anmeldung in BE-01).
+ * Hash and verify passwords (BE-03, reusable for the login in BE-01).
  *
- * Verfahren: scrypt aus `node:crypto` – in Node eingebaut, keine zusätzliche
- * Abhängigkeit. Gespeichert wird ein String im Format
+ * Algorithm: scrypt from `node:crypto` – built into Node, no extra dependency.
+ * Stored as a string in the format
  *
  *   scrypt$<N>$<r>$<p>$<salt base64>$<hash base64>
  *
- * Die Parameter stehen mit im String, damit sie später erhöht werden können,
- * ohne alte Hashes ungültig zu machen. Klartext-Passwörter werden nie
- * gespeichert, geloggt oder von der API zurückgegeben.
+ * The parameters are part of the string so they can be raised later without
+ * invalidating existing hashes. Plain-text passwords are never stored, logged
+ * or returned by the API.
  */
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 
 const scryptAsync = promisify(scrypt)
 
-/** Empfohlene Mindestwerte (OWASP): N = 2^15, r = 8, p = 1 */
+/** Recommended minimum values (OWASP): N = 2^15, r = 8, p = 1 */
 export const SCRYPT = { N: 2 ** 15, r: 8, p: 1, keyLength: 64, saltLength: 16 }
 
-// N = 2^15 braucht 32 MB; Node erlaubt standardmäßig nur 32 MB – deshalb etwas Luft
+// N = 2^15 needs 32 MB; Node only allows 32 MB by default – so leave some headroom
 const maxmem = (N, r) => 128 * N * r * 2
 
 export async function hashPasswort(passwort) {
@@ -29,7 +29,7 @@ export async function hashPasswort(passwort) {
   return ['scrypt', N, r, p, salt.toString('base64'), hash.toString('base64')].join('$')
 }
 
-/** true, wenn das Passwort zum gespeicherten Hash passt; nie eine Ausnahme bei kaputten Hashes */
+/** true if the password matches the stored hash; never throws on malformed hashes */
 export async function pruefePasswort(passwort, gespeichert) {
   if (typeof passwort !== 'string' || typeof gespeichert !== 'string') return false
   const teile = gespeichert.split('$')

@@ -1,9 +1,9 @@
 /**
- * Datenzugriff für Mitarbeiterkonten (Tabelle `users`, BE-03).
+ * Data access for staff accounts (table `users`, BE-03).
  *
- * Die Tabelle stammt aus Migration 001 (Spalten id, email, name, password_hash,
- * role, created_at). Die API spricht Deutsch (`rolle`, `erstelltAm`); der
- * Passwort-Hash verlässt dieses Modul nie – außer über `findForLogin` für BE-01.
+ * The table comes from migration 001 (columns id, email, name, password_hash,
+ * role, created_at). The API uses German field names (`rolle`, `erstelltAm`);
+ * the password hash never leaves this module – except via `findForLogin` for BE-01.
  */
 import { randomUUID } from 'node:crypto'
 import { query, queryOne, withConnection } from '../db.js'
@@ -16,7 +16,7 @@ export function toApi(row) {
   return { id: row.id, name: row.name, email: row.email, rolle: row.role, erstelltAm: toIso(row.created_at) }
 }
 
-/** Fachliche Regel verletzt (Route -> 409) */
+/** A business rule was violated (route -> 409) */
 export class BenutzerKonfliktError extends Error {
   constructor(message, code) {
     super(message)
@@ -28,7 +28,7 @@ export class BenutzerKonfliktError extends Error {
 const emailVergeben = (email) => new BenutzerKonfliktError(`Die E-Mail-Adresse ${email} ist schon vergeben`, 'email_vergeben')
 const letzterAdmin = () => new BenutzerKonfliktError('Das letzte Admin-Konto kann nicht entfernt oder herabgestuft werden', 'letzter_admin')
 
-// --- Lesen -------------------------------------------------------------------
+// --- Read -------------------------------------------------------------------
 
 export async function list() {
   const rows = await query(`SELECT ${SPALTEN} FROM users ORDER BY name, email`)
@@ -40,7 +40,7 @@ export async function findById(id) {
   return row ? toApi(row) : null
 }
 
-/** Nur für die Anmeldung (BE-01): Konto samt Passwort-Hash */
+/** Only for the login (BE-01): account including the password hash */
 export async function findForLogin(email) {
   const row = await queryOne(`SELECT ${SPALTEN}, password_hash FROM users WHERE email = ?`, [String(email).trim().toLowerCase()])
   return row ? { ...toApi(row), passwortHash: row.password_hash } : null
@@ -51,9 +51,9 @@ export async function count() {
   return Number(row?.anzahl ?? 0)
 }
 
-// --- Schreiben ---------------------------------------------------------------
+// --- Write ---------------------------------------------------------------
 
-/** @param {{name: string, email: string, rolle: string, passwort: string}} input  mit CreateSchema geprüft */
+/** @param {{name: string, email: string, rolle: string, passwort: string}} input  validated with CreateSchema */
 export async function create({ name, email, rolle, passwort }) {
   const id = randomUUID()
   const hash = await hashPasswort(passwort)
@@ -67,9 +67,9 @@ export async function create({ name, email, rolle, passwort }) {
 }
 
 /**
- * Ändert Name, E-Mail, Rolle und/oder Passwort.
- * Schützt das letzte Admin-Konto vor dem Herabstufen (Zeilensperre auf allen Admins).
- * @returns {Promise<object|null>} geändertes Konto oder null, wenn es fehlt
+ * Changes name, email, role and/or password.
+ * Protects the last admin account from being downgraded (row lock on all admins).
+ * @returns {Promise<object|null>} updated account, or null if it does not exist
  */
 export async function update(id, { name, email, rolle, passwort }) {
   const hash = passwort ? await hashPasswort(passwort) : null
@@ -104,8 +104,8 @@ export async function update(id, { name, email, rolle, passwort }) {
 }
 
 /**
- * Löscht ein Konto. Das letzte Admin-Konto bleibt bestehen.
- * @returns {Promise<boolean>} false, wenn es das Konto nicht gibt
+ * Deletes an account. The last admin account is kept.
+ * @returns {Promise<boolean>} false if the account does not exist
  */
 export async function remove(id) {
   return withConnection(async (connection) => {
@@ -130,7 +130,7 @@ export async function remove(id) {
   })
 }
 
-/** Nur für Seed und Tests */
+/** Only for seed and tests */
 export async function deleteAll() {
   await query('DELETE FROM users')
 }

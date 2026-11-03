@@ -1,9 +1,9 @@
 /**
- * Beispielkonten für `npm run db:seed` (BE-03).
+ * Sample accounts for `npm run db:seed` (BE-03).
  *
- * Dieselben vier Konten wie im Frontend (apps/frontend/src/data/users.ts), Adressen auf der
- * reservierten Domain .example – keine echten Konten. Alle bekommen dasselbe Startpasswort
- * aus SEED_PASSWORT (Standard: bildungspark-demo). NUR für die lokale Entwicklung und Demos.
+ * The same four accounts as in the frontend (apps/frontend/src/data/users.ts), addresses on the
+ * reserved .example domain – no real accounts. All get the same initial password from
+ * SEED_PASSWORT (default: bildungspark-demo). ONLY for local development and demos.
  */
 import * as repo from './repository.js'
 
@@ -17,7 +17,7 @@ export const BEISPIEL_KONTEN = [
 ]
 
 /**
- * Legt die Beispielkonten an – nur in eine leere Tabelle, mit `reset` vorher alles löschen.
+ * Creates the sample accounts – only into an empty table; with `reset`, deletes everything first.
  * @returns {Promise<{angelegt: number, uebersprungen: boolean}>}
  */
 export async function seedBenutzer({ reset = false, passwort = process.env.SEED_PASSWORT || STANDARD_SEED_PASSWORT, log = () => {} } = {}) {
