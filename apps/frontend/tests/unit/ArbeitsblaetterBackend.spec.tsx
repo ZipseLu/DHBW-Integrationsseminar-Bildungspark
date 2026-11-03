@@ -185,7 +185,7 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
 
   it('übernimmt Autor, Aktion und Notiz in den Verlauf', () => {
     expect(historyAusVerlauf([{ version: 1, aktion: 'erstellt', autor: null, notiz: null, kiMeta: null, erstelltAm: '2026-10-28T09:00:00.000Z' }])).toEqual([
-      { version: 1, date: '2026-10-28', author: 'unbekannt', action: 'erstellt', note: '' },
+      { version: 1, date: '2026-10-28', time: expect.stringMatching(/^\d{2}:\d{2}$/), author: 'unbekannt', action: 'erstellt', note: '' },
     ])
   })
 })

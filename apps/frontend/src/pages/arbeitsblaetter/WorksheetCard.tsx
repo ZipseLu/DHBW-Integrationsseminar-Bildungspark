@@ -9,6 +9,8 @@ type Props = {
   onToggleExpand: () => void
   onPreview: () => void
   onHistory: () => void
+  /** Only offered for worksheets saved in the backend (FE-10) */
+  onEdit?: () => void
   onDownload: () => void
   onAdapt: () => void
 }
@@ -23,6 +25,7 @@ export function WorksheetCard({
   onToggleExpand,
   onPreview,
   onHistory,
+  onEdit,
   onDownload,
   onAdapt,
 }: Props) {
@@ -131,6 +134,11 @@ export function WorksheetCard({
           <button type="button" onClick={onHistory} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
             🕓 Verlauf
           </button>
+          {w.backend && onEdit && (
+            <button type="button" onClick={onEdit} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
+              ✎ Bearbeiten
+            </button>
+          )}
           <button
             type="button"
             onClick={onDownload}
@@ -196,13 +204,13 @@ export function WorksheetCard({
   )
 }
 
-const STATUS_STYLES = {
+export const STATUS_STYLES = {
   entwurf: { label: 'Entwurf', bg: '#EBF0F8', color: '#1E3A5F' },
   freigegeben: { label: 'Freigegeben', bg: '#D4EDDA', color: '#1A5C32' },
   archiviert: { label: 'Archiviert', bg: '#FAD9C8', color: '#7A2E00' },
 } as const
 
-function StatusBadge({ status }: { status: keyof typeof STATUS_STYLES }) {
+export function StatusBadge({ status }: { status: keyof typeof STATUS_STYLES }) {
   const st = STATUS_STYLES[status]
   return (
     <span className="text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: st.bg, color: st.color }}>

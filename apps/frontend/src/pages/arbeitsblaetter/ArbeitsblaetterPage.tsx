@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { WORKSHEETS } from '@/data/worksheets'
-import { downloadGespeichertesDocx, updateArbeitsblatt } from '@/lib/api'
+import { downloadGespeichertesDocx, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
+import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
 import { downloadWorksheetDocx } from '@/lib/docx'
 import { fehlertext, ladeGespeicherteArbeitsblaetter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { EMPTY_FILTER, ausbildungsbausteinOptions, bausteinOptions, filterWorksheets, type WorksheetFilter } from '@/lib/worksheetFilter'
@@ -43,6 +44,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
   const [quelle, setQuelle] = useState<Quelle>({ art: 'laden' })
   const [ladeVersuch, setLadeVersuch] = useState(0)
   const [aktionsFehler, setAktionsFehler] = useState<string | null>(null)
+  const [hinweis, setHinweis] = useState<string | null>(null)
   const [filter, setFilter] = useState<WorksheetFilter>(EMPTY_FILTER)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -99,6 +101,18 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
     }
   }
 
+  /** FE-10: apply a saved change (content or status) to the list and the open panel */
+  function uebernehme(blatt: GespeichertesArbeitsblatt) {
+    setWorksheets((alle) => uebernehmeGespeichertes(alle, blatt))
+    if (blatt.status === 'archiviert') {
+      setDetail(null)
+      setHinweis(`„${blatt.titel}“ wurde archiviert. Der Verlauf bleibt in der Datenbank erhalten.`)
+      return
+    }
+    setHinweis(null)
+    setDetail((d) => (d && d.worksheet.backend?.id === blatt.id ? { ...d, worksheet: worksheetAusGespeichertem(blatt, d.worksheet.id) } : d))
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <UploadSection savedBy={user.name} onSave={(doc) => onSavedDocsChange([doc, ...savedDocs])} />
@@ -134,6 +148,15 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
         </div>
       )}
 
+      {hinweis && (
+        <div role="status" className="rounded-lg px-4 py-3 text-sm flex items-center gap-3" style={{ backgroundColor: '#D4EDDA', color: '#1A5C32' }}>
+          <span className="flex-1">{hinweis}</span>
+          <button type="button" onClick={() => setHinweis(null)} className="text-xs underline">
+            Ausblenden
+          </button>
+        </div>
+      )}
+
       {aktionsFehler && (
         <div role="alert" className="rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: '#FAD9C8', color: '#7A2E00' }}>
           {aktionsFehler}
@@ -158,6 +181,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
               onToggleExpand={() => setExpandedId(expandedId === w.id ? null : w.id)}
               onPreview={() => setDetail({ worksheet: w, tab: 'vorschau' })}
               onHistory={() => setDetail({ worksheet: w, tab: 'verlauf' })}
+              onEdit={() => setDetail({ worksheet: w, tab: 'bearbeiten' })}
               onDownload={() => void download(w)}
               onAdapt={() => setTransformSource(w)}
             />
@@ -186,6 +210,8 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
         <WorksheetDetailPanel
           worksheet={detail.worksheet}
           tab={detail.tab}
+          user={user}
+          onChanged={uebernehme}
           onTabChange={(tab) => setDetail({ ...detail, tab })}
           onClose={() => setDetail(null)}
           onAdapt={() => {
