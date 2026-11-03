@@ -28,6 +28,7 @@ Daraus berechnet das Backend den **Lernstand**: was je Berufsfeld erledigt und o
 | --- | --- | --- | --- |
 | GET | `/api/teilnehmende/:kennung/zuordnungen` | Zuordnungen, älteste zuerst; `?status=offen\|erledigt` | `200 { eintraege, gesamt }`, `404` |
 | POST | `/api/teilnehmende/:kennung/zuordnungen` | `{ arbeitsblattId }` zuordnen | `201 { zuordnung }`, `400`, `404`, `409` |
+| GET | `/api/teilnehmende/:kennung/zuordnungen/:id` | eine Zuordnung (Ziel des `Location`-Headers von POST) | `200 { zuordnung }`, `404` |
 | PATCH | `/api/teilnehmende/:kennung/zuordnungen/:id` | `{ status }` abhaken oder wieder öffnen | `200 { zuordnung }`, `400`, `404` |
 | DELETE | `/api/teilnehmende/:kennung/zuordnungen/:id` | Zuordnung entfernen (Blatt bleibt) | `204`, `404` |
 | GET | `/api/teilnehmende/:kennung/lernstand` | Lernstand einer Person | `200 { lernstand }`, `404` |
@@ -81,7 +82,9 @@ Regeln (`src/zuordnungen/lernstand.js`, mit Unit-Tests):
   Berufsfeld außerhalb des Lernwegs hängen alphabetisch hinten an (`station: null`).
 - **Fortschritt** je Berufsfeld = erledigt / gesamt in Prozent.
 - **Als Nächstes** je Berufsfeld = die am längsten offene Zuordnung – die Reihenfolge bestimmen die Dozierenden beim Zuordnen.
-- **Als Nächstes insgesamt** = nächstes Blatt der **aktiven** Station; ist dort nichts offen, das nächste offene Blatt entlang des Lernwegs.
+- **Als Nächstes insgesamt** = nächstes Blatt der **aktiven** Station; ist dort nichts offen, das nächste offene Blatt in den
+  **folgenden** Stationen, danach in den früheren (liegengebliebene Blätter), zuletzt in Berufsfeldern ohne Station.
+  Ohne aktive Station: entlang des Lernwegs von vorn.
 - `offen` ist nach Zuordnung sortiert (älteste zuerst), `erledigt` nach Erledigung (zuletzt erledigte zuerst).
 
 **Abgrenzung zum Lernweg (BE-02):** Die Felder `fortschritt` und `blaetterErledigt` einer Station bleiben die Werte aus dem

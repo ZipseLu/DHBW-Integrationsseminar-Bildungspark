@@ -473,7 +473,7 @@ export type LernstandBerufsfeld = {
 export type Lernstand = {
   kennung: string
   anzahl: LernstandAnzahl
-  /** nächstes Blatt der aktiven Station, sonst das nächste offene entlang des Lernwegs */
+  /** nächstes Blatt der aktiven Station, sonst aus den folgenden, dann den früheren Stationen */
   alsNaechstes: Zuordnung | null
   berufsfelder: LernstandBerufsfeld[]
 }

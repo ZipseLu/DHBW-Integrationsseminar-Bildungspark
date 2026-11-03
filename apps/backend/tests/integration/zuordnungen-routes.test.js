@@ -74,6 +74,9 @@ describe.skipIf(!hasDb)('Zuordnungen und Lernstand (MySQL)', () => {
       const response = await request(app).post(`/api/teilnehmende/${KENNUNG.toLowerCase()}/zuordnungen`).send({ arbeitsblattId: id })
       expect(response.status).toBe(201)
       expect(response.headers.location).toBe(`${basis}/zuordnungen/${response.body.zuordnung.id}`)
+      const abgerufen = await request(app).get(response.headers.location)
+      expect(abgerufen.status).toBe(200)
+      expect(abgerufen.body.zuordnung).toEqual(response.body.zuordnung)
       expect(response.body.zuordnung).toMatchObject({
         kennung: KENNUNG,
         status: 'offen',
@@ -148,6 +151,7 @@ describe.skipIf(!hasDb)('Zuordnungen und Lernstand (MySQL)', () => {
     it('ändert und löscht nur Zuordnungen der genannten Person', async () => {
       await request(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: 'IW3-9102' })
       const fremd = await zuordnen(await blatt(), 'IW3-9102')
+      expect((await request(app).get(`${basis}/zuordnungen/${fremd.id}`)).body.code).toBe('zuordnung_unbekannt')
       expect((await request(app).patch(`${basis}/zuordnungen/${fremd.id}`).send({ status: 'erledigt' })).status).toBe(404)
       expect((await request(app).delete(`${basis}/zuordnungen/${fremd.id}`)).status).toBe(404)
       expect((await request(app).delete(`/api/teilnehmende/IW3-9102/zuordnungen/${fremd.id}`)).status).toBe(204)

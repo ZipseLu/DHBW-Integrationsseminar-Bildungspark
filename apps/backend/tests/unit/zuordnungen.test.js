@@ -92,6 +92,28 @@ describe('berechneLernstand', () => {
     expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('metall')
   })
 
+  it('sucht nach der aktiven Station zuerst vorwärts, nicht beim Anfang des Lernwegs', () => {
+    // GaLa abgeschlossen (ein Blatt vergessen), Lager aktiv und erledigt, Metall ausstehend
+    const lernstand = berechneLernstand(TEILNEHMER, [
+      zuordnung(GALA, 'offen', 1, 'gala-rest'),
+      zuordnung(LAGER, 'erledigt', 2),
+      zuordnung(METALL, 'offen', 3, 'metall'),
+    ])
+    expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('metall')
+  })
+
+  it('springt danach zu früheren Stationen zurück', () => {
+    const teilnehmer = { kennung: 'IW3-1', stationen: [station(GALA, 'abgeschlossen'), station(LAGER, 'abgeschlossen'), station(METALL, 'aktiv')] }
+    const lernstand = berechneLernstand(teilnehmer, [zuordnung(METALL, 'erledigt', 1), zuordnung(LAGER, 'offen', 4, 'lager-rest'), zuordnung(GASTRO, 'offen', 2, 'ohne-station')])
+    expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('lager-rest')
+  })
+
+  it('ohne aktive Station: erstes offenes Blatt entlang des Lernwegs', () => {
+    const teilnehmer = { kennung: 'IW3-1', stationen: [station(LAGER, 'ausstehend'), station(METALL, 'ausstehend')] }
+    const lernstand = berechneLernstand(teilnehmer, [zuordnung(METALL, 'offen', 1, 'metall'), zuordnung(LAGER, 'offen', 5, 'lager')])
+    expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('lager')
+  })
+
   it('ordnet Berufsfelder unabhängig von Groß-/Kleinschreibung zu', () => {
     const lernstand = berechneLernstand(TEILNEHMER, [zuordnung(LAGER.toUpperCase(), 'offen', 2)])
     expect(lernstand.berufsfelder).toHaveLength(3)

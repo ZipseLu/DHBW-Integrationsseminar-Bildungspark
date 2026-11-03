@@ -5,6 +5,7 @@
  *   GET    /api/teilnehmende/:kennung/lernstand         done / open per Berufsfeld + next sheet
  *   GET    /api/teilnehmende/:kennung/zuordnungen       assignments (?status=offen|erledigt)
  *   POST   /api/teilnehmende/:kennung/zuordnungen       { arbeitsblattId } – assign a saved sheet
+ *   GET    /api/teilnehmende/:kennung/zuordnungen/:id   one assignment
  *   PATCH  /api/teilnehmende/:kennung/zuordnungen/:id   { status } – tick off or reopen
  *   DELETE /api/teilnehmende/:kennung/zuordnungen/:id   remove the assignment
  *
@@ -70,6 +71,15 @@ export function createZuordnungenRouter() {
         .status(201)
         .location(`/api/teilnehmende/${encodeURIComponent(zuordnung.kennung)}/zuordnungen/${zuordnung.id}`)
         .json({ zuordnung })
+    }),
+  )
+
+  router.get(
+    '/:kennung/zuordnungen/:id',
+    wrap(async (req, res) => {
+      const zuordnung = await repo.findById(res.locals.kennung, req.params.id)
+      if (!zuordnung) return zuordnungFehlt(res, req.params.id)
+      res.json({ zuordnung })
     }),
   )
 

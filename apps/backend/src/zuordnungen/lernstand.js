@@ -9,7 +9,9 @@
  *   - "Next" in a Berufsfeld = the open assignment that has been waiting longest
  *     (oldest `zugeordnetAm` first) – the teacher decides the order by assigning.
  *   - "Next" overall = next sheet of the active station; if that one has nothing open,
- *     the next open sheet along the Lernweg.
+ *     the next open sheet in the following stations of the Lernweg, then in the earlier
+ *     ones (left-overs), then in fields without a station. Without an active station:
+ *     along the Lernweg from the start.
  *
  * The station fields `fortschritt` and `blaetterErledigt` (BE-02) stay as entered in
  * the profile dialog; this computation does not change them.
@@ -70,8 +72,15 @@ export function berechneLernstand(teilnehmer, zuordnungen) {
     }
   })
 
-  const aktiv = berufsfelder.find((feld) => feld.station?.status === 'aktiv')
-  const alsNaechstes = aktiv?.alsNaechstes ?? berufsfelder.find((feld) => feld.alsNaechstes)?.alsNaechstes ?? null
+  // Search order for "next": from the active station forward, then the stations before it
+  const stationen = berufsfelder.filter((feld) => feld.station)
+  const ohneStationFelder = berufsfelder.filter((feld) => !feld.station)
+  const aktivIndex = stationen.findIndex((feld) => feld.station.status === 'aktiv')
+  const suchreihenfolge =
+    aktivIndex < 0
+      ? [...stationen, ...ohneStationFelder]
+      : [...stationen.slice(aktivIndex), ...stationen.slice(0, aktivIndex), ...ohneStationFelder]
+  const alsNaechstes = suchreihenfolge.find((feld) => feld.alsNaechstes)?.alsNaechstes ?? null
 
   return {
     kennung: teilnehmer.kennung,
