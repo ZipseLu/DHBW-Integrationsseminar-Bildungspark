@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NAV_ITEMS } from '@/data/constants'
 import { PARTICIPANTS } from '@/data/participants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
@@ -37,14 +37,24 @@ export default function App() {
   // Lernziel, das von der Seite Lehrpläne an die KI-Erstellung uebergeben wird
   const [kiVorauswahl, setKiVorauswahl] = useState<KiVorauswahl | null>(null)
 
+  // Content column is exactly one screen high: only <main> scrolls, sidebar and header stay in place
+  const inhaltRef = useRef<HTMLDivElement>(null)
+
+  /** Switches the page and starts the new page at the top */
+  function zeigeSeite(item: NavItem) {
+    setActiveNav(item)
+    const main = inhaltRef.current?.querySelector('main')
+    if (main) main.scrollTop = 0
+  }
+
   function navigate(item: NavItem) {
     setKiVorauswahl(null)
-    setActiveNav(item)
+    zeigeSeite(item)
   }
 
   function createFromLehrplan(vorauswahl: KiVorauswahl) {
     setKiVorauswahl(vorauswahl)
-    setActiveNav('ki-erstellung')
+    zeigeSeite('ki-erstellung')
   }
 
   useEffect(() => {
@@ -70,7 +80,7 @@ export default function App() {
       </a>
       <Sidebar user={user} active={activeNav} onNavigate={navigate} compact={settings.sidebarCompact} />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div ref={inhaltRef} className="flex-1 flex flex-col min-w-0 h-screen" data-testid="inhalt-spalte">
         <Header title={title} onCreate={() => navigate('ki-erstellung')} />
 
         <main id="inhalt" tabIndex={-1} className="flex-1 p-8 overflow-auto focus:outline-none" data-page={activeNav}>
