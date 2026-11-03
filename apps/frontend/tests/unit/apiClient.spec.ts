@@ -12,9 +12,15 @@ import {
   fetchArbeitsblatt,
   fetchArbeitsblattFilteroptionen,
   fetchArbeitsblattVerlauf,
+  fetchAktuellesKonto,
   fetchLehrplaene,
   generateArbeitsblatt,
+  getAuthToken,
+  login,
+  logout,
   saveArbeitsblatt,
+  setAbmeldeHandler,
+  setAuthToken,
   updateArbeitsblatt,
   type Arbeitsblatt,
   type ArbeitsblattMeta,
@@ -225,5 +231,88 @@ describe('Gespeicherte Arbeitsblätter (/api/arbeitsblaetter)', () => {
     antworte(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
     await expect(downloadGespeichertesDocx({ id: ID, titel: 'x' })).rejects.toMatchObject({ code: 'db_unavailable' })
     expect(vi.mocked(saveAs)).not.toHaveBeenCalled()
+  })
+})
+
+describe('Anmeldung (/api/auth, BE-01)', () => {
+  const KONTO = { id: ID, name: 'C. Hager', email: 'c.hager@bildungspark.example', rolle: 'admin', erstelltAm: '2026-11-03T08:00:00.000Z' }
+
+  /** Authorization header of the n-th fetch call */
+  const authHeader = (n = 0) => new Headers(aufruf(n).init.headers).get('Authorization')
+
+  afterEach(() => {
+    setAbmeldeHandler(null)
+    setAuthToken(null)
+  })
+
+  it('login schickt E-Mail und Passwort und merkt sich das Token', async () => {
+    antworte(json({ token: 'token-1', ablaufAm: '2026-11-03T16:00:00.000Z', benutzer: KONTO }))
+    const anmeldung = await login('c.hager@bildungspark.example', 'geheim-123')
+
+    expect(anmeldung.benutzer).toEqual(KONTO)
+    expect(aufruf().url).toBe('/api/auth/login')
+    expect(aufruf().init.method).toBe('POST')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ email: 'c.hager@bildungspark.example', passwort: 'geheim-123' })
+    expect(getAuthToken()).toBe('token-1')
+    expect(sessionStorage.getItem('bildungspark.anmeldung')).toBe('token-1')
+  })
+
+  it('alle weiteren Aufrufe schicken das Token als Bearer-Header mit', async () => {
+    setAuthToken('token-2')
+    antworte(json({ eintraege: [], seite: 1, proSeite: 15, gesamt: 0, seiten: 1 }))
+    antworte(json({ arbeitsblatt: { id: ID } }))
+    await fetchArbeitsblaetter()
+    await updateArbeitsblatt(ID, { favorit: true })
+
+    expect(authHeader(0)).toBe('Bearer token-2')
+    expect(authHeader(1)).toBe('Bearer token-2')
+    expect(new Headers(aufruf(1).init.headers).get('Content-Type')).toBe('application/json')
+  })
+
+  it('ohne Anmeldung bleibt der Aufruf unverändert', async () => {
+    antworte(json({ ok: true }))
+    await apiFetch('/api/health', { method: 'GET' })
+    expect(aufruf().init).toEqual({ method: 'GET' })
+  })
+
+  it('fetchAktuellesKonto packt das Konto aus', async () => {
+    setAuthToken('token-3')
+    antworte(json({ benutzer: KONTO }))
+    expect(await fetchAktuellesKonto()).toEqual(KONTO)
+    expect(aufruf().url).toBe('/api/auth/me')
+    expect(authHeader()).toBe('Bearer token-3')
+  })
+
+  it('logout verwirft das Token', async () => {
+    setAuthToken('token-4')
+    logout()
+    expect(getAuthToken()).toBeNull()
+    expect(sessionStorage.getItem('bildungspark.anmeldung')).toBeNull()
+    antworte(json({ ok: true }))
+    await apiFetch('/api/health')
+    expect(authHeader()).toBeNull()
+  })
+
+  it('lehnt das Backend das Token ab (401), wird abgemeldet und der Handler gerufen', async () => {
+    const handler = vi.fn()
+    setAbmeldeHandler(handler)
+    setAuthToken('abgelaufen')
+    antworte(json({ error: 'unauthorized', code: 'token_abgelaufen', message: 'Die Anmeldung ist abgelaufen – bitte neu anmelden' }, 401))
+
+    await expect(fetchArbeitsblaetter()).rejects.toMatchObject({ status: 401, code: 'unauthorized' })
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(getAuthToken()).toBeNull()
+  })
+
+  it('falsches Passwort: ApiError 401, kein Token, kein Abmelde-Handler', async () => {
+    const handler = vi.fn()
+    setAbmeldeHandler(handler)
+    setAuthToken('altes-token')
+    antworte(json({ error: 'unauthorized', code: 'anmeldung_fehlgeschlagen', message: 'E-Mail-Adresse oder Passwort ist falsch' }, 401))
+
+    await expect(login('c.hager@bildungspark.example', 'falsch')).rejects.toMatchObject({ status: 401, message: 'E-Mail-Adresse oder Passwort ist falsch' })
+    expect(authHeader()).toBeNull()
+    expect(getAuthToken()).toBeNull()
+    expect(handler).not.toHaveBeenCalled()
   })
 })
