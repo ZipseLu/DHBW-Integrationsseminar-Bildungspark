@@ -60,6 +60,8 @@ export type GespeichertInfo = {
   status: 'entwurf' | 'freigegeben' | 'archiviert'
   version: number
   favorit: boolean
+  /** ISO timestamp of the last change (shown in the detail panel) */
+  geaendertAm?: string
 }
 
 export type SavedDocument = {
@@ -81,6 +83,8 @@ export type HistoryEntry = {
   author: string
   action: HistoryAction
   note: string
+  /** Time of day "HH:MM" – only known for entries from the backend */
+  time?: string
 }
 
 export type WebResult = {

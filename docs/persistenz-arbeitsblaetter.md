@@ -138,6 +138,8 @@ Funktionen in `apps/frontend/src/lib/api.ts`: `fetchArbeitsblaetter(filter)`, `f
 | KI-Anpassung-Button | `generateArbeitsblatt(...)` → `updateArbeitsblatt(id, { worksheet, meta, aktion: 'KI-angepasst' })` |
 | Paginiert ab 15 | `fetchArbeitsblaetter({ seite })` → `seiten`, `gesamt` |
 | Speichern nach Generierung (Karte #8) | `saveArbeitsblatt({ worksheet, meta, erstelltVon })` |
+| ✎ Bearbeiten (FE-10, umgesetzt) | `fetchArbeitsblatt(id)` → Formular → `updateArbeitsblatt(id, { worksheet, autor, notiz })` |
+| Freigeben / Zurück auf Entwurf / Archivieren / Wiederherstellen (FE-10, umgesetzt) | `updateArbeitsblatt(id, { status, autor, notiz })` – nur Rolle Dozent/Admin |
 
 ---
 

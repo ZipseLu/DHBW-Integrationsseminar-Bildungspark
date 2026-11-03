@@ -51,7 +51,7 @@ export function worksheetAusGespeichertem(blatt: GespeichertesArbeitsblatt, numm
     format: blatt.format,
     sprache: blatt.sprache,
     niveaus: [blatt.stufe],
-    backend: { id: blatt.id, status: blatt.status, version: blatt.version, favorit: blatt.favorit },
+    backend: { id: blatt.id, status: blatt.status, version: blatt.version, favorit: blatt.favorit, geaendertAm: blatt.geaendertAm },
   }
 }
 
@@ -60,10 +60,16 @@ export function historyAusVerlauf(eintraege: VerlaufEintrag[]): HistoryEntry[] {
   return eintraege.map((e) => ({
     version: e.version,
     date: todayIso(new Date(e.erstelltAm)),
+    time: uhrzeit(new Date(e.erstelltAm)),
     author: e.autor ?? 'unbekannt',
     action: e.aktion,
     note: e.notiz ?? '',
   }))
+}
+
+/** Local time of day as "HH:MM" */
+function uhrzeit(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 /** Lesbare Fehlermeldung für die Seite */
