@@ -17,6 +17,7 @@ import { arbeitsblattRouter } from './routes/arbeitsblatt.js'
 import { createLehrplaeneRouter } from './routes/lehrplaene.js'
 import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
+import { createBenutzerRouter } from './routes/benutzer.js'
 
 export function createApp() {
   const app = express()
@@ -52,6 +53,8 @@ export function createApp() {
   app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
   // Teilnehmende mit Lernweg (MySQL, BE-02) – ohne DB ebenfalls 503
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
+  // Mitarbeiterkonten (Tabelle users, BE-03) – nur Admins, sobald die Anmeldung (BE-01) da ist
+  app.use('/api/benutzer', createBenutzerRouter())
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {
