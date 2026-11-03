@@ -56,10 +56,22 @@ export function pruefeToken(token, { secret = config.jwtSecret } = {}) {
 }
 
 /**
- * Stops the server start in production with the development secret or a short secret –
- * anyone who knows the secret can sign tokens for any role.
+ * Checks the token settings once at server start (src/index.js):
+ *   - JWT_EXPIRES_IN must be a positive lifetime – otherwise every login would end with 500
+ *   - in production no development secret and at least MIN_SECRET_LAENGE characters –
+ *     anyone who knows the secret can sign tokens for any role
  */
-export function pruefeJwtKonfiguration({ env = config.env, secret = config.jwtSecret } = {}) {
+export function pruefeJwtKonfiguration({ env = config.env, secret = config.jwtSecret, expiresIn = config.jwtExpiresIn } = {}) {
+  let probe = null
+  try {
+    probe = jwt.decode(jwt.sign({}, 'probe', { algorithm: ALGORITHMUS, expiresIn }))
+  } catch {
+    // invalid format, e.g. "8 Stunden" – reported below
+  }
+  if (!probe || !(probe.exp > probe.iat)) {
+    throw new Error(`JWT_EXPIRES_IN „${expiresIn}“ ist keine gültige Laufzeit – z. B. 30m, 8h, 1d oder Sekunden als Zahl.`)
+  }
+
   if (env !== 'production') return
   if (!secret || secret === DEV_JWT_SECRET || secret.length < MIN_SECRET_LAENGE) {
     throw new Error(

@@ -83,6 +83,17 @@ afterEach(() => {
 })
 
 describe('apiFetch – Fehlerbehandlung', () => {
+  it('reicht den genauen Grund (Feld code) als grund weiter', async () => {
+    antworte(json({ error: 'conflict', code: 'letzter_admin', message: 'Das letzte Admin-Konto kann nicht entfernt werden' }, 409))
+    const fehler = (await apiFetch('/api/benutzer/x', { method: 'DELETE' }).catch((e: unknown) => e)) as ApiError
+    expect(fehler).toMatchObject({ status: 409, code: 'conflict', grund: 'letzter_admin' })
+
+    antworte(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
+    const ohneGrund = (await apiFetch('/api/arbeitsblaetter').catch((e: unknown) => e)) as ApiError
+    expect(ohneGrund.code).toBe('db_unavailable')
+    expect(ohneGrund.grund).toBeUndefined()
+  })
+
   it('gibt erfolgreiche Antworten unverändert zurück', async () => {
     antworte(json({ ok: true }))
     const response = await apiFetch('/api/health')
@@ -299,7 +310,7 @@ describe('Anmeldung (/api/auth, BE-01)', () => {
     setAuthToken('abgelaufen')
     antworte(json({ error: 'unauthorized', code: 'token_abgelaufen', message: 'Die Anmeldung ist abgelaufen – bitte neu anmelden' }, 401))
 
-    await expect(fetchArbeitsblaetter()).rejects.toMatchObject({ status: 401, code: 'unauthorized' })
+    await expect(fetchArbeitsblaetter()).rejects.toMatchObject({ status: 401, code: 'unauthorized', grund: 'token_abgelaufen' })
     expect(handler).toHaveBeenCalledTimes(1)
     expect(getAuthToken()).toBeNull()
   })
@@ -310,7 +321,11 @@ describe('Anmeldung (/api/auth, BE-01)', () => {
     setAuthToken('altes-token')
     antworte(json({ error: 'unauthorized', code: 'anmeldung_fehlgeschlagen', message: 'E-Mail-Adresse oder Passwort ist falsch' }, 401))
 
-    await expect(login('c.hager@bildungspark.example', 'falsch')).rejects.toMatchObject({ status: 401, message: 'E-Mail-Adresse oder Passwort ist falsch' })
+    await expect(login('c.hager@bildungspark.example', 'falsch')).rejects.toMatchObject({
+      status: 401,
+      grund: 'anmeldung_fehlgeschlagen',
+      message: 'E-Mail-Adresse oder Passwort ist falsch',
+    })
     expect(authHeader()).toBeNull()
     expect(getAuthToken()).toBeNull()
     expect(handler).not.toHaveBeenCalled()

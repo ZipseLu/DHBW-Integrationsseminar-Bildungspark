@@ -73,19 +73,23 @@ export type ArbeitsblattRequest = {
 /** Einheitlicher Fehler: HTTP-Status, Fehlercode des Backends und deutsche Meldung */
 export class ApiError extends Error {
   status: number
+  /** Fehlerart, z. B. 'conflict', 'not_found', 'unauthorized', 'db_unavailable' (Feld `error` der Antwort) */
   code: string
+  /** Genauer Grund, falls das Backend ihn nennt, z. B. 'bereits_zugeordnet', 'token_abgelaufen' (Feld `code`) */
+  grund?: string
   details?: unknown
 
-  constructor(message: string, status: number, code: string, details?: unknown) {
+  constructor(message: string, status: number, code: string, details?: unknown, grund?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.details = details
+    if (grund) this.grund = grund
   }
 }
 
-type ErrorBody = { error?: string; message?: string; details?: unknown }
+type ErrorBody = { error?: string; code?: string; message?: string; details?: unknown }
 
 // --- Anmelde-Token (BE-01) – apiFetch schickt es bei jedem Aufruf mit ----------
 
@@ -159,7 +163,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     // keine JSON-Antwort (z. B. HTML-Fehlerseite des Proxys)
   }
   const message = body.message ?? `Fehler ${response.status} vom Backend`
-  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details)
+  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details, body.code)
 }
 
 async function postJson(path: string, payload: unknown): Promise<Response> {

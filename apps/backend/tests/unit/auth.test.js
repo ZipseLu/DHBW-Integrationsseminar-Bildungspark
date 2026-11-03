@@ -3,7 +3,7 @@ import express from 'express'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 import { createApp } from '../../src/app.js'
-import { config, DEV_JWT_SECRET } from '../../src/config.js'
+import { config, DEV_JWT_SECRET, jwtLaufzeit } from '../../src/config.js'
 import { authentifiziere, erfordereAnmeldung } from '../../src/auth/anmeldung.js'
 import { LoginSchema } from '../../src/auth/schema.js'
 import { erstelleToken, MIN_SECRET_LAENGE, pruefeJwtKonfiguration, pruefeToken, TokenError } from '../../src/auth/token.js'
@@ -81,6 +81,26 @@ describe('JWT_SECRET in Produktion', () => {
   it('akzeptiert einen langen Schlüssel und lässt die Entwicklung in Ruhe', () => {
     expect(() => pruefeJwtKonfiguration({ env: 'production', secret: sicher })).not.toThrow()
     expect(() => pruefeJwtKonfiguration({ env: 'development', secret: DEV_JWT_SECRET })).not.toThrow()
+  })
+})
+
+describe('JWT_EXPIRES_IN', () => {
+  it('liest eine reine Zahl als Sekunden, alles andere bleibt Text', () => {
+    expect(jwtLaufzeit('3600')).toBe(3600)
+    expect(jwtLaufzeit(' 900 ')).toBe(900)
+    expect(jwtLaufzeit('8h')).toBe('8h')
+    expect(jwtLaufzeit(undefined)).toBeUndefined()
+    const { ablaufAm } = erstelleToken(KONTO, { expiresIn: jwtLaufzeit('3600') })
+    expect(Date.parse(ablaufAm) - Date.now()).toBeGreaterThan(3590_000)
+  })
+
+  it('verweigert den Start mit ungültiger oder nicht positiver Laufzeit', () => {
+    for (const expiresIn of ['8 Stunden', '0s', 0, -5]) {
+      expect(() => pruefeJwtKonfiguration({ env: 'development', expiresIn })).toThrow(/JWT_EXPIRES_IN/)
+    }
+    for (const expiresIn of ['30m', '8h', '1d', 3600]) {
+      expect(() => pruefeJwtKonfiguration({ env: 'development', expiresIn })).not.toThrow()
+    }
   })
 })
 

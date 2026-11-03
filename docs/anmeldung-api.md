@@ -51,6 +51,7 @@ das eigene Konto lässt sich nicht löschen (`409 eigenes_konto`).
 ## Fehlercodes
 
 Fehlerantworten haben die Form `{ error, code, message }`; bei `401` steht zusätzlich der Header `WWW-Authenticate: Bearer`.
+Im Frontend landet `error` in `ApiError.code` (Fehlerart) und `code` in `ApiError.grund` (genauer Grund, z. B. `token_abgelaufen`).
 
 | Status | `code` | Bedeutung | Frontend |
 | --- | --- | --- | --- |
@@ -75,7 +76,7 @@ Fehlerantworten haben die Form `{ error, code, message }`; bei `401` steht zusä
 
 | Funktion | Zweck |
 | --- | --- |
-| `login(email, passwort)` | meldet an, merkt sich das Token, liefert `{ token, ablaufAm, benutzer }`; falsche Daten → `ApiError` mit Status `401` |
+| `login(email, passwort)` | meldet an, merkt sich das Token, liefert `{ token, ablaufAm, benutzer }`; falsche Daten → `ApiError` mit Status `401` und `grund: 'anmeldung_fehlgeschlagen'` |
 | `fetchAktuellesKonto()` | `GET /api/auth/me` – z. B. beim Start der App, um eine Anmeldung nach dem Neuladen wiederherzustellen |
 | `logout()` | verwirft das Token |
 | `getAuthToken()` / `setAuthToken(token)` | Token lesen/setzen (liegt im `sessionStorage`: übersteht Neuladen, nicht das Schließen des Tabs) |
@@ -122,7 +123,7 @@ curl -s -X POST http://localhost:3000/api/auth/login -H 'Content-Type: applicati
 | Variable | Standard | Bedeutung |
 | --- | --- | --- |
 | `JWT_SECRET` | `dev-secret-bitte-aendern` | Schlüssel für die Signatur. **In Produktion (`NODE_ENV=production`) startet das Backend nur mit einem eigenen Schlüssel ab 32 Zeichen**, z. B. `openssl rand -base64 48` |
-| `JWT_EXPIRES_IN` | `8h` | Gültigkeit eines Tokens (Format von `jsonwebtoken`, z. B. `30m`, `8h`, `1d`) |
+| `JWT_EXPIRES_IN` | `8h` | Gültigkeit eines Tokens, z. B. `30m`, `8h`, `1d`; eine reine Zahl gilt als Sekunden. Ungültige oder nicht positive Werte verhindern den Start |
 
 Wer `JWT_SECRET` kennt, kann Tokens für jede Rolle ausstellen – der Schlüssel gehört deshalb nur in GitHub-Secrets bzw. auf den Server (OPS-03), nie ins Repository.
 
@@ -132,6 +133,11 @@ ausführen (oder Volume löschen und `docker compose up --build`, siehe README �
 Symptom sonst: `Cannot find package 'jsonwebtoken'`.
 
 ## Bewusste Grenzen (Prototyp)
+
+- **Bis BE-06 ist die API ohne Token offen** – auch `/api/benutzer`: Ohne Token kann jede/r die Kontenliste lesen und Konten anlegen,
+  auch mit Rolle `admin`, und sich damit anmelden. Die Rollenprüfung greift nur, wenn ein Token mitkommt.
+  **BE-06 muss deshalb auch `/api/benutzer` ohne Token mit `401` sperren** (erstes Admin-Konto über `npm run db:seed` oder direkt in der Datenbank),
+  und der Staging-Server (OPS-01) sollte erst danach öffentlich erreichbar sein – oder bis dahin hinter einem Zugangsschutz des Webservers liegen.
 
 - Kein Rate-Limit für Login-Versuche – kommt mit BE-06 (zusammen mit dem Limit für KI-Aufrufe).
 - Token im `sessionStorage`: Ein eingeschleustes Skript (XSS) könnte es lesen. React escaped Ausgaben; für den Prototyp akzeptiert.
