@@ -18,6 +18,9 @@ import { createLehrplaeneRouter } from './routes/lehrplaene.js'
 import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
+import { createAuthRouter } from './routes/auth.js'
+import { createZuordnungenRouter } from './routes/zuordnungen.js'
+import { authentifiziere } from './auth/anmeldung.js'
 
 export function createApp() {
   const app = express()
@@ -45,15 +48,25 @@ export function createApp() {
   }
 
   app.use('/api/health', healthRouter)
+  // Login (BE-01) – vor der Token-Prüfung, damit die Anmeldung auch mit einem abgelaufenen
+  // Token im Browser klappt; GET /api/auth/me prüft das Token selbst.
+  app.use('/api/auth', createAuthRouter())
+  // Ab hier: ein gültiges Bearer-Token setzt req.benutzer, ein ungültiges gibt 401.
+  // Ohne Token geht es (noch) weiter – Pflicht wird die Anmeldung mit BE-06.
+  app.use(authentifiziere)
+
   // Spezifischere Route zuerst, damit /api/ai/arbeitsblatt nicht im aiRouter landet
   app.use('/api/ai/arbeitsblatt', arbeitsblattRouter)
   app.use('/api/ai', aiRouter)
   app.use('/api/lehrplaene', createLehrplaeneRouter())
   // Gespeicherte Arbeitsblaetter (MySQL) – ohne DB antworten die Routen mit 503
   app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
+  // Zuordnungen und Lernstand (BE-04) vor den Profilen: /lernstand und /:kennung/zuordnungen…,
+  // alles andere unter /api/teilnehmende geht an den Teilnehmenden-Router weiter
+  app.use('/api/teilnehmende', createZuordnungenRouter())
   // Teilnehmende mit Lernweg (MySQL, BE-02) – ohne DB ebenfalls 503
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
-  // Staff accounts (table users, BE-03) – admins only, once the login (BE-01) exists
+  // Staff accounts (table users, BE-03) – admins only as soon as a token is sent (BE-01)
   app.use('/api/benutzer', createBenutzerRouter())
 
   // 404 fuer alles Unbekannte

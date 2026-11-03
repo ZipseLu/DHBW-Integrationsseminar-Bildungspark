@@ -9,13 +9,21 @@
  *
  * Die JSON-Datei steht in .gitignore: Die Lehrplaene gehoeren dem Bildungspark,
  * das Repository ist oeffentlich. Jedes Teammitglied erzeugt die Datei lokal.
- * GET /api/lehrplaene liefert den Inhalt; ohne Datei nutzt das Frontend die
+ *
+ * Ist die Datenbank erreichbar, ersetzt das Skript ausserdem die Lehrplaene dort
+ * (Migration 004: lehrplaene, lernziele, lernziel_niveaus). GET /api/lehrplaene
+ * liest zuerst die Datenbank, sonst die Datei; ohne beides nutzt das Frontend die
  * 12 Beispiel-Lernziele aus apps/frontend/src/data/worksheets.ts.
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { berufsfeldFromFileName, parseLehrplanDocx, STUFEN } from '../src/lehrplan/parser.js'
+import { describeConfig } from '../src/config.js'
+import { closePool } from '../src/db.js'
+import { runMigrations } from '../src/db/migrate.js'
+import { dbError } from '../src/http/fehler.js'
+import { ersetzeAlle } from '../src/lehrplan/repository.js'
 
 const backendRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = resolve(backendRoot, '../..')
@@ -83,4 +91,20 @@ for (const [berufsfeld, count] of Object.entries(summary)) console.log(`  ${coun
 if (probleme.length) {
   console.log(`\n[import] ${probleme.length} Hinweise (Datenqualität der Quelldateien):`)
   for (const p of probleme) console.log(`  - ${p}`)
+}
+
+// Zusaetzlich in die Datenbank – ohne erreichbare Datenbank bleibt es bei der Datei
+try {
+  await runMigrations()
+  const ergebnis = await ersetzeAlle(lernziele)
+  console.log(`\n[import] Datenbank ${describeConfig().db}: ${ergebnis.lernziele} Lernziele aus ${ergebnis.lehrplaene} Lehrplaenen gespeichert (alter Stand ersetzt).`)
+} catch (error) {
+  if (dbError(error)) {
+    console.log('\n[import] Datenbank nicht erreichbar – nur die Datei geschrieben. Spaeter uebernimmt `npm run db:seed` sie in die Datenbank.')
+  } else {
+    console.error('\n[import] FEHLER beim Schreiben in die Datenbank:', error.message)
+    process.exitCode = 1
+  }
+} finally {
+  await closePool()
 }

@@ -6,16 +6,28 @@ import {
   ApiError,
   apiFetch,
   deleteArbeitsblatt,
+  deleteZuordnung,
   downloadArbeitsblattDocx,
   downloadGespeichertesDocx,
   fetchArbeitsblaetter,
   fetchArbeitsblatt,
   fetchArbeitsblattFilteroptionen,
   fetchArbeitsblattVerlauf,
+  fetchAktuellesKonto,
   fetchLehrplaene,
+  fetchLernstand,
+  fetchLernstandAlle,
+  fetchZuordnungen,
   generateArbeitsblatt,
+  getAuthToken,
+  login,
+  logout,
   saveArbeitsblatt,
+  setAbmeldeHandler,
+  setAuthToken,
+  setZuordnungStatus,
   updateArbeitsblatt,
+  zuordnen,
   type Arbeitsblatt,
   type ArbeitsblattMeta,
 } from '@/lib/api'
@@ -77,6 +89,17 @@ afterEach(() => {
 })
 
 describe('apiFetch – Fehlerbehandlung', () => {
+  it('reicht den genauen Grund (Feld code) als grund weiter', async () => {
+    antworte(json({ error: 'conflict', code: 'letzter_admin', message: 'Das letzte Admin-Konto kann nicht entfernt werden' }, 409))
+    const fehler = (await apiFetch('/api/benutzer/x', { method: 'DELETE' }).catch((e: unknown) => e)) as ApiError
+    expect(fehler).toMatchObject({ status: 409, code: 'conflict', grund: 'letzter_admin' })
+
+    antworte(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
+    const ohneGrund = (await apiFetch('/api/arbeitsblaetter').catch((e: unknown) => e)) as ApiError
+    expect(ohneGrund.code).toBe('db_unavailable')
+    expect(ohneGrund.grund).toBeUndefined()
+  })
+
   it('gibt erfolgreiche Antworten unverändert zurück', async () => {
     antworte(json({ ok: true }))
     const response = await apiFetch('/api/health')
@@ -225,5 +248,151 @@ describe('Gespeicherte Arbeitsblätter (/api/arbeitsblaetter)', () => {
     antworte(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
     await expect(downloadGespeichertesDocx({ id: ID, titel: 'x' })).rejects.toMatchObject({ code: 'db_unavailable' })
     expect(vi.mocked(saveAs)).not.toHaveBeenCalled()
+  })
+})
+
+describe('Anmeldung (/api/auth, BE-01)', () => {
+  const KONTO = { id: ID, name: 'C. Hager', email: 'c.hager@bildungspark.example', rolle: 'admin', erstelltAm: '2026-11-03T08:00:00.000Z' }
+
+  /** Authorization header of the n-th fetch call */
+  const authHeader = (n = 0) => new Headers(aufruf(n).init.headers).get('Authorization')
+
+  afterEach(() => {
+    setAbmeldeHandler(null)
+    setAuthToken(null)
+  })
+
+  it('login schickt E-Mail und Passwort und merkt sich das Token', async () => {
+    antworte(json({ token: 'token-1', ablaufAm: '2026-11-03T16:00:00.000Z', benutzer: KONTO }))
+    const anmeldung = await login('c.hager@bildungspark.example', 'geheim-123')
+
+    expect(anmeldung.benutzer).toEqual(KONTO)
+    expect(aufruf().url).toBe('/api/auth/login')
+    expect(aufruf().init.method).toBe('POST')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ email: 'c.hager@bildungspark.example', passwort: 'geheim-123' })
+    expect(getAuthToken()).toBe('token-1')
+    expect(sessionStorage.getItem('bildungspark.anmeldung')).toBe('token-1')
+  })
+
+  it('alle weiteren Aufrufe schicken das Token als Bearer-Header mit', async () => {
+    setAuthToken('token-2')
+    antworte(json({ eintraege: [], seite: 1, proSeite: 15, gesamt: 0, seiten: 1 }))
+    antworte(json({ arbeitsblatt: { id: ID } }))
+    await fetchArbeitsblaetter()
+    await updateArbeitsblatt(ID, { favorit: true })
+
+    expect(authHeader(0)).toBe('Bearer token-2')
+    expect(authHeader(1)).toBe('Bearer token-2')
+    expect(new Headers(aufruf(1).init.headers).get('Content-Type')).toBe('application/json')
+  })
+
+  it('ohne Anmeldung bleibt der Aufruf unverändert', async () => {
+    antworte(json({ ok: true }))
+    await apiFetch('/api/health', { method: 'GET' })
+    expect(aufruf().init).toEqual({ method: 'GET' })
+  })
+
+  it('fetchAktuellesKonto packt das Konto aus', async () => {
+    setAuthToken('token-3')
+    antworte(json({ benutzer: KONTO }))
+    expect(await fetchAktuellesKonto()).toEqual(KONTO)
+    expect(aufruf().url).toBe('/api/auth/me')
+    expect(authHeader()).toBe('Bearer token-3')
+  })
+
+  it('logout verwirft das Token', async () => {
+    setAuthToken('token-4')
+    logout()
+    expect(getAuthToken()).toBeNull()
+    expect(sessionStorage.getItem('bildungspark.anmeldung')).toBeNull()
+    antworte(json({ ok: true }))
+    await apiFetch('/api/health')
+    expect(authHeader()).toBeNull()
+  })
+
+  it('lehnt das Backend das Token ab (401), wird abgemeldet und der Handler gerufen', async () => {
+    const handler = vi.fn()
+    setAbmeldeHandler(handler)
+    setAuthToken('abgelaufen')
+    antworte(json({ error: 'unauthorized', code: 'token_abgelaufen', message: 'Die Anmeldung ist abgelaufen – bitte neu anmelden' }, 401))
+
+    await expect(fetchArbeitsblaetter()).rejects.toMatchObject({ status: 401, code: 'unauthorized', grund: 'token_abgelaufen' })
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(getAuthToken()).toBeNull()
+  })
+
+  it('falsches Passwort: ApiError 401, kein Token, kein Abmelde-Handler', async () => {
+    const handler = vi.fn()
+    setAbmeldeHandler(handler)
+    setAuthToken('altes-token')
+    antworte(json({ error: 'unauthorized', code: 'anmeldung_fehlgeschlagen', message: 'E-Mail-Adresse oder Passwort ist falsch' }, 401))
+
+    await expect(login('c.hager@bildungspark.example', 'falsch')).rejects.toMatchObject({
+      status: 401,
+      grund: 'anmeldung_fehlgeschlagen',
+      message: 'E-Mail-Adresse oder Passwort ist falsch',
+    })
+    expect(authHeader()).toBeNull()
+    expect(getAuthToken()).toBeNull()
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('Zuordnungen und Lernstand (BE-04)', () => {
+  const ZUORDNUNG = {
+    id: ID,
+    kennung: 'IW3-4421',
+    status: 'offen',
+    zugeordnetAm: '2026-11-03T08:00:00.000Z',
+    erledigtAm: null,
+    zugeordnetVon: 'C. Hager',
+    arbeitsblatt: { id: ID, titel: 'Lieferschein prüfen', berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'A' },
+  }
+
+  it('fetchZuordnungen kodiert die Kennung und filtert nach Status', async () => {
+    antworte(json({ eintraege: [ZUORDNUNG], gesamt: 1 }))
+    antworte(json({ eintraege: [], gesamt: 0 }))
+    expect(await fetchZuordnungen('IW3-4421')).toEqual([ZUORDNUNG])
+    await fetchZuordnungen('IW3/1', 'offen')
+    expect(aufruf(0).url).toBe('/api/teilnehmende/IW3-4421/zuordnungen')
+    expect(aufruf(1).url).toBe('/api/teilnehmende/IW3%2F1/zuordnungen?status=offen')
+  })
+
+  it('zuordnen schickt nur die Arbeitsblatt-ID per POST', async () => {
+    antworte(json({ zuordnung: ZUORDNUNG }, 201))
+    expect(await zuordnen('IW3-4421', ID)).toEqual(ZUORDNUNG)
+    expect(aufruf().url).toBe('/api/teilnehmende/IW3-4421/zuordnungen')
+    expect(aufruf().init.method).toBe('POST')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ arbeitsblattId: ID })
+  })
+
+  it('zuordnen meldet eine doppelte Zuordnung als ApiError 409', async () => {
+    antworte(json({ error: 'conflict', code: 'bereits_zugeordnet', message: 'Das Arbeitsblatt ist IW3-4421 schon zugeordnet' }, 409))
+    await expect(zuordnen('IW3-4421', ID)).rejects.toMatchObject({ status: 409, message: 'Das Arbeitsblatt ist IW3-4421 schon zugeordnet' })
+  })
+
+  it('setZuordnungStatus hakt per PATCH ab', async () => {
+    antworte(json({ zuordnung: { ...ZUORDNUNG, status: 'erledigt', erledigtAm: '2026-11-04T10:00:00.000Z' } }))
+    expect((await setZuordnungStatus('IW3-4421', ID, 'erledigt')).status).toBe('erledigt')
+    expect(aufruf().url).toBe(`/api/teilnehmende/IW3-4421/zuordnungen/${ID}`)
+    expect(aufruf().init.method).toBe('PATCH')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ status: 'erledigt' })
+  })
+
+  it('deleteZuordnung löscht per DELETE', async () => {
+    antworte(new Response(null, { status: 204 }))
+    await deleteZuordnung('IW3-4421', ID)
+    expect(aufruf().url).toBe(`/api/teilnehmende/IW3-4421/zuordnungen/${ID}`)
+    expect(aufruf().init.method).toBe('DELETE')
+  })
+
+  it('fetchLernstand und fetchLernstandAlle packen die Antwort aus', async () => {
+    const lernstand = { kennung: 'IW3-4421', anzahl: { erledigt: 1, offen: 1, gesamt: 2 }, alsNaechstes: ZUORDNUNG, berufsfelder: [] }
+    antworte(json({ lernstand }))
+    antworte(json({ eintraege: [lernstand], gesamt: 1 }))
+    expect(await fetchLernstand('IW3-4421')).toEqual(lernstand)
+    expect(await fetchLernstandAlle()).toEqual([lernstand])
+    expect(aufruf(0).url).toBe('/api/teilnehmende/IW3-4421/lernstand')
+    expect(aufruf(1).url).toBe('/api/teilnehmende/lernstand')
   })
 })

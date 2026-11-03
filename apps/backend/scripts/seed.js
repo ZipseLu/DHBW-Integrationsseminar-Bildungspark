@@ -3,15 +3,22 @@
  * `npm run db:seed -- --reset` vorher alle Arbeitsblätter löschen
  * `npm run db:seed -- --lernziele=10`  Anzahl Lernziele (je vier Stufen)
  *
- * Legt außerdem die fünf Beispiel-Teilnehmenden (BE-02) und die vier Beispiel-Mitarbeiterkonten
- * (BE-03, Startpasswort aus SEED_PASSWORT, sonst „bildungspark-demo“) aus dem Frontend an.
+ * Übernimmt zuerst die Lehrpläne aus data/lehrplaene.json in die Datenbank (Migration 004),
+ * falls dort noch keine stehen und die Datei existiert (`npm run import:lehrplaene`).
+ *
+ * Legt außerdem die fünf Beispiel-Teilnehmenden (BE-02), die vier Beispiel-Mitarbeiterkonten
+ * (BE-03, Startpasswort aus SEED_PASSWORT, sonst „bildungspark-demo“) aus dem Frontend und
+ * Beispiel-Zuordnungen von Arbeitsblättern zu Teilnehmenden (BE-04) an.
+ * `--reset` löscht Arbeitsblätter, Teilnehmende und Konten – und damit auch alle Zuordnungen.
  */
 import { describeConfig } from '../src/config.js'
 import { closePool } from '../src/db.js'
 import { runMigrations } from '../src/db/migrate.js'
+import { seedLehrplaene } from '../src/lehrplan/seed.js'
 import { seedArbeitsblaetter } from '../src/arbeitsblaetter/seed.js'
 import { seedTeilnehmende } from '../src/teilnehmende/seed.js'
 import { seedBenutzer } from '../src/benutzer/seed.js'
+import { seedZuordnungen } from '../src/zuordnungen/seed.js'
 
 const args = process.argv.slice(2)
 const reset = args.includes('--reset')
@@ -24,9 +31,11 @@ if (!Number.isInteger(lernziele) || lernziele < 1) {
 try {
   console.log(`[seed] Datenbank: ${describeConfig().db}`)
   await runMigrations({ log: console.log })
+  await seedLehrplaene({ log: console.log })
   await seedArbeitsblaetter({ reset, lernziele, log: console.log })
   await seedTeilnehmende({ reset, log: console.log })
   await seedBenutzer({ reset, log: console.log })
+  await seedZuordnungen({ log: console.log })
 } catch (error) {
   console.error('[seed] FEHLER:', error.message)
   process.exitCode = 1

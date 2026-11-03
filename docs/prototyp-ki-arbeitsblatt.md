@@ -318,8 +318,11 @@ Das Skript meldet je Datei die Anzahl der Lernziele und die Baustein-Nummer (sie
 „Ausbildungs-baustein N“, weil die Kopfzeile in 10 von 14 Dateien falsch ist) und schreibt
 `apps/backend/data/lehrplaene.json`. **Diese Datei liegt in `.gitignore`** – die Lehrpläne gehören dem
 Bildungspark und das Repository ist öffentlich. Jedes Teammitglied erzeugt sie lokal.
+Ist die Datenbank erreichbar, schreibt das Skript die Lernziele zusätzlich dorthin (seit 03.11.,
+`docs/lehrplaene-datenbank.md`); ohne DOCX übernimmt `npm run db:seed` eine vorhandene Datei in die Datenbank.
 
-Danach das Backend neu starten (es liest die Datei einmal beim ersten Aufruf). `GET /api/lehrplaene` liefert
+Mit Datenbank gilt der neue Stand sofort; ohne Datenbank das Backend neu starten (es liest die Datei einmal beim
+ersten Aufruf). `GET /api/lehrplaene` liefert
 die Liste; das Frontend zeigt unter dem Dropdown „Quelle: 96 importierte Lernziele“. Die Lernzieltexte sind
 im Dropdown auf 70 Zeichen gekürzt, in der Zeile darunter stehen sie vollständig.
 

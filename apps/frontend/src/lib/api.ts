@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver'
-import type { Format, Level, Sprache, Worksheet } from '@/types'
+import type { Format, Level, Sprache, StaffRole, StationStatus, Worksheet } from '@/types'
 
 /**
  * Zugriff auf das Backend (Express, Port 3000).
@@ -73,30 +73,88 @@ export type ArbeitsblattRequest = {
 /** Einheitlicher Fehler: HTTP-Status, Fehlercode des Backends und deutsche Meldung */
 export class ApiError extends Error {
   status: number
+  /** Fehlerart, z. B. 'conflict', 'not_found', 'unauthorized', 'db_unavailable' (Feld `error` der Antwort) */
   code: string
+  /** Genauer Grund, falls das Backend ihn nennt, z. B. 'bereits_zugeordnet', 'token_abgelaufen' (Feld `code`) */
+  grund?: string
   details?: unknown
 
-  constructor(message: string, status: number, code: string, details?: unknown) {
+  constructor(message: string, status: number, code: string, details?: unknown, grund?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.details = details
+    if (grund) this.grund = grund
   }
 }
 
-type ErrorBody = { error?: string; message?: string; details?: unknown }
+type ErrorBody = { error?: string; code?: string; message?: string; details?: unknown }
+
+// --- Anmelde-Token (BE-01) – apiFetch schickt es bei jedem Aufruf mit ----------
+
+const TOKEN_SCHLUESSEL = 'bildungspark.anmeldung'
+
+/** undefined = noch nicht aus dem sessionStorage gelesen */
+let authToken: string | null | undefined
+let abmeldeHandler: (() => void) | null = null
+
+/**
+ * Aktuelles Anmelde-Token. Liegt im sessionStorage: übersteht ein Neuladen der Seite,
+ * aber nicht das Schließen des Tabs (Rechner im Bildungspark werden geteilt).
+ */
+export function getAuthToken(): string | null {
+  if (authToken === undefined) {
+    try {
+      authToken = sessionStorage.getItem(TOKEN_SCHLUESSEL)
+    } catch {
+      authToken = null // Speicher gesperrt (z. B. strenger privater Modus)
+    }
+  }
+  return authToken
+}
+
+export function setAuthToken(token: string | null): void {
+  authToken = token
+  try {
+    if (token) sessionStorage.setItem(TOKEN_SCHLUESSEL, token)
+    else sessionStorage.removeItem(TOKEN_SCHLUESSEL)
+  } catch {
+    // Speicher nicht verfügbar – das Token gilt dann nur bis zum Neuladen
+  }
+}
+
+/**
+ * Wird aufgerufen, wenn das Backend ein mitgeschicktes Token ablehnt (abgelaufen,
+ * Konto gelöscht). Das Token ist dann schon verworfen – die App zeigt die Login-Maske.
+ */
+export function setAbmeldeHandler(handler: (() => void) | null): void {
+  abmeldeHandler = handler
+}
 
 /** fetch mit einheitlicher Fehlerbehandlung: Netzwerkfehler und Nicht-2xx werden zu ApiError */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken()
+  let request = init
+  if (token) {
+    const headers = new Headers(init.headers)
+    if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+    request = { ...init, headers }
+  }
+
   let response: Response
   try {
-    response = await fetch(`${BASE_URL}${path}`, init)
+    response = await fetch(`${BASE_URL}${path}`, request)
   } catch {
     throw new ApiError('Das Backend ist nicht erreichbar. Läuft `npm run dev` in apps/backend?', 0, 'network_error')
   }
 
   if (response.ok) return response
+
+  if (response.status === 401 && token) {
+    setAuthToken(null)
+    abmeldeHandler?.()
+  }
 
   let body: ErrorBody = {}
   try {
@@ -105,7 +163,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     // keine JSON-Antwort (z. B. HTML-Fehlerseite des Proxys)
   }
   const message = body.message ?? `Fehler ${response.status} vom Backend`
-  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details)
+  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details, body.code)
 }
 
 async function postJson(path: string, payload: unknown): Promise<Response> {
@@ -335,4 +393,131 @@ export async function downloadGespeichertesDocx(blatt: Pick<GespeichertesArbeits
   const fileName = fileNameFromDisposition(response.headers.get('Content-Disposition'), `${blatt.titel}.docx`)
   saveAs(blob, fileName)
   return fileName
+}
+
+// --- Anmeldung: /api/auth (BE-01) ---------------------------------------------
+
+/** Mitarbeiterkonto, wie es das Backend liefert (GET /api/auth/me, /api/benutzer) */
+export type Konto = {
+  id: string
+  name: string
+  email: string
+  rolle: StaffRole
+  /** ISO-Zeit; Datum = erste 10 Zeichen */
+  erstelltAm: string
+}
+
+/** Antwort von POST /api/auth/login */
+export type Anmeldung = { token: string; ablaufAm: string; benutzer: Konto }
+
+/**
+ * POST /api/auth/login – merkt sich das Token, alle weiteren Aufrufe schicken es mit.
+ * Falsche Daten: ApiError mit Status 401 und der Meldung „E-Mail-Adresse oder Passwort ist falsch“.
+ */
+export async function login(email: string, passwort: string): Promise<Anmeldung> {
+  setAuthToken(null) // ein altes Token gehört nicht zur neuen Anmeldung
+  const response = await postJson('/api/auth/login', { email, passwort })
+  const anmeldung = (await response.json()) as Anmeldung
+  setAuthToken(anmeldung.token)
+  return anmeldung
+}
+
+/** GET /api/auth/me – das eigene Konto, z. B. um die Anmeldung nach dem Neuladen wiederherzustellen */
+export async function fetchAktuellesKonto(): Promise<Konto> {
+  const response = await apiFetch('/api/auth/me')
+  return ((await response.json()) as { benutzer: Konto }).benutzer
+}
+
+/** Abmelden: Token verwerfen – das Backend führt keine Sitzung */
+export function logout(): void {
+  setAuthToken(null)
+}
+
+// --- Zuordnungen und Lernstand: /api/teilnehmende/:kennung/… (BE-04) ----------
+
+export type ZuordnungStatus = 'offen' | 'erledigt'
+
+/** Ein Arbeitsblatt, das einer/einem Teilnehmenden zugeordnet ist – mit den Eckdaten des Blatts */
+export type Zuordnung = {
+  id: string
+  kennung: string
+  status: ZuordnungStatus
+  zugeordnetAm: string
+  erledigtAm: string | null
+  /** Name aus der Anmeldung (BE-01), sonst null */
+  zugeordnetVon: string | null
+  arbeitsblatt: Pick<
+    GespeichertesArbeitsblatt,
+    'id' | 'titel' | 'berufsfeld' | 'baustein' | 'ausbildungsbaustein' | 'lernziel' | 'stufe' | 'format' | 'sprache' | 'status'
+  >
+}
+
+export type LernstandAnzahl = { erledigt: number; offen: number; gesamt: number }
+
+/** Lernstand in einem Berufsfeld; Reihenfolge der Liste = Reihenfolge des Lernwegs */
+export type LernstandBerufsfeld = {
+  berufsfeld: string
+  /** Station im Lernweg; null, wenn Blätter aus einem Berufsfeld außerhalb des Lernwegs zugeordnet sind */
+  station: { position: number; status: StationStatus; stufe: Level; format: Format } | null
+  /** erledigt / gesamt in Prozent (0, wenn nichts zugeordnet ist) */
+  fortschritt: number
+  anzahl: LernstandAnzahl
+  /** am längsten offene Zuordnung */
+  alsNaechstes: Zuordnung | null
+  /** älteste Zuordnung zuerst */
+  offen: Zuordnung[]
+  /** zuletzt erledigte zuerst */
+  erledigt: Zuordnung[]
+}
+
+export type Lernstand = {
+  kennung: string
+  anzahl: LernstandAnzahl
+  /** nächstes Blatt der aktiven Station, sonst aus den folgenden, dann den früheren Stationen */
+  alsNaechstes: Zuordnung | null
+  berufsfelder: LernstandBerufsfeld[]
+}
+
+const teilnehmerPfad = (kennung: string) => `/api/teilnehmende/${encodeURIComponent(kennung)}`
+
+/** GET /api/teilnehmende/:kennung/zuordnungen – älteste zuerst, optional nur offene oder erledigte */
+export async function fetchZuordnungen(kennung: string, status?: ZuordnungStatus): Promise<Zuordnung[]> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen${status ? `?status=${status}` : ''}`)
+  return ((await response.json()) as { eintraege: Zuordnung[] }).eintraege
+}
+
+/**
+ * POST /api/teilnehmende/:kennung/zuordnungen – ordnet ein gespeichertes Arbeitsblatt zu.
+ * Fehler: 404 (Person oder Blatt unbekannt), 409 (schon zugeordnet oder Blatt archiviert).
+ */
+export async function zuordnen(kennung: string, arbeitsblattId: string): Promise<Zuordnung> {
+  const response = await postJson(`${teilnehmerPfad(kennung)}/zuordnungen`, { arbeitsblattId })
+  return ((await response.json()) as { zuordnung: Zuordnung }).zuordnung
+}
+
+/** PATCH …/zuordnungen/:id – abhaken („erledigt“) oder wieder öffnen */
+export async function setZuordnungStatus(kennung: string, id: string, status: ZuordnungStatus): Promise<Zuordnung> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  return ((await response.json()) as { zuordnung: Zuordnung }).zuordnung
+}
+
+/** DELETE …/zuordnungen/:id – Zuordnung entfernen (das Arbeitsblatt bleibt) */
+export async function deleteZuordnung(kennung: string, id: string): Promise<void> {
+  await apiFetch(`${teilnehmerPfad(kennung)}/zuordnungen/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** GET /api/teilnehmende/:kennung/lernstand – erledigt/offen je Berufsfeld und „als Nächstes“ (Profil) */
+export async function fetchLernstand(kennung: string): Promise<Lernstand> {
+  const response = await apiFetch(`${teilnehmerPfad(kennung)}/lernstand`)
+  return ((await response.json()) as { lernstand: Lernstand }).lernstand
+}
+
+/** GET /api/teilnehmende/lernstand – Lernstand aller Teilnehmenden (Übersicht, Dashboard) */
+export async function fetchLernstandAlle(): Promise<Lernstand[]> {
+  const response = await apiFetch('/api/teilnehmende/lernstand')
+  return ((await response.json()) as { eintraege: Lernstand[] }).eintraege
 }

@@ -105,6 +105,7 @@ services:
       AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
       TZ: "Europe/Berlin"
     volumes:
       - ./apps/backend:/app

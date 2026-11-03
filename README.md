@@ -162,7 +162,7 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 | `POST /api/ai/arbeitsblatt` | `{ lernziel, stufe, format, sprache, thema?, erwartungen? }` → `{ worksheet, meta }` |
 | `POST /api/ai/arbeitsblatt/docx` | `{ worksheet }` → Word-Datei |
 
-| `GET /api/lehrplaene` | Importierte Lernziele der Lehrpläne (leer, solange `npm run import:lehrplaene` nicht gelaufen ist) |
+| `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 004), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
 
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
 anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
@@ -172,13 +172,24 @@ Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
 Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) – Details:
 **[docs/benutzerverwaltung-api.md](docs/benutzerverwaltung-api.md)**.
 
+**Anmeldung (BE-01):** `POST /api/auth/login` liefert ein JWT, `GET /api/auth/me` das eigene Konto; das Frontend
+schickt das Token als `Authorization: Bearer …` mit (`lib/api.ts`). Ohne Token bleiben die Routen bis BE-06 offen –
+Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
+
+**Zuordnung & Lernstand (BE-04):** `GET/POST /api/teilnehmende/:kennung/zuordnungen`, `PATCH/DELETE …/zuordnungen/:id`
+ordnen gespeicherte Arbeitsblätter Teilnehmenden zu und haken sie ab; `GET /api/teilnehmende/:kennung/lernstand`
+(bzw. `/api/teilnehmende/lernstand` für alle) liefert erledigt/offen je Berufsfeld und das nächste Blatt –
+Details: **[docs/zuordnungen-lernstand.md](docs/zuordnungen-lernstand.md)**.
+
 Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
 Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
 Der Prompt selbst liegt lesbar in `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md`.
 
 Optional lädt `npm run import:lehrplaene` (in `apps/backend`) alle 96 Lernziele aus den 14 Lehrplan-DOCX
-des Bildungsparks nach `apps/backend/data/lehrplaene.json` (gitignored); das Dropdown im Frontend nutzt sie
-dann statt der 12 Beispiel-Lernziele.
+des Bildungsparks nach `apps/backend/data/lehrplaene.json` (gitignored) und in die Datenbank (Tabellen `lehrplaene`,
+`lernziele`, `lernziel_niveaus`); das Dropdown im Frontend nutzt sie dann statt der 12 Beispiel-Lernziele.
+Ohne DOCX übernimmt `npm run db:seed` eine vorhandene JSON-Datei in die Datenbank –
+Details: **[docs/lehrplaene-datenbank.md](docs/lehrplaene-datenbank.md)**.
 
 ---
 
@@ -305,14 +316,19 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │   │   ├── mock.js       Beispiel-Arbeitsblatt ohne API-Key
 │   │   │   │   └── docx.js       Word-Export
 │   │   │   ├── lehrplan/
-│   │   │   │   └── parser.js     DOCX-Parser der Lehrpläne (für scripts/import-lehrplaene.js)
+│   │   │   │   ├── parser.js     DOCX-Parser der Lehrpläne (für scripts/import-lehrplaene.js)
+│   │   │   │   ├── repository.js Lehrpläne in MySQL lesen/ersetzen (Migration 004)
+│   │   │   │   ├── schema.js     Prüfung der Importdaten
+│   │   │   │   └── seed.js       data/lehrplaene.json -> Datenbank (npm run db:seed)
 │   │   │   └── routes/
 │   │   │       ├── health.js     GET /api/health
 │   │   │       ├── ai.js         GET /api/ai/status, POST /api/ai/generate
 │   │   │       ├── arbeitsblatt.js  POST /api/ai/arbeitsblatt, POST /api/ai/arbeitsblatt/docx
-│   │   │       ├── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
+│   │   │       ├── lehrplaene.js    GET /api/lehrplaene (aus der Datenbank, sonst data/lehrplaene.json)
 │   │   │       ├── teilnehmende.js  /api/teilnehmende (Profile + Lernweg, BE-02)
-│   │   │       └── benutzer.js      /api/benutzer (Mitarbeiterkonten, BE-03)
+│   │   │       ├── benutzer.js      /api/benutzer (Mitarbeiterkonten, BE-03)
+│   │   │       ├── auth.js          /api/auth/login, /api/auth/me (Anmeldung, BE-01; Token-Prüfung in src/auth/)
+│   │   │       └── zuordnungen.js   /api/teilnehmende/…/zuordnungen, …/lernstand (BE-04; Regeln in src/zuordnungen/)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
 │   │       ├── integration/      Supertest (+ echte MySQL für db.test.js)
@@ -472,14 +488,15 @@ docker compose down -v && docker compose up --build
 ## Noch offen
 
 - [x] Repository-Layer für Arbeitsblätter (`mysql2`), Migrationen und Seed – siehe `docs/persistenz-arbeitsblaetter.md` (28.10.)
-- [ ] Auth (JWT) für Dozent/Assistent/Admin – `JWT_SECRET` ist bereits in der Konfiguration, wird aber noch nicht benutzt
+- [ ] Auth (JWT) für Dozent/Assistent/Admin – **Backend fertig (`/api/auth`, BE-01, 03.11.)**, Login-Maske (FE-08) und Pflicht-Anmeldung für schreibende Endpunkte (BE-06) offen
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
 - [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
-- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
+- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git; seit 03.11. auch in der Datenbank (Migration 004, `docs/lehrplaene-datenbank.md`)
 - [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
 - [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API (`/api/teilnehmende`, BE-02) und Benutzerverwaltung-API (`/api/benutzer`, BE-03) fertig**, Frontend-Anbindung (FE-09, FE-12) und Einstellungen (BE-09) offen
+- [ ] Lernstand anzeigen und Arbeitsblätter zuordnen – **Backend fertig (`/api/teilnehmende/:kennung/zuordnungen`, `/lernstand`, BE-04, 03.11.)**, Frontend-Anbindung (FE-11) offen
 - [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
