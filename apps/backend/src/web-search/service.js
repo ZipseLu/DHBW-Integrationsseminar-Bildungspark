@@ -1,34 +1,21 @@
 /**
  * Web-Suche nach Arbeitsblättern im Internet.
  *
- * Unterstuetzt drei Provider:
- *  - 'mock'   (Standard, kein API-Key noetig): liefert simulierte, aber
- *              strukturell echte Treffer. Dafuer dafuer dafuer gedacht,
- *              ohne Kosten und ohne Key entwickeln/testen zu koennen.
- *  - 'serpapi': ruft die SerpApi (https://serpapi.com/search.json) auf.
- *              Benötigt WEB_SEARCH_API_KEY.
- *  - 'google': ruft die Google Custom Search JSON API auf.
- *              Benötigt WEB_SEARCH_API_KEY und WEB_SEARCH_ENGINE_ID.
+ * Zwei Modi:
+ *  - 'scrape' (Standard): ruft DuckDuckGo HTML (https://html.duckduckgo.com/html/?q=...)
+ *    auf und parset die Treffer. Kein API-Key, kein Cloud-Konto nötig.
+ *  - 'mock': liefert simulierte Platzhalter (für Entwicklung ohne Internet).
  *
- * Suchoperatoren (ähnlich Google-Hacks) werden vom Client vorgefiltert
- * und als `q` an die API übergeben:
+ * Suchoperatoren werden als Teil des `q`-Parameters an DuckDuckGo übergeben:
  *   filetype:pdf | docx   -> schränkt auf Dateityp ein
  *   intitle:              -> durchsucht nur den Titel
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
- * Ohne erreichbare API wirft der Service einen Fehler, den die Route
- * als 503 `web_search_unavailable` zurückgibt.
+ * Wenn das Scraping fehlschlägt (z. B. blockiert), fallen wir auf Mock-Treffer zurück,
+ * damit die Oberfläche funktionsfähig bleibt.
  */
 
 import { config } from '../config.js'
-
-const WEB_RESULT_SCHEMA = {
-  title: 'string',
-  url: 'string',
-  snippet: 'string',
-  source: 'string',
-  fileType: 'string | null',
-}
 
 /** Ergebnis einer Websuche */
 export class WebSearchError extends Error {
@@ -46,7 +33,7 @@ function extractFileType(url) {
   return match ? match[1].toLowerCase() : null
 }
 
-/** Mock-Ergebnisse ohne API-Key (strukturell wie echte Treffer, aber simuliert) */
+/** Mock-Ergebnisse ohne Internet (strukturell wie echte Treffer, aber simuliert) */
 function mockResults(query, maxResults) {
   const q = query.trim()
   const slug = encodeURIComponent(q.toLowerCase().replace(/\s+/g, '-'))
@@ -69,64 +56,62 @@ function mockResults(query, maxResults) {
   return results.slice(0, maxResults)
 }
 
-/** SerpApi JSON-Aufruf */
-async function serpapiSearch(query, apiKey, maxResults) {
-  const params = new URLSearchParams({
-    q: query,
-    api_key: apiKey,
-    engine: 'google',
-    num: String(Math.min(maxResults, 20)),
-    hl: 'de',
-    gl: 'de',
-  })
+/** DuckDuckGo HTML-Scraper – keine API, kein Key */
+async function duckduckgoSearch(query, maxResults) {
+  const url = 'https://html.duckduckgo.com/html/?' + new URLSearchParams({ q: query })
 
-  const response = await fetch(`https://serpapi.com/search.json?${params}`, {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    },
     signal: AbortSignal.timeout(config.ai.timeoutMs),
   })
 
   if (!response.ok) {
-    const body = await response.text().catch(() => '')
-    throw new WebSearchError(`SerpApi antwortete mit ${response.status}: ${body}`, 503, 'web_search_unavailable')
+    throw new WebSearchError(`DuckDuckGo antwortete mit ${response.status}`, 503, 'web_search_unavailable')
   }
 
-  const data = await response.json()
-  const results = (data.organic_results ?? []).slice(0, maxResults).map((r) => ({
-    title: r.title ?? '',
-    url: r.link ?? '',
-    snippet: r.snippet ?? '',
-    source: r.source ?? new URL(r.link ?? 'https://example.com').hostname,
-    fileType: extractFileType(r.link ?? ''),
-  }))
+  const html = await response.text()
 
-  return results
-}
+  const results = []
+  // DuckDuckGo HTML: Ergebnisse stehen in <div class="result"> ... </div>
+  const resultBlocks = html.match(/<div class="result results_links.*?<\/div>\s*<\/div>/gs) ?? []
 
-/** Google Custom Search JSON API */
-async function googleSearch(query, apiKey, engineId, maxResults) {
-  const params = new URLSearchParams({
-    q: query,
-    key: apiKey,
-    cx: engineId,
-    num: String(Math.min(maxResults, 10)),
-  })
+  for (const block of resultBlocks.slice(0, maxResults)) {
+    const titleMatch = block.match(/class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/s)
+    const snippetMatch = block.match(/class="result__snippet"[^>]*>(.*?)<\/div>/s)
 
-  const response = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`, {
-    signal: AbortSignal.timeout(config.ai.timeoutMs),
-  })
+    if (!titleMatch) continue
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '')
-    throw new WebSearchError(`Google Custom Search antwortete mit ${response.status}: ${body}`, 503, 'web_search_unavailable')
+    let url = titleMatch[1]
+    // DuckDuckGo leitet über redirect-Links: https://duckduckgo.com/l/?uddg=...
+    const uddgMatch = url.match(/uddg=([^&]+)/)
+    if (uddgMatch) {
+      try {
+        url = decodeURIComponent(uddgMatch[1])
+      } catch {
+        // falls dekodierung fehlschlägt, original lassen
+      }
+    }
+
+    let title = titleMatch[2]
+    title = title.replace(/<[^>]*>/g, '').trim() // HTML-Tags entfernen
+
+    let snippet = ''
+    if (snippetMatch) {
+      snippet = snippetMatch[1].replace(/<[^>]*>/g, '').trim()
+    }
+
+    results.push({
+      title: title || '(ohne Titel)',
+      url: url || '',
+      snippet: snippet || '',
+      source: new URL(url || 'https://example.com').hostname,
+      fileType: extractFileType(url),
+      mocked: false,
+    })
   }
-
-  const data = await response.json()
-  const results = (data.items ?? []).slice(0, maxResults).map((r) => ({
-    title: r.title ?? '',
-    url: r.link ?? '',
-    snippet: r.snippet ?? '',
-    source: r.displayLink ?? new URL(r.link ?? 'https://example.com').hostname,
-    fileType: extractFileType(r.link ?? ''),
-  }))
 
   return results
 }
@@ -134,7 +119,7 @@ async function googleSearch(query, apiKey, engineId, maxResults) {
 /**
  * Führt eine Websuche nach Arbeitsblättern durch.
  * @param {string} query Suchbegriff (kann Operatoren wie filetype:, intitle:, "..." enthalten)
- * @returns {Promise<Array<{title,url,snippet,source,fileType}>>}
+ * @returns {Promise<Array<{title,url,snippet,source,fileType,mocked}>>}
  */
 export async function searchWeb(query) {
   const maxResults = config.webSearch.maxResults
@@ -144,23 +129,25 @@ export async function searchWeb(query) {
     throw new WebSearchError('Suchbegriff ist erforderlich und darf nicht leer sein.', 400, 'validation_error')
   }
 
-  switch (provider) {
-    case 'mock':
+  try {
+    if (provider === 'mock') {
       return mockResults(query.trim(), maxResults)
+    }
 
-    case 'serpapi':
-      if (!config.webSearch.apiKey) {
-        throw new WebSearchError('WEB_SEARCH_API_KEY ist nicht gesetzt. Suche läuft im Mock-Modus. Setze WEB_SEARCH_PROVIDER=mock oder trage einen Key ein.', 503, 'web_search_unavailable')
-      }
-      return serpapiSearch(query.trim(), config.webSearch.apiKey, maxResults)
+    // 'scrape' oder unbekannt: DuckDuckGo-Scraper versuchen
+    const scraped = await duckduckgoSearch(query.trim(), maxResults)
 
-    case 'google':
-      if (!config.webSearch.apiKey || !config.webSearch.engineId) {
-        throw new WebSearchError('WEB_SEARCH_API_KEY und WEB_SEARCH_ENGINE_ID müssen gesetzt sein für provider=google.', 503, 'web_search_unavailable')
-      }
-      return googleSearch(query.trim(), config.webSearch.apiKey, config.webSearch.engineId, maxResults)
+    if (scraped.length === 0) {
+      // Keine Treffer vom Scraper -> auf Mock fallen
+      return mockResults(query.trim(), maxResults).map((r) => ({ ...r, mocked: true }))
+    }
 
-    default:
-      throw new WebSearchError(`Unbekannter Web-Search-Provider: ${provider}`, 500, 'internal_error')
+    return scraped
+  } catch (error) {
+    // Scraping fehlgeschlagen (netzwerk, blockiert, ...) -> Mock als Fallback
+    if (error instanceof WebSearchError && error.status === 400) {
+      throw error
+    }
+    return mockResults(query.trim(), maxResults).map((r) => ({ ...r, mocked: true }))
   }
 }

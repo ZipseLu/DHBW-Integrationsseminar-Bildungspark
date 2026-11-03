@@ -1,91 +1,73 @@
-# Web search for worksheets (real Google search)
+# Web search for worksheets (no API, no Cloud)
 
 **Status:** 03.11.2026 · **Branch:** `feature/online-arbeitsblattssuche` · **Ticket:** "Online kann nach Arbeitsblättern mit Suchbegriffen gesucht werden"
 
 ## Acceptance criterion
 
-Worksheets can be searched online by search terms. The frontend sends the search term to the backend (`GET /api/web-search?q=...`), which performs a **real web search** via Google Custom Search JSON API (or SerpApi) and returns structured results – titles, URLs, snippets, source and file type (PDF, DOCX, …).
+Worksheets can be searched online by search terms. The frontend sends the search term to the backend (`GET /api/web-search?q=...`), which performs a **real web search** via DuckDuckGo HTML scraping and returns structured results – titles, URLs, snippets, source and file type (PDF, DOCX, …).
 
-Without an API key, the backend runs in **mock mode** and returns simulated placeholders. To get real Google results, you must configure the Google Custom Search JSON API (see below).
+**No API key, no Cloud account, no Google Custom Search needed.**
 
-## Three providers
+## Two modes
 
-| Provider | Endpoint | Required env vars | Results |
+| Mode | Env var `WEB_SEARCH_PROVIDER` | API-Key needed? | Results |
 |---|---|---|---|
-| `mock` (default) | none | none | Simulated placeholders, no real web search |
-| `serpapi` | `https://serpapi.com/search.json` | `WEB_SEARCH_API_KEY` | Real web results |
-| `google` | `https://www.googleapis.com/customsearch/v1` | `WEB_SEARCH_API_KEY` + `WEB_SEARCH_ENGINE_ID` | **Real Google results** |
+| `scrape` (default) | `scrape` | No | Real web results via DuckDuckGo HTML scraping |
+| `mock` | `mock` | No | Simulated placeholders (no internet needed) |
 
-## Setup: Echte Google-Suche (Google Custom Search JSON API)
+## How it works
 
-Damit die Suche wirklich im Web über Google sucht (nicht nur in bestimmten Seiten oder der Datenbank), müssen Sie die Google Custom Search JSON API einrichten:
+The backend fetches `https://html.duckduckgo.com/html/?q=<Suchbegriff>` and parses the result links, titles and snippets from the HTML. Search operators like `filetype:pdf`, `intitle:` or `"exact phrase"` are passed through as part of the query.
 
-### Schritt 1: Google Cloud Projekt erstellen
+If DuckDuckGo is unreachable or blocks the request, the backend automatically falls back to simulated mock results so the UI keeps working.
 
-1. Gehen Sie auf die [Google Cloud Console](https://console.cloud.google.com/)
-2. Erstellen Sie ein neues Projekt (oder wählen Sie ein bestehendes)
-3. Aktivieren Sie die **Custom Search API**:
-   - APIs & Dienste → Bibliothek → "Custom Search API" suchen und aktivieren
-
-### Schritt 2: API Key erstellen
-
-1. APIs & Dienste → Zugangsdaten → Anmeldeinformationen erstellen → API Key
-2. Kopieren Sie den Key in die `.env`: `WEB_SEARCH_API_KEY=<Ihr-Key>`
-
-### Schritt 3: Programmierte Suchmaschine (Search Engine) erstellen
-
-1. Gehen Sie auf [Google Programmable Search Engine](https://programmablesearchengine.google.com/)
-2. Erstellen Sie eine neue Suchmaschine
-3. Unter "Suchen in" können Sie "Das gesamte Web" wählen (dann suchen Sie wirklich im ganzen Web, nicht nur auf bestimmten Seiten)
-4. Kopieren Sie die **Suchmaschinen-ID** (Search Engine ID) in die `.env`: `WEB_SEARCH_ENGINE_ID=<Ihre-ID>`
-
-### Schritt 4: `.env` konfigurieren
+## Configuration (`.env`)
 
 ```dotenv
-WEB_SEARCH_PROVIDER=google
-WEB_SEARCH_API_KEY=<Ihr-API-Key-von-Schritt-2>
-WEB_SEARCH_ENGINE_ID=<Ihre-Suchmaschinen-ID-von-Schritt-3>
+WEB_SEARCH_PROVIDER=scrape   # scrape | mock
 WEB_SEARCH_MAX_RESULTS=10
 ```
 
-### Schritt 5: Docker neu bauen und starten
+No other variables needed. The variables are passed to the backend container via `docker-compose.yml`.
 
-```bash
-docker compose down
-docker compose up -d --build
-```
+## Example
 
-Die `WEB_SEARCH_*` Variablen werden aus der Root-`.env` in den Backend-Container durchgereicht (siehe `docker-compose.yml`).
-
-## Kosten
-
-Die Google Custom Search JSON API hat ein **kostenloses Kontingent** (100 Abfragen pro Tag). Danach fällt eine Gebühr pro 1.000 Abfragen an. Details: [Google Cloud Pricing](https://cloud.google.com/custom-search/docs/overview#pricing)
-
-## Suchoperatoren (Google-Hacks)
-
-Die Suchanfrage wird 1:1 an die Google API übergeben, daher funktionieren Suchoperatoren:
-
-| Operator | Beispiel | Wirkung |
-|---|---|---|
-| `filetype:` | `Gemüse schneiden filetype:pdf` | Nur PDF/DOCX |
-| `intitle:` | `intitle:"Arbeitsblatt"` | Nur in Titeln suchen |
-| `"..."` | `"Kochen lernen"` | Exakte Wortgruppe |
-
-Beispiel-Request:
 ```
 GET /api/web-search?q=Gemüse+schneiden+filetype:pdf
 ```
 
-## Frontend-Verhalten
+Response:
+```json
+{
+  "query": "Gemüse schneiden filetype:pdf",
+  "results": [
+    {
+      "title": "Arbeitsblatt: Gemüse schneiden",
+      "url": "https://lehrer-online.de/...",
+      "snippet": "Direkt downloadbares Arbeitsblatt …",
+      "source": "lehrer-online.de",
+      "fileType": "pdf",
+      "mocked": false
+    }
+  ],
+  "count": 1
+}
+```
 
-| Situation | Anzeige im Frontend |
+## Frontend behaviour
+
+| Situation | Display in frontend |
 |---|---|
-| `WEB_SEARCH_PROVIDER=mock` (Standard) | Gelber Hinweis: "Simulierte Treffer (Mock-Modus)" |
-| Echte Google-Suche konfiguriert | Grün: "Echte Websuchergebnisse vom Backend" |
-| Backend nicht erreichbar | Lokale simulierte Treffer als Fallback |
+| `WEB_SEARCH_PROVIDER=scrape`, DuckDuckGo works | Real web results (`mocked: false`) |
+| `WEB_SEARCH_PROVIDER=mock` | Simulated results, yellow hint: "Simulated results (mock mode)" |
+| DuckDuckGo unreachable/blocked | Automatic fallback to simulated results (`mocked: true`) |
 
-## Testen
+## Testing
 
-- Backend: `cd apps/backend && npm run test:unit` → alle Web-Search-Tests grün
-- Frontend: `cd apps/frontend && npm run test:run` → alle 206 Tests grün, `npm run typecheck` sauber
-- Manuell mit Docker: `docker compose up -d --build`, dann auf `http://localhost:5173` → KI-Erstellung → Websuche
+- Backend: `cd apps/backend && npm run test:unit` → all web-search tests pass
+- Frontend: `cd apps/frontend && npm run test:run` → all 206 tests pass, `npm run typecheck` clean
+
+## Open points
+
+- Downloading the found PDF/DOCX files is not yet implemented – only the search results (URLs) are returned. Download would be a separate step.
+- DuckDuckGo may rate-limit or block scraping from a server IP. In that case the mock fallback kicks in automatically.

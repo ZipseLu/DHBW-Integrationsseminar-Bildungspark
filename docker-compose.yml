@@ -103,10 +103,8 @@ services:
       AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
       AZURE_OPENAI_API_KEY: "${AZURE_OPENAI_API_KEY:-}"
       AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
-      # --- Web-Suche nach Arbeitsblättern (Mock ohne Key, echt mit SerpApi/Google) ---
-      WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-mock}"
-      WEB_SEARCH_API_KEY: "${WEB_SEARCH_API_KEY:-}"
-      WEB_SEARCH_ENGINE_ID: "${WEB_SEARCH_ENGINE_ID:-}"
+      # --- Web-Suche nach Arbeitsblättern (Scrape ohne Key, oder Mock) ---
+      WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-scrape}"
       WEB_SEARCH_MAX_RESULTS: "${WEB_SEARCH_MAX_RESULTS:-10}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"

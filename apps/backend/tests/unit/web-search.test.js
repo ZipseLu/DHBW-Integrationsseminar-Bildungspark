@@ -5,28 +5,21 @@ import { WebSearchError } from '../../src/web-search/service.js'
 
 /**
  * Unit-Tests für den Web-Search-Service.
- * Laufen immer im Mock-Modus (keine echten API-Aufrufe, keine Kosten).
+ * Laufen ohne echte API-Aufrufe und ohne Kosten. fetch wird gemockt.
  */
 
 const originalProvider = config.webSearch.provider
-const originalApiKey = config.webSearch.apiKey
-const originalEngineId = config.webSearch.engineId
 
 beforeEach(() => {
-  // Jeder Test startet sauber im Mock-Modus
   config.webSearch.provider = 'mock'
-  config.webSearch.apiKey = ''
-  config.webSearch.engineId = ''
 })
 
 afterEach(() => {
   config.webSearch.provider = originalProvider
-  config.webSearch.apiKey = originalApiKey
-  config.webSearch.engineId = originalEngineId
   vi.restoreAllMocks()
 })
 
-describe('searchWeb – Mock-Modus (kein API-Key)', () => {
+describe('searchWeb – Mock-Modus (kein Internet noetig)', () => {
   it('liefert simulierte Treffer für einen Suchbegriff', async () => {
     const results = await searchWeb('Gabelstapler Sicherheit')
 
@@ -37,7 +30,7 @@ describe('searchWeb – Mock-Modus (kein API-Key)', () => {
       url: expect.any(String),
       snippet: expect.any(String),
       source: expect.any(String),
-      fileType: expect.any(String),
+      mocked: true,
     })
   })
 
@@ -60,24 +53,30 @@ describe('searchWeb – Mock-Modus (kein API-Key)', () => {
   })
 })
 
-describe('searchWeb – SerpApi-Modus', () => {
-  it('ruft die SerpApi mit korrekten Parametern auf', async () => {
-    config.webSearch.provider = 'serpapi'
-    config.webSearch.apiKey = 'test-serpapi-key'
-    config.webSearch.maxResults = 5
+describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
+  const duckduckgoHtml = `
+    <html><body>
+      <div class="result results_links">
+        <div class="links_main">
+          <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.de%2Farbeitsblatt.pdf">Arbeitsblatt: Hygiene</a>
+          <div class="result__snippet">Snippet zu Hygiene und Sicherheit am Arbeitsplatz.</div>
+        </div>
+      </div>
+      <div class="result results_links">
+        <div class="links_main">
+          <a class="result__a" href="https://bibb.de/material.pdf">BIBB Arbeitsblatt</a>
+          <div class="result__snippet">Offizielles BIBB Material zur Ausbildung.</div>
+        </div>
+      </div>
+    </body></html>
+  `
+
+  it('ruft DuckDuckGo HTML auf und parst Treffer', async () => {
+    config.webSearch.provider = 'scrape'
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        organic_results: [
-          {
-            title: 'Arbeitsblatt: Hygiene',
-            link: 'https://example.de/arbeitsblatt.pdf',
-            snippet: 'Snippet zu Hygiene',
-            source: 'example.de',
-          },
-        ],
-      }),
+      text: async () => duckduckgoHtml,
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -85,103 +84,63 @@ describe('searchWeb – SerpApi-Modus', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const calledUrl = fetchMock.mock.calls[0][0]
-    expect(calledUrl).toContain('serpapi.com/search.json')
+    expect(calledUrl).toContain('html.duckduckgo.com/html/')
     expect(calledUrl).toContain('q=Hygiene+filetype%3Apdf')
-    expect(calledUrl).toContain('api_key=test-serpapi-key')
 
-    expect(results).toHaveLength(1)
+    expect(results).toHaveLength(2)
     expect(results[0]).toMatchObject({
       title: 'Arbeitsblatt: Hygiene',
       url: 'https://example.de/arbeitsblatt.pdf',
-      fileType: 'pdf',
+      snippet: 'Snippet zu Hygiene und Sicherheit am Arbeitsplatz.',
+      source: 'example.de',
+      mocked: false,
     })
-  })
-
-  it('wirft 503 wenn SerpApi nicht erreichbar ist', async () => {
-    config.webSearch.provider = 'serpapi'
-    config.webSearch.apiKey = 'test-key'
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 502,
-      text: async () => 'Bad Gateway',
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
-      code: 'web_search_unavailable',
-      status: 503,
-    })
-  })
-
-  it('wirft 503 wenn kein API-Key gesetzt ist', async () => {
-    config.webSearch.provider = 'serpapi'
-    config.webSearch.apiKey = ''
-
-    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
-      code: 'web_search_unavailable',
-      status: 503,
-    })
-  })
-})
-
-describe('searchWeb – Google Custom Search-Modus', () => {
-  it('ruft die Google Custom Search API auf', async () => {
-    config.webSearch.provider = 'google'
-    config.webSearch.apiKey = 'test-google-key'
-    config.webSearch.engineId = 'test-engine-id'
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        items: [
-          {
-            title: 'BIBB Arbeitsblatt',
-            link: 'https://bibb.de/material.pdf',
-            snippet: 'Offizielles BIBB Material',
-            displayLink: 'bibb.de',
-          },
-        ],
-      }),
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    const results = await searchWeb('BIBB Ausbildung')
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const calledUrl = fetchMock.mock.calls[0][0]
-    expect(calledUrl).toContain('www.googleapis.com/customsearch/v1')
-    expect(calledUrl).toContain('key=test-google-key')
-    expect(calledUrl).toContain('cx=test-engine-id')
-    expect(calledUrl).toContain('q=BIBB+Ausbildung')
-
-    expect(results).toHaveLength(1)
-    expect(results[0]).toMatchObject({
+    expect(results[1]).toMatchObject({
       title: 'BIBB Arbeitsblatt',
       url: 'https://bibb.de/material.pdf',
       source: 'bibb.de',
+      mocked: false,
     })
   })
 
-  it('wirft 503 wenn Key oder Engine-ID fehlt', async () => {
-    config.webSearch.provider = 'google'
-    config.webSearch.apiKey = ''
-    config.webSearch.engineId = ''
+  it('fällt auf Mock zurück, wenn DuckDuckGo keine Treffer liefert', async () => {
+    config.webSearch.provider = 'scrape'
 
-    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
-      code: 'web_search_unavailable',
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => '<html><body>Keine Treffer</body></html>',
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const results = await searchWeb('XYZ123NichtVorhanden')
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((r) => r.mocked === true)).toBe(true)
+  })
+
+  it('fällt auf Mock zurück, wenn DuckDuckGo nicht erreichbar ist', async () => {
+    config.webSearch.provider = 'scrape'
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Netzwerkfehler')))
+
+    const results = await searchWeb('Hygiene')
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((r) => r.mocked === true)).toBe(true)
+  })
+
+  it('fällt auf Mock zurück, wenn DuckDuckGo einen Fehler liefert', async () => {
+    config.webSearch.provider = 'scrape'
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
       status: 503,
     })
-  })
-})
+    vi.stubGlobal('fetch', fetchMock)
 
-describe('searchWeb – unbekannter Provider', () => {
-  it('wirft einen internen Fehler', async () => {
-    config.webSearch.provider = 'unbekannt'
+    const results = await searchWeb('Hygiene')
 
-    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
-      code: 'internal_error',
-      status: 500,
-    })
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((r) => r.mocked === true)).toBe(true)
   })
 })

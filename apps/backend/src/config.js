@@ -74,12 +74,9 @@ export const config = {
   },
 
   webSearch: {
-    // 'serpapi' | 'google' | 'mock'
-    provider: process.env.WEB_SEARCH_PROVIDER ?? 'mock',
-    // SerpApi (https://serpapi.com) oder Google Custom Search JSON API
-    apiKey: process.env.WEB_SEARCH_API_KEY ?? '',
-    // Google Custom Search Engine ID (nur noetig bei provider=google)
-    engineId: process.env.WEB_SEARCH_ENGINE_ID ?? '',
+    // 'scrape' | 'mock' – 'scrape' ruft DuckDuckGo HTML auf (kein API-Key),
+    // 'mock' liefert simulierte Platzhalter.
+    provider: process.env.WEB_SEARCH_PROVIDER ?? 'scrape',
     // Maximal zurueckgegebene Treffer pro Anfrage
     maxResults: int(process.env.WEB_SEARCH_MAX_RESULTS, 10),
   },
