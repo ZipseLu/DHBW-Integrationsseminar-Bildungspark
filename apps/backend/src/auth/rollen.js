@@ -1,11 +1,11 @@
 /**
- * Role check for routes (prepared in BE-03, enforced once BE-01/BE-06 are done).
+ * Role check for routes (prepared in BE-03, active since BE-01).
  *
- * Contract with BE-01: the login middleware verifies the token and sets
- *   req.benutzer = { id, rolle }   (rolle: 'admin' | 'dozent' | 'assistent')
+ * The login middleware (src/auth/anmeldung.js, BE-01) verifies the token and sets
+ *   req.benutzer = { id, rolle, name }   (rolle: 'admin' | 'dozent' | 'assistent')
  *
- * As long as there is no login, `req.benutzer` is missing – the check then lets
- * the request through, exactly like every other route of the prototype.
+ * A request without a token has no `req.benutzer` – the check then lets it
+ * through, exactly like every other route of the prototype.
  * BE-06 ("secure write endpoints") will require a login for every request;
  * from then on `erfordereRolle` always applies.
  */
