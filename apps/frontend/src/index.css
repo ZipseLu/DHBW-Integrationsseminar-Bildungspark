@@ -16,6 +16,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
+  --color-accent-text: var(--accent-text);
+  --color-primary-text: var(--primary-text);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -35,10 +39,21 @@
   --secondary-foreground: #1a1714;
   --muted: #ebe5d6;
   --muted-foreground: #6b6354;
-  --accent: #c4632a;
+  --accent: #b45b27;
   --accent-foreground: #fdfaf3;
   --border: #d5cebb;
   --ring: #1e3a5f;
+  /* Textfarben mit mind. 4,5 : 1 (FE-15) – werden von applyTheme() je nach Einstellung neu berechnet */
+  --accent-text: #9d4f22;
+  --primary-text: #1e3a5f;
+  --danger: #bc3333;
+  --success: #277347;
+  --tint-success: #f0fbf4;
+  --tint-info: #ebf0f8;
+  --stufe-T-text: #1a5c32;
+  --stufe-A-text: #1a3a5c;
+  --stufe-F-text: #7a5c00;
+  --stufe-B-text: #7a2e00;
   --radius: 6px;
 }
 
@@ -49,8 +64,44 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
-/* Tastaturbedienung sichtbar machen (Barrierefreiheit) */
+/* Tastaturbedienung sichtbar machen (Barrierefreiheit, FE-15) */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* In der dunklen Navigation wäre der Ring in Primärfarbe unsichtbar */
+.fokus-hell :focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Sprunglink: erst bei Tastaturfokus sichtbar */
+.sprunglink {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  background-color: var(--card);
+  color: var(--foreground);
+  border: 2px solid var(--ring);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.sprunglink:focus {
+  top: 1rem;
+}
+
+/* Weniger Bewegung, wenn im Betriebssystem eingestellt */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

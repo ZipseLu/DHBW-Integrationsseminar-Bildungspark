@@ -273,6 +273,9 @@ Die E2E-Tests starten das Frontend zwar selbst (`webServer` in `playwright.confi
 brauchen aber ein laufendes Backend **mit** erreichbarer MySQL auf Port 3000 – der
 `global-setup` bricht sonst ab. Ohne Docker also vorher `npm run dev:backend` mit lokaler MySQL.
 
+Barrierefreiheit (WCAG 2.1 AA): Ergebnis der Prüfung, Farbregeln für neue Oberflächen und
+was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barrierefreiheit.md)** (FE-15).
+
 ---
 
 ## Projektstruktur

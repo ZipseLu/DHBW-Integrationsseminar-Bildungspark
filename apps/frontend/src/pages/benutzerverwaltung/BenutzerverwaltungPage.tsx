@@ -107,7 +107,7 @@ export function BenutzerverwaltungPage({ currentUser, users, onChange }: Props) 
                           setConfirmId(null)
                         }}
                         className="text-xs px-2.5 py-1.5 rounded font-medium"
-                        style={{ backgroundColor: '#E53E3E', color: 'white' }}
+                        style={{ backgroundColor: '#C53030', color: 'white' }}
                       >
                         Ja, löschen
                       </button>
@@ -121,7 +121,7 @@ export function BenutzerverwaltungPage({ currentUser, users, onChange }: Props) 
                       aria-label={`Konto von ${u.name} löschen`}
                       onClick={() => setConfirmId(u.id)}
                       className="text-xs px-2.5 py-1.5 rounded hover:opacity-80 transition-opacity flex-shrink-0"
-                      style={{ border: '1px solid #E53E3E', color: '#E53E3E' }}
+                      style={{ border: '1px solid var(--danger)', color: 'var(--danger)' }}
                     >
                       Löschen
                     </button>

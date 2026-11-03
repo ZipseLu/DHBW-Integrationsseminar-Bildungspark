@@ -6,7 +6,7 @@ const LABEL_CLASS = 'text-xs font-mono font-medium mb-2'
 export function FieldLabel({ children, hint }: { children: string; hint?: string }) {
   return (
     <div className={LABEL_CLASS} style={{ color: 'var(--muted-foreground)' }}>
-      {children} {hint && <span className="opacity-60">({hint})</span>}
+      {children} {hint && <span className="font-normal">({hint})</span>}
     </div>
   )
 }
@@ -34,7 +34,7 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
               aria-pressed={active}
               title={s.beschreibung}
               onClick={() => onToggle(level)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2 rounded text-xs font-mono font-medium transition-all"
+              className="flex-1 flex flex-col items-center gap-0.5 py-2 rounded text-xs font-mono font-medium transition-colors"
               style={{
                 backgroundColor: active ? s.bg : 'var(--muted)',
                 color: active ? s.text : 'var(--muted-foreground)',
@@ -42,7 +42,7 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
               }}
             >
               <span className="font-bold">{level}</span>
-              <span style={{ fontSize: 9, opacity: active ? 1 : 0.6 }}>{s.label}</span>
+              <span style={{ fontSize: 9 }}>{s.label}</span>
             </button>
           )
         }
@@ -54,16 +54,16 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
             aria-pressed={active}
             title={s.beschreibung}
             onClick={() => onToggle(level)}
-            className="flex flex-col items-center gap-1 p-3 rounded-lg transition-all"
+            className="flex flex-col items-center gap-1 p-3 rounded-lg transition-colors"
             style={{
               border: active ? `1.5px solid ${s.text}` : '1px solid var(--border)',
               backgroundColor: active ? s.bg : 'var(--background)',
             }}
           >
-            <span className="text-base font-mono font-bold" style={{ color: s.text }}>
+            <span className="text-base font-mono font-bold" style={{ color: active ? s.text : 'var(--foreground)' }}>
               {level}
             </span>
-            <span className="text-xs text-center leading-tight" style={{ color: s.text, opacity: active ? 1 : 0.5 }}>
+            <span className="text-xs text-center leading-tight" style={{ color: active ? s.text : 'var(--muted-foreground)' }}>
               {s.label}
             </span>
           </button>
@@ -90,8 +90,8 @@ export function FormatPicker({ selected, onToggle, layout = 'grid' }: FormatPick
       {FORMAT_OPTIONS.map((opt) => {
         const active = selected.includes(opt.id)
         const style = {
-          border: active ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-          backgroundColor: active ? '#EBF0F8' : layout === 'compact' ? 'var(--card)' : 'var(--background)',
+          border: active ? '1.5px solid var(--primary-text)' : '1px solid var(--border)',
+          backgroundColor: active ? 'var(--tint-info)' : layout === 'compact' ? 'var(--card)' : 'var(--background)',
         }
 
         if (layout === 'compact') {
@@ -101,13 +101,13 @@ export function FormatPicker({ selected, onToggle, layout = 'grid' }: FormatPick
               type="button"
               aria-pressed={active}
               onClick={() => onToggle(opt.id)}
-              className="flex items-center gap-2 px-2.5 py-2 rounded text-left transition-all"
+              className="flex items-center gap-2 px-2.5 py-2 rounded text-left transition-colors"
               style={style}
             >
               <span className="text-base flex-shrink-0" aria-hidden="true">
                 {opt.icon}
               </span>
-              <span className="text-xs font-medium" style={{ color: active ? 'var(--primary)' : 'var(--foreground)' }}>
+              <span className="text-xs font-medium" style={{ color: active ? 'var(--primary-text)' : 'var(--foreground)' }}>
                 {opt.label}
               </span>
             </button>
@@ -120,14 +120,14 @@ export function FormatPicker({ selected, onToggle, layout = 'grid' }: FormatPick
             type="button"
             aria-pressed={active}
             onClick={() => onToggle(opt.id)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded text-left transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded text-left transition-colors"
             style={style}
           >
             <span className="text-lg w-6 text-center flex-shrink-0" aria-hidden="true">
               {opt.icon}
             </span>
             <div className="flex-1">
-              <div className="text-xs font-semibold" style={{ color: active ? 'var(--primary)' : 'var(--foreground)' }}>
+              <div className="text-xs font-semibold" style={{ color: active ? 'var(--primary-text)' : 'var(--foreground)' }}>
                 {opt.label}
               </div>
               <div className="text-xs leading-tight" style={{ color: 'var(--muted-foreground)' }}>
@@ -135,7 +135,7 @@ export function FormatPicker({ selected, onToggle, layout = 'grid' }: FormatPick
               </div>
             </div>
             {layout === 'list' && active && (
-              <span className="text-xs" style={{ color: 'var(--primary)' }} aria-hidden="true">
+              <span className="text-xs" style={{ color: 'var(--primary-text)' }} aria-hidden="true">
                 ✓
               </span>
             )}

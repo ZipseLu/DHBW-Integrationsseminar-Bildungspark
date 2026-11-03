@@ -11,9 +11,9 @@ export function StatCard({ label, value, sub, accent }: { label: string; value: 
         border: accent ? 'none' : '1px solid var(--border)',
       }}
     >
-      <span className="text-xs font-medium tracking-wide uppercase opacity-70 font-mono">{label}</span>
+      <span className="text-xs font-medium tracking-wide uppercase opacity-80 font-mono">{label}</span>
       <span className="text-3xl font-display font-semibold leading-none">{value}</span>
-      {sub && <span className="text-xs opacity-60 mt-1">{sub}</span>}
+      {sub && <span className="text-xs opacity-80 mt-1">{sub}</span>}
     </div>
   )
 }
@@ -95,7 +95,7 @@ export const fieldLabelClass = 'block text-xs font-mono font-medium mb-1.5'
 
 export function ErrorNote({ children }: { children: ReactNode }) {
   return (
-    <div role="alert" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FEF2F2', color: '#E53E3E', border: '1px solid #FECACA' }}>
+    <div role="alert" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FEF2F2', color: '#A61B1B', border: '1px solid #FECACA' }}>
       {children}
     </div>
   )
@@ -103,7 +103,7 @@ export function ErrorNote({ children }: { children: ReactNode }) {
 
 export function SuccessNote({ children }: { children: ReactNode }) {
   return (
-    <div role="status" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#F0FBF4', color: '#2A7A4B', border: '1px solid #C3E6CB' }}>
+    <div role="status" className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#F0FBF4', color: '#1A5C32', border: '1px solid #C3E6CB' }}>
       {children}
     </div>
   )

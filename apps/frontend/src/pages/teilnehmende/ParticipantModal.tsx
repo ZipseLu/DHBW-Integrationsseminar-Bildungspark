@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { stufeTextVar } from '@/lib/settings'
 import { Modal } from '@/components/Modal'
 import { ErrorNote, fieldLabelClass, inputStyle } from '@/components/Widgets'
 import { BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
@@ -37,7 +38,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
       <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
         <div>
           <label htmlFor="tn-kennung" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ANONYME KENNUNG <span className="opacity-60">(optional)</span>
+            ANONYME KENNUNG <span className="font-normal">(optional)</span>
           </label>
           <input
             id="tn-kennung"
@@ -56,7 +57,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono font-medium" style={{ color: 'var(--muted-foreground)' }}>
-              BERUFSBEREICHE <span className="opacity-60">(Reihenfolge = Lernweg)</span>
+              BERUFSBEREICHE <span className="font-normal">(Reihenfolge = Lernweg)</span>
             </span>
             <button
               type="button"
@@ -147,7 +148,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
                               className="flex flex-col items-center py-1.5 rounded transition-all"
                               style={{ border: active ? `1.5px solid ${ls.text}` : '1px solid var(--border)', backgroundColor: active ? ls.bg : 'transparent' }}
                             >
-                              <span className="text-xs font-mono font-bold" style={{ color: ls.text }}>
+                              <span className="text-xs font-mono font-bold" style={{ color: active ? ls.text : stufeTextVar(l) }}>
                                 {l}
                               </span>
                             </button>

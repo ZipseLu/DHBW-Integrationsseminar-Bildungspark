@@ -57,9 +57,9 @@ export function LehrplaenePage({ onCreateWorksheet }: Props) {
       <section className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }} aria-label="Curriculum-Bibliothek">
         <div className="p-7 flex items-start justify-between gap-8">
           <div className="max-w-2xl">
-            <div className="text-xs font-mono uppercase tracking-widest mb-3 opacity-60">Curriculum-Bibliothek</div>
+            <div className="text-xs font-mono uppercase tracking-widest mb-3 opacity-80">Curriculum-Bibliothek</div>
             <h2 className="font-display text-3xl font-semibold leading-tight">Binnendifferenzierte Lehrpläne</h2>
-            <p className="text-sm leading-relaxed mt-3 opacity-75">
+            <p className="text-sm leading-relaxed mt-3 opacity-90">
               Greifen Sie auf die verbindlichen Lehrpläne für Lager, Metall und Gastronomie zu. Alle Inhalte bilden die Niveaustufen T, A, F und B mit konkreten
               Praxisbeispielen ab.
             </p>
@@ -89,7 +89,7 @@ export function LehrplaenePage({ onCreateWorksheet }: Props) {
                   border: active ? '1px solid var(--primary)' : '1px solid var(--border)',
                 }}
               >
-                {field ?? 'Alle Berufsbilder'} <span className="ml-1 opacity-60">{count}</span>
+                {field ?? 'Alle Berufsbilder'} <span className="ml-1 opacity-80">{count}</span>
               </button>
             )
           })}
@@ -153,7 +153,7 @@ function HeroStat({ value, label }: { value: number; label: string }) {
   return (
     <div className="px-5 py-4" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
       <div className="font-display text-2xl font-semibold">{value}</div>
-      <div className="text-xs opacity-60 mt-1">{label}</div>
+      <div className="text-xs mt-1">{label}</div>
     </div>
   )
 }
@@ -182,7 +182,7 @@ function LehrplanCard({ doc, onPreview, onDownload, onCreate }: { doc: LehrplanD
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-mono font-medium" style={{ color: field.color }}>
+            <span className="text-xs font-mono font-medium px-1.5 py-0.5 rounded" style={{ color: field.color, backgroundColor: field.bg }}>
               {doc.berufsfeld} · {bausteinLabel(doc)}
             </span>
             <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>
@@ -252,7 +252,7 @@ function LehrplanPreview({
     <SlideOver label={`Lehrplan ${doc.ausbildungsbaustein}`} width={680} onClose={onClose}>
       <div className="px-6 py-5 flex items-start justify-between gap-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <div className="text-xs font-mono mb-1" style={{ color: 'var(--accent)' }}>
+          <div className="text-xs font-mono mb-1" style={{ color: 'var(--accent-text)' }}>
             ONLINE-VORSCHAU · LEHRPLAN
           </div>
           <h2 className="font-display text-xl font-semibold leading-snug">{doc.ausbildungsbaustein}</h2>

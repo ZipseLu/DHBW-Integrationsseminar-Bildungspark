@@ -58,14 +58,22 @@ export default function App() {
 
   const title = NAV_ITEMS.find((item) => item.id === activeNav)?.title ?? ''
 
+  // Seitentitel im Browser-Tab, damit Screenreader den Seitenwechsel ansagen (FE-15)
+  useEffect(() => {
+    document.title = title ? `${title} – Arbeitsblattverwaltung` : 'Arbeitsblattverwaltung'
+  }, [title])
+
   return (
     <div className="flex min-h-screen relative" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <a href="#inhalt" className="sprunglink">
+        Zum Inhalt springen
+      </a>
       <Sidebar user={user} active={activeNav} onNavigate={navigate} compact={settings.sidebarCompact} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={title} onCreate={() => navigate('ki-erstellung')} />
 
-        <main className="flex-1 p-8 overflow-auto" data-page={activeNav}>
+        <main id="inhalt" tabIndex={-1} className="flex-1 p-8 overflow-auto focus:outline-none" data-page={activeNav}>
           {activeNav === 'dashboard' && <DashboardPage participants={participants} onNavigate={navigate} />}
           {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} />}
           {activeNav === 'arbeitsblaetter' && (

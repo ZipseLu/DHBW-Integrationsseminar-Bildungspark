@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { stufeTextVar } from '@/lib/settings'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
 import { ApiError, downloadArbeitsblattDocx, type ArbeitsblattResult, type Aufgabe, type AufgabeTyp } from '@/lib/api'
 
@@ -153,7 +154,7 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
 
         <ol className="flex flex-col gap-3 pt-1" style={{ borderTop: '1px solid var(--border)' }} aria-label="Aufgaben">
           {worksheet.aufgaben.map((aufgabe) => (
-            <AufgabeBlock key={aufgabe.nr} aufgabe={aufgabe} accent={s.text} />
+            <AufgabeBlock key={aufgabe.nr} aufgabe={aufgabe} accent={stufeTextVar(worksheet.stufe)} />
           ))}
         </ol>
 
