@@ -36,7 +36,7 @@ export function pageFilterToBackendFilter(filter: Pick<
   const backend: ArbeitsblattFilter = {}
   if (filter.berufsbild && filter.berufsbild !== ALLE_BERUFSBILDER) backend.berufsfeld = filter.berufsbild
   if (filter.baustein !== 'Alle') backend.baustein = filter.baustein
-  if (filter.ausbildungsbaustein && filter.ausbildungsbaustein !== ALLE_BERUFSBILDER)
+  if (filter.ausbildungsbaustein && filter.ausbildungsbaustein !== 'Alle' && filter.ausbildungsbaustein !== ALLE_BERUFSBILDER)
     backend.ausbildungsbaustein = filter.ausbildungsbaustein
   if (filter.niveau !== 'Alle') backend.stufe = [filter.niveau]
   if (filter.sprache !== 'Alle') backend.sprache = [filter.sprache]

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_USER } from '@/data/users'
 import type { GespeichertesArbeitsblatt } from '@/lib/api'
-import { historyAusVerlauf, loadSavedWorksheets, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
+import { historyAusVerlauf, loadSavedWorksheets, pageFilterToBackendFilter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 
 /**
@@ -150,6 +150,19 @@ describe('Arbeitsblätter aus dem Backend', () => {
 })
 
 describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
+  it('lässt den Filterwert "Alle" für Ausbildungsbausteine weg', () => {
+    const filter = pageFilterToBackendFilter({
+      berufsbild: 'Alle Berufsbilder',
+      baustein: 'Alle',
+      ausbildungsbaustein: 'Alle',
+      niveau: 'Alle',
+      sprache: 'Alle',
+      format: 'Alle',
+    })
+
+    expect(filter).not.toHaveProperty('ausbildungsbaustein')
+  })
+
   it('wandelt ein gespeichertes Blatt in eine Karte um', () => {
     const w = worksheetAusGespeichertem(blatt({ baustein: null, ausbildungsbaustein: null }), 7)
     expect(w).toMatchObject({
