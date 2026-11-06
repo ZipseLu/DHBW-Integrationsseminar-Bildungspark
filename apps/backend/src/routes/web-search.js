@@ -6,9 +6,8 @@
  * Sucht im Internet nach Arbeitsblättern (PDF, DOCX, …) und gibt
  * strukturierte Treffer zurück (Titel, URL, Snippet, Quelle, Dateityp).
  *
- * Ohne API-Key läuft die Suche im Mock-Modus (simulierte Treffer).
- * Mit WEB_SEARCH_PROVIDER=serpapi bzw. =google und einem gültigen Key
- * wird eine echte Such-API aufgerufen.
+ * Die Suche laeuft ueber DuckDuckGo (HTML-Scraping) und benoetigt keinen
+ * API-Key. Optional kann ein Dateityp als fileType uebergeben werden.
  *
  * Fehler: { error, message, details? } mit deutschem Text
  *   (validation_error 400, web_search_unavailable 503, internal_error 500)
@@ -32,7 +31,7 @@ webSearchRouter.get(
         })
       }
 
-      const results = await searchWeb(parsed.data.q)
+      const results = await searchWeb(parsed.data.q, parsed.data.fileType)
       res.json({ query: parsed.data.q, results, count: results.length })
     } catch (error) {
       if (error?.status && error?.code) {

@@ -103,9 +103,10 @@ services:
       AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
       AZURE_OPENAI_API_KEY: "${AZURE_OPENAI_API_KEY:-}"
       AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
-      # --- Web-Suche nach Arbeitsblättern (Scrape ohne Key, oder Mock) ---
+      # --- Web-Suche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock) ---
       WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-scrape}"
       WEB_SEARCH_MAX_RESULTS: "${WEB_SEARCH_MAX_RESULTS:-10}"
+      WEB_SEARCH_TIMEOUT_MS: "${WEB_SEARCH_TIMEOUT_MS:-15000}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
       TZ: "Europe/Berlin"

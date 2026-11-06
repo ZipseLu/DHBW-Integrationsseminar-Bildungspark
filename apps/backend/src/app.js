@@ -57,7 +57,7 @@ export function createApp() {
   // Staff accounts (table users, BE-03) – admins only, once the login (BE-01) exists
   app.use('/api/benutzer', createBenutzerRouter())
 
-  // Websuche nach Arbeitsblättern (Mock ohne Key, echt mit SerpApi/Google)
+  // Websuche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock)
   app.use('/api/web-search', webSearchRouter)
 
   // 404 fuer alles Unbekannte
