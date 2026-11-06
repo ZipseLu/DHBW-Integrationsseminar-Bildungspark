@@ -72,6 +72,16 @@ export const config = {
       deployment: process.env.AZURE_OPENAI_DEPLOYMENT ?? '',
     },
   },
+
+  webSearch: {
+    // 'scrape' ruft die DuckDuckGo-HTML-Suche auf (kein API-Key noetig),
+    // 'mock' liefert simulierte Platzhalter.
+    provider: process.env.WEB_SEARCH_PROVIDER ?? 'scrape',
+    // Maximal zurueckgegebene Treffer pro Anfrage
+    maxResults: int(process.env.WEB_SEARCH_MAX_RESULTS, 10),
+    // Zeitlimit einer Suchanfrage in Millisekunden
+    timeoutMs: int(process.env.WEB_SEARCH_TIMEOUT_MS, 15_000),
+  },
 }
 
 /** Loggt die Konfiguration ohne sensible Werte. */
