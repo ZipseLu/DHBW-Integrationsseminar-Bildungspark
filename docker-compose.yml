@@ -127,6 +127,32 @@ services:
       start_period: 15s
 
   # ---------------------------------------------------------------------------
+  # DB-Backup - taeglicher mysqldump (OPS-04), siehe docs/datenbank-backup.md
+  # Dumps liegen im Host-Ordner ./backups (nicht eingecheckt).
+  # ---------------------------------------------------------------------------
+  db-backup:
+    image: mysql:8.4
+    container_name: bp-db-backup
+    restart: unless-stopped
+    entrypoint: ["sh", "/scripts/backup-loop.sh"]
+    environment:
+      DB_HOST: db
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-bildungspark}"
+      BACKUP_HOUR: "${BACKUP_HOUR:-2}"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+      BACKUP_ON_START: "${BACKUP_ON_START:-false}"
+      TZ: "Europe/Berlin"
+    volumes:
+      - ./docker/backup:/scripts:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bp-net
+
+  # ---------------------------------------------------------------------------
   # Frontend – React + TypeScript + Vite (Dev-Server mit Hot Reload)
   # ---------------------------------------------------------------------------
   frontend:
