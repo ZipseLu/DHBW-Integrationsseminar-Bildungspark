@@ -50,6 +50,7 @@ export const config = {
       .filter(Boolean),
   },
 
+  // Nur in Entwicklung/Test gibt es einen Fallback; in Produktion ist JWT_SECRET Pflicht (s. unten).
   jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-bitte-aendern',
 
   ai: {
@@ -72,6 +73,10 @@ export const config = {
       deployment: process.env.AZURE_OPENAI_DEPLOYMENT ?? '',
     },
   },
+}
+
+if (config.env === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET muss in Produktion gesetzt sein (kein Standardwert).')
 }
 
 /** Loggt die Konfiguration ohne sensible Werte. */

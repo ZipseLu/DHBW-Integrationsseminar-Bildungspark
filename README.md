@@ -375,6 +375,23 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 | `AI_TIMEOUT_MS` | `60000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
 
+### Secrets
+
+Regel: **Keine Passwörter, Keys oder Tokens im Code, in Commits, Chats oder Screenshots.**
+Echte Werte stehen nur in der lokalen `.env` (in `.gitignore`) oder in GitHub Secrets.
+
+| Secret | Wo | Hinweis |
+|---|---|---|
+| `GEMINI_API_KEY` | lokale `.env` | Jede Person erzeugt ihren eigenen Key (Google AI Studio). Bei Leak: Key widerrufen, neu erzeugen. |
+| `JWT_SECRET` | lokale `.env`, in Produktion Pflicht | Bei `NODE_ENV=production` bricht das Backend ohne Wert ab. Erzeugen: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | lokale `.env` | Die Dev-Defaults (`root-dev`, `bildungspark-dev`) nur auf dem eigenen Rechner nutzen, nie auf erreichbaren Servern. |
+| `SEED_PASSWORT` | lokale `.env` (optional) | Ohne Wert erzeugt `npm run db:seed` ein Zufallspasswort und zeigt es einmalig im Log. |
+| `AZURE_OPENAI_API_KEY`, `SERPAPI_API_KEY` | lokale `.env` | Bisher ungenutzt bzw. spätere Phase. |
+
+Es gibt aktuell keinen Server. Sobald eine Dev-Stage in GitHub Actions läuft, werden die Werte unter
+*Settings → Secrets and variables → Actions* angelegt (Admin-Recht nötig) und im Workflow über
+`${{ secrets.NAME }}` gelesen. Die DB-Passwörter in `ci.yml` gehören zu Wegwerf-Containern.
+
 > **Ohne `GEMINI_API_KEY` läuft die KI im Mock-Modus.** Das ist Absicht:
 > So laufen Frontend, Supertest und Playwright ohne API-Key und ohne Kosten.
 > Das Backend liest ohne Docker zuerst `apps/backend/.env` (optional), dann die Root-`.env`;
