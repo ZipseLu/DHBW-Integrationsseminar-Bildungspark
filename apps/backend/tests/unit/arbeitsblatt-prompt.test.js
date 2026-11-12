@@ -25,6 +25,11 @@ describe('System-Prompt (stabiler Teil)', () => {
     expect(SYSTEM_PROMPT).toContain('§ 60 SGB IX')
   })
 
+  it('enthält die Fachregel zu MHD und Verbrauchsdatum (BE-13)', () => {
+    expect(SYSTEM_PROMPT).toContain('Mindesthaltbarkeitsdatum')
+    expect(SYSTEM_PROMPT).toContain('Schreibe nie, dass Ware nach dem MHD verboten ist.')
+  })
+
   it('verlangt Antwortmöglichkeiten auch in Piktogramm-Formaten und ausgeschriebene Umlaute (QS-04)', () => {
     expect(SYSTEM_PROMPT).toContain('Kurz heißt nicht weglassen')
     expect(SYSTEM_PROMPT).toContain('nie „loesen“')
