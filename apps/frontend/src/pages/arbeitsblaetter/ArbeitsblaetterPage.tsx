@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { WORKSHEETS } from '@/data/worksheets'
 import { downloadGespeichertesDocx, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
 import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
+import { druckeGespeichertesArbeitsblatt } from '@/lib/druck'
 import { downloadWorksheetDocx } from '@/lib/docx'
 import { fehlertext, ladeGespeicherteArbeitsblaetter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { EMPTY_FILTER, ausbildungsbausteinOptions, bausteinOptions, filterWorksheets, type WorksheetFilter } from '@/lib/worksheetFilter'
@@ -183,6 +184,10 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
               onHistory={() => setDetail({ worksheet: w, tab: 'verlauf' })}
               onEdit={() => setDetail({ worksheet: w, tab: 'bearbeiten' })}
               onDownload={() => void download(w)}
+              onPdf={() => {
+                setAktionsFehler(null)
+                if (w.backend) druckeGespeichertesArbeitsblatt(w.backend.id).catch((error: unknown) => setAktionsFehler(`PDF nicht möglich: ${fehlertext(error)}`))
+              }}
               onAdapt={() => setTransformSource(w)}
             />
           ))}

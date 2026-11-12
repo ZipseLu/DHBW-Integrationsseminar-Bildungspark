@@ -1,24 +1,9 @@
 import { useState } from 'react'
 import { stufeTextVar } from '@/lib/settings'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
-import { ApiError, downloadArbeitsblattDocx, type ArbeitsblattResult, type Aufgabe, type AufgabeTyp } from '@/lib/api'
-
-const TYP_LABEL: Record<AufgabeTyp, string> = {
-  offen: 'Nach-denken',
-  reihenfolge: 'Reihenfolge',
-  zuordnen: 'Zuordnen',
-  ankreuzen: 'Ankreuzen',
-  malen: 'Malen',
-  praxis: 'Praxis-Übung',
-}
-
-/** Symbole der Piktogramm-Whitelist – Kopie von PIKTOGRAMME in apps/backend/src/arbeitsblatt/schema.js */
-const PIKTOGRAMM_SYMBOL: Record<string, string> = {
-  denken: '💭', lesen: '📖', schreiben: '✏️', sprechen: '🗣️', fragen: '❓', anleiter: '🧑‍🏫', reihenfolge: '🔢',
-  verbinden: '🔗', ankreuzen: '☑️', malen: '🎨', zaehlen: '🧮', uhr: '⏰', achtung: '⚠️', stopp: '🛑', haende: '🤲',
-  handschuhe: '🧤', helm: '⛑️', schutzbrille: '🥽', werkzeug: '🔧', messer: '🔪', paket: '📦', lkw: '🚚', hubwagen: '🛒',
-  regal: '🗄️', waage: '⚖️', liste: '📋', computer: '💻', besen: '🧹', topf: '🍲', teller: '🍽️', kuehlschrank: '🧊', pflanze: '🌱',
-}
+import { AUFGABEN_TYP_LABEL, PIKTOGRAMM_SYMBOL } from '@/data/aufgaben'
+import { ApiError, downloadArbeitsblattDocx, type ArbeitsblattResult, type Aufgabe } from '@/lib/api'
+import { druckeArbeitsblatt } from '@/lib/druck'
 
 const mutedText = { color: 'var(--muted-foreground)' }
 
@@ -34,7 +19,7 @@ function AufgabeBlock({ aufgabe, accent }: { aufgabe: Aufgabe; accent: string })
             {symbol}
           </span>
         )}
-        Aufgabe {aufgabe.nr}: {TYP_LABEL[aufgabe.typ] ?? aufgabe.typ}
+        Aufgabe {aufgabe.nr}: {AUFGABEN_TYP_LABEL[aufgabe.typ] ?? aufgabe.typ}
       </div>
       <div className="text-sm leading-relaxed whitespace-pre-line">{aufgabe.anweisung}</div>
 
@@ -108,6 +93,15 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
       setDownloadError(error instanceof ApiError ? error.message : 'Download fehlgeschlagen.')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  function handlePdf() {
+    setDownloadError(null)
+    try {
+      druckeArbeitsblatt(worksheet)
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : 'Die Druckansicht konnte nicht geöffnet werden.')
     }
   }
 
@@ -230,6 +224,15 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
                 style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
               >
                 {downloading ? 'Wird erstellt…' : '📄 .docx'}
+              </button>
+              <button
+                type="button"
+                onClick={handlePdf}
+                title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
+                className="text-xs px-3 py-1.5 rounded font-medium"
+                style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
+              >
+                🖨 PDF
               </button>
             </div>
             {speicherZustand.art === 'fehler' && (

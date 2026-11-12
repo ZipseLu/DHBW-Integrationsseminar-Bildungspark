@@ -12,6 +12,8 @@ type Props = {
   /** Only offered for worksheets saved in the backend (FE-10) */
   onEdit?: () => void
   onDownload: () => void
+  /** FE-04: print view / PDF, only for worksheets saved in the backend */
+  onPdf?: () => void
   onAdapt: () => void
 }
 
@@ -27,6 +29,7 @@ export function WorksheetCard({
   onHistory,
   onEdit,
   onDownload,
+  onPdf,
   onAdapt,
 }: Props) {
   const opt = formatOption(w.format)
@@ -148,6 +151,17 @@ export function WorksheetCard({
           >
             📄 .docx
           </button>
+          {w.backend && onPdf && (
+            <button
+              type="button"
+              onClick={onPdf}
+              className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80"
+              style={secondaryButton}
+              title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
+            >
+              🖨 PDF
+            </button>
+          )}
           <button
             type="button"
             onClick={onAdapt}
