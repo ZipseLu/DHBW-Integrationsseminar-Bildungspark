@@ -10,8 +10,8 @@ type Props = {
   /** null = neue Person anlegen */
   editing: Participant | null
   defaultBerufsbild: string
-  /** Gibt eine Fehlermeldung zurueck oder null, wenn gespeichert wurde */
-  onSave: (id: string, stations: StationDraft[]) => string | null
+  /** Returns an error message, or null once saved (FE-12: asynchronous via the backend) */
+  onSave: (id: string, stations: StationDraft[]) => string | null | Promise<string | null>
   onClose: () => void
 }
 
@@ -22,15 +22,28 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
   const emptyStation: StationDraft = { berufsbild: defaultBerufsbild, level: 'T', format: 'text' }
   const [id, setId] = useState(editing?.id ?? '')
   const [error, setError] = useState('')
+  const [speichert, setSpeichert] = useState(false)
   const [stations, setStations] = useState<StationDraft[]>(
     editing ? editing.berufsbilder.map((b) => ({ berufsbild: b.berufsbild, level: b.level, format: b.format })) : [emptyStation],
   )
 
   const update = (index: number, patch: Partial<StationDraft>) => setStations((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)))
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(onSave(id.trim(), stations) ?? '')
+    if (speichert) return
+    setSpeichert(true)
+    try {
+      const meldung = await onSave(id.trim(), stations)
+      // On success the dialog is closed by the page; only keep state for errors
+      if (meldung) {
+        setError(meldung)
+        setSpeichert(false)
+      }
+    } catch {
+      setError('Nicht gespeichert: unbekannter Fehler.')
+      setSpeichert(false)
+    }
   }
 
   return (
@@ -38,20 +51,27 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
       <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
         <div>
           <label htmlFor="tn-kennung" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ANONYME KENNUNG <span className="font-normal">(optional)</span>
+            ANONYME KENNUNG {!editing && <span className="font-normal">(optional)</span>}
           </label>
           <input
             id="tn-kennung"
             type="text"
             placeholder="z.B. IW3-0001 oder leer lassen"
             value={id}
+            readOnly={Boolean(editing)}
+            aria-describedby={editing ? 'tn-kennung-hinweis' : undefined}
             onChange={(e) => {
               setId(e.target.value)
               setError('')
             }}
             className="w-full px-3 py-2.5 rounded text-sm outline-none font-mono"
-            style={inputStyle}
+            style={editing ? { ...inputStyle, opacity: 0.7 } : inputStyle}
           />
+          {editing && (
+            <p id="tn-kennung-hinweis" className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+              Die Kennung kann nicht geändert werden. Für eine neue Kennung das Profil löschen und neu anlegen.
+            </p>
+          )}
         </div>
 
         <div>
@@ -193,10 +213,11 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
         <div className="flex gap-2 pb-1">
           <button
             type="submit"
-            className="flex-1 py-2.5 rounded font-medium text-sm hover:opacity-90 transition-opacity"
+            disabled={speichert}
+            className="flex-1 py-2.5 rounded font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-60"
             style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
-            {editing ? 'Änderungen speichern' : 'Teilnehmer anlegen'}
+            {speichert ? 'Wird gespeichert …' : editing ? 'Änderungen speichern' : 'Teilnehmer anlegen'}
           </button>
           <button type="button" onClick={onClose} className="px-4 py-2.5 rounded text-sm hover:opacity-70 transition-opacity" style={{ border: '1px solid var(--border)' }}>
             Abbrechen
