@@ -101,8 +101,10 @@ describe('Berichte', () => {
 })
 
 describe('Benutzerverwaltung', () => {
-  it('prueft das Formular und legt ein Konto an', () => {
+  // The fetch mock has no account list, so the sample accounts are used locally (FE-09)
+  it('prueft das Formular und legt ein Konto an', async () => {
     openPage('Benutzerverwaltung')
+    await screen.findByText(`${STAFF_USERS.length} Konten · nur für Administratoren sichtbar`)
     fireEvent.click(screen.getByRole('button', { name: '+ Mitarbeiter anlegen' }))
     const dialog = screen.getByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('NAME *'), { target: { value: 'Max Beispiel' } })
@@ -113,12 +115,13 @@ describe('Benutzerverwaltung', () => {
 
     fireEvent.change(within(dialog).getByLabelText('PASSWORT *'), { target: { value: 'langespasswort' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Konto anlegen' }))
-    expect(screen.getByText('Max Beispiel')).toBeInTheDocument()
+    expect(await screen.findByText('Max Beispiel')).toBeInTheDocument()
     expect(screen.getByText(`${STAFF_USERS.length + 1} Konten · nur für Administratoren sichtbar`)).toBeInTheDocument()
   })
 
-  it('erlaubt nicht, das eigene Konto zu loeschen', () => {
+  it('erlaubt nicht, das eigene Konto zu loeschen', async () => {
     openPage('Benutzerverwaltung')
+    await screen.findByRole('button', { name: 'Konto von T. Neumann löschen' })
     expect(screen.queryByRole('button', { name: 'Konto von Celine Hager löschen' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Konto von T. Neumann löschen' })).toBeInTheDocument()
   })
