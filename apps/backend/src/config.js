@@ -57,7 +57,7 @@ export const config = {
     // 'gemini' | 'azure' – hier zentral umschalten, wenn die Azure-Phase startet.
     provider: process.env.AI_PROVIDER ?? 'gemini',
     // Zeitlimit eines Generierungsauftrags in Millisekunden (inkl. Wiederholungsversuch)
-    timeoutMs: int(process.env.AI_TIMEOUT_MS, 60_000),
+    timeoutMs: int(process.env.AI_TIMEOUT_MS, 180_000),
     gemini: {
       apiKey: process.env.GEMINI_API_KEY ?? '',
       // Stand 22.10.2026: 'gemini-2.5-flash' ist fuer neue Keys nicht mehr verfuegbar (404),

@@ -25,6 +25,13 @@ describe('System-Prompt (stabiler Teil)', () => {
     expect(SYSTEM_PROMPT).toContain('§ 60 SGB IX')
   })
 
+  it('verlangt Antwortmöglichkeiten auch in Piktogramm-Formaten und ausgeschriebene Umlaute (QS-04)', () => {
+    expect(SYSTEM_PROMPT).toContain('Kurz heißt nicht weglassen')
+    expect(SYSTEM_PROMPT).toContain('nie „loesen“')
+    const { prompt } = buildPrompt({ ...REQUEST_T_TEXT, format: 'piktogramm-mathefrei' })
+    expect(prompt).toContain('optionen bei reihenfolge/ankreuzen/zuordnen nie weglassen')
+  })
+
   it('enthaelt ein Few-Shot-Beispiel, das dem Schema entspricht und den Validator besteht', () => {
     const match = /```json\r?\n([\s\S]*?)\r?\n```/.exec(SYSTEM_PROMPT)
     expect(match).not.toBeNull()
