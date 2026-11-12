@@ -87,9 +87,9 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date()): stri
 <meta charset="utf-8">
 <title>${escape(w.titel)}</title>
 <style>
+  /* Margins in their own rule: browsers without page margin boxes drop only the footer rule below, not the margins */
+  @page { size: A4; margin: 2.2cm 2.2cm 2.5cm; }
   @page {
-    size: A4;
-    margin: 2.2cm 2.2cm 2.5cm;
     @bottom-center { content: "${fusszeile} · Seite " counter(page) " von " counter(pages); font: 7pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${COLOR_MUTED}; }
   }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
