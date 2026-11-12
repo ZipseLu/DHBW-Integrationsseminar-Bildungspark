@@ -37,8 +37,14 @@ function blatt(teil: Partial<GespeichertesArbeitsblatt> = {}): GespeichertesArbe
 
 const seite = (eintraege: GespeichertesArbeitsblatt[], nr = 1, seiten = 1) => ({ eintraege, seite: nr, proSeite: 100, gesamt: eintraege.length, seiten })
 
+/** The list of uploaded documents (FE-05) also calls /api/uploads – answered with an empty list here */
+function ohneUploads<T extends (...args: never[]) => unknown>(fetchMock: T) {
+  return (url: string, init?: RequestInit) =>
+    String(url).startsWith('/api/uploads') ? Promise.resolve(json({ eintraege: [], gesamt: 0 })) : (fetchMock as unknown as (u: string, i?: RequestInit) => unknown)(url, init)
+}
+
 function renderPage() {
-  render(<ArbeitsblaetterPage user={CURRENT_USER} savedDocs={[]} onSavedDocsChange={() => {}} favoriteIds={[]} onFavoriteIdsChange={() => {}} />)
+  render(<ArbeitsblaetterPage user={CURRENT_USER} onKiAnpassen={() => {}} favoriteIds={[]} onFavoriteIdsChange={() => {}} />)
 }
 
 afterEach(() => {
@@ -48,7 +54,7 @@ afterEach(() => {
 describe('Arbeitsblätter aus dem Backend', () => {
   it('zeigt gespeicherte Blätter statt der Beispieldaten', async () => {
     const fetchMock = vi.fn(async (_url: string) => json(seite([blatt(), blatt({ id: '22222222-2222-4222-8222-222222222222', titel: 'Hände waschen', berufsfeld: 'Gastronomie & Hauswirtschaft', stufe: 'T', status: 'freigegeben' })])))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', ohneUploads(fetchMock))
     renderPage()
 
     expect(screen.getByRole('status')).toHaveTextContent('Arbeitsblätter werden geladen')
@@ -62,7 +68,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
   })
 
   it('filtert gespeicherte Blätter nach Berufsbild', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(seite([blatt(), blatt({ id: '22222222-2222-4222-8222-222222222222', titel: 'Hände waschen', berufsfeld: 'Gastronomie & Hauswirtschaft' })]))))
+    vi.stubGlobal('fetch', ohneUploads(vi.fn(async () => json(seite([blatt(), blatt({ id: '22222222-2222-4222-8222-222222222222', titel: 'Hände waschen', berufsfeld: 'Gastronomie & Hauswirtschaft' })])))))
     renderPage()
     await screen.findByRole('article', { name: 'Lieferschein prüfen' })
 
@@ -72,7 +78,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
   })
 
   it('zeigt einen Hinweis, wenn noch nichts gespeichert ist', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(seite([]))))
+    vi.stubGlobal('fetch', ohneUploads(vi.fn(async () => json(seite([])))))
     renderPage()
     expect(await screen.findByText(/Noch keine Arbeitsblätter gespeichert/)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -83,7 +89,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
       .fn()
       .mockResolvedValueOnce(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
       .mockResolvedValueOnce(json(seite([blatt()])))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', ohneUploads(fetchMock))
     renderPage()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Die Datenbank ist nicht verfügbar.')
@@ -98,7 +104,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
       init?.method === 'PATCH' ? json({ arbeitsblatt: { ...blatt({ favorit: true }), inhalt: {} } }) : json(seite([blatt()])),
     )
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', ohneUploads(fetchMock))
     renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
 
@@ -114,7 +120,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
   it('setzt den Favoriten zurück, wenn das Speichern scheitert', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_url: string, init?: RequestInit) => (init?.method === 'PATCH' ? json({ message: 'Datenbank weg' }, 503) : json(seite([blatt()])))),
+      ohneUploads(vi.fn(async (_url: string, init?: RequestInit) => (init?.method === 'PATCH' ? json({ message: 'Datenbank weg' }, 503) : json(seite([blatt()]))))),
     )
     renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
@@ -128,7 +134,9 @@ describe('Arbeitsblätter aus dem Backend', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) =>
-        String(url).endsWith('/verlauf')
+        String(url).startsWith('/api/uploads')
+          ? json({ eintraege: [], gesamt: 0 })
+          : String(url).endsWith('/verlauf')
           ? json({
               eintraege: [
                 { version: 2, aktion: 'freigegeben', autor: 'T. Neumann', notiz: 'Geprüft', kiMeta: null, erstelltAm: '2026-10-29T09:00:00.000Z' },
@@ -172,14 +180,14 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
       .fn()
       .mockResolvedValueOnce(json(seite([blatt()], 1, 2)))
       .mockResolvedValueOnce(json(seite([blatt({ id: '33333333-3333-4333-8333-333333333333' })], 2, 2)))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', ohneUploads(fetchMock))
     const alle = await ladeGespeicherteArbeitsblaetter()
     expect(alle).toHaveLength(2)
     expect(String(fetchMock.mock.calls[1][0])).toContain('seite=2')
   })
 
   it('meldet eine unerwartete Antwort als Fehler', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json({ anzahl: 0 })))
+    vi.stubGlobal('fetch', ohneUploads(vi.fn(async () => json({ anzahl: 0 }))))
     await expect(ladeGespeicherteArbeitsblaetter()).rejects.toThrow('unerwartete Antwort')
   })
 

@@ -146,18 +146,6 @@ describe('Arbeitsblätter', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '✦ 4 Varianten erstellen' }))
     expect(await within(dialog).findByText('✓ 4 Varianten bereit')).toBeInTheDocument()
   })
-
-  it('speichert eine hochgeladene Datei direkt in der Bibliothek', async () => {
-    renderApp()
-    const file = new File(['Inhalt'], 'Gabelstapler_Sicherheit.pdf', { type: 'application/pdf' })
-    fireEvent.change(screen.getByLabelText('Arbeitsblatt hochladen'), { target: { files: [file] } })
-
-    fireEvent.click(await screen.findByRole('button', { name: /Direkt speichern/ }))
-
-    const list = screen.getByRole('heading', { name: 'Gespeicherte Dokumente' }).closest('section') as HTMLElement
-    expect(within(list).getByText('Gabelstapler_Sicherheit.pdf')).toBeInTheDocument()
-    expect(within(list).getByText(/Celine Hager/)).toBeInTheDocument()
-  })
 })
 
 describe('KI-Erstellung', () => {
