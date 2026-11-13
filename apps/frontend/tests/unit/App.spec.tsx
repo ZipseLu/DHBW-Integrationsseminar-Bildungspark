@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '@/App'
+import App from '../AuthenticatedTestApp'
+vi.mock('@/components/MaterialSuggestions', () => ({ MaterialSuggestions: () => null }))
 
 /**
  * Komponententests: rendern die App in jsdom und klicken sie durch.
@@ -55,7 +56,7 @@ function navigate(label: string) {
 }
 
 describe('Start', () => {
-  it('oeffnet direkt die Arbeitsblaetter, ohne Anmeldung', () => {
+  it('zeigt den Arbeitsbereich mit dem angemeldeten Konto', () => {
     renderApp()
     expect(screen.getByRole('heading', { level: 1, name: 'Arbeitsblätter' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Anmelden' })).not.toBeInTheDocument()
@@ -194,13 +195,16 @@ describe('KI-Erstellung', () => {
     expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
   })
 
-  it('zeigt simulierte Suchtreffer', async () => {
+  it('zeigt Suchtreffer aus der Backend-Schnittstelle', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => String(url).startsWith('/api/suche')
+      ? new Response(JSON.stringify({ results: [{ title: 'Hygiene im Betrieb', url: 'https://example.test/hygiene', snippet: 'Arbeitsblatt' }] }), { status: 200 })
+      : emptyLehrplaene()))
     renderApp()
     navigate('KI-Erstellung')
 
     fireEvent.change(screen.getByLabelText('Suchbegriff für die Internetsuche'), { target: { value: 'Hygiene' } })
     fireEvent.click(screen.getByRole('button', { name: /Suchen/ }))
 
-    expect(await screen.findByText('5 Ergebnisse für „Hygiene"')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Hygiene im Betrieb' })).toHaveAttribute('href', 'https://example.test/hygiene')
   })
 })
