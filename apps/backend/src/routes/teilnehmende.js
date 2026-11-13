@@ -9,11 +9,9 @@
  *
  * § 60 SGB IX: nur pseudonyme Kennungen, keine Namen (siehe src/teilnehmende/schema.js).
  * Ohne erreichbare MySQL antworten alle Routen mit 503 `db_unavailable`.
- * Anmeldung ist Pflicht (app.js, BE-06); löschen nur für admin und dozent.
  * Details und Beispiele: docs/persistenz-teilnehmende.md
  */
 import { Router } from 'express'
-import { erfordereRolle, VERANTWORTLICHE_ROLLEN } from '../auth/rollen.js'
 import { formatZodError, zodIssues } from '../arbeitsblatt/schema.js'
 import * as repo from '../teilnehmende/repository.js'
 import { CreateSchema, UpdateSchema, istKennung, normalisiereKennung } from '../teilnehmende/schema.js'
@@ -104,7 +102,6 @@ export function createTeilnehmendeRouter() {
 
   router.delete(
     '/:kennung',
-    erfordereRolle(...VERANTWORTLICHE_ROLLEN),
     wrap(async (req, res) => {
       if (!(await repo.remove(res.locals.kennung))) return notFound(res, res.locals.kennung)
       res.status(204).end()

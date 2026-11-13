@@ -19,8 +19,6 @@ export const LIMITS = {
   erklaerung: 300,
   hinweisAnleiter: 800,
   notiz: 500,
-  option: 200,
-  optionen: 10,
 } as const
 
 /** Returns one German message per problem; an empty list means the draft can be saved */
@@ -40,14 +38,6 @@ export function pruefeEntwurf(w: Arbeitsblatt, notiz = ''): string[] {
   w.aufgaben.forEach((a, i) => {
     pflicht(a.anweisung, LIMITS.anweisung, `Anweisung von Aufgabe ${i + 1}`)
     optional(a.loesung, LIMITS.loesung, `Lösung von Aufgabe ${i + 1}`)
-    if (['ankreuzen', 'reihenfolge', 'zuordnen'].includes(a.typ) && !a.optionen?.length) fehler.push(`Aufgabe ${i + 1} braucht mindestens eine Option.`)
-    if ((a.optionen?.length ?? 0) > LIMITS.optionen) fehler.push(`Aufgabe ${i + 1} darf höchstens ${LIMITS.optionen} Optionen haben.`)
-    a.optionen?.forEach((option, k) => {
-      pflicht(option, LIMITS.option, `Option ${k + 1} von Aufgabe ${i + 1}`)
-      if (a.typ === 'zuordnen' && (option.split('|').length !== 2 || option.split('|').some((teil) => !teil.trim()))) {
-        fehler.push(`Zuordnung ${k + 1} von Aufgabe ${i + 1} braucht eine linke und rechte Seite ohne zusätzliche | Zeichen.`)
-      }
-    })
   })
   w.woerterbuch.forEach((e, i) => {
     pflicht(e.wort, LIMITS.wort, `Wort ${i + 1} im Wörterbuch`)
@@ -67,7 +57,6 @@ export function bereinige(w: Arbeitsblatt): Arbeitsblatt {
     hinweisAnleiter: w.hinweisAnleiter.trim(),
     aufgaben: w.aufgaben.map((a, i) => {
       const aufgabe = { ...a, nr: i + 1, anweisung: a.anweisung.trim() }
-      if (a.optionen) aufgabe.optionen = a.optionen.map((o) => a.typ === 'zuordnen' ? o.split('|').map((s) => s.trim()).join(' | ') : o.trim())
       // An emptied solution field means "no solution", not an empty string
       const loesung = a.loesung?.trim()
       if (loesung) aufgabe.loesung = loesung

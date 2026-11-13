@@ -21,7 +21,6 @@ import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
 import { GeneratedWorksheetCard, type SpeicherZustand } from './GeneratedWorksheetCard'
 import { WebSearchSection } from './WebSearchSection'
-import { MaterialSuggestions } from '@/components/MaterialSuggestions'
 
 const labelClass = 'block text-xs font-mono font-medium mb-1.5'
 const inputStyle = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
@@ -231,8 +230,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
             </div>
           </div>
 
-          {lernziel && <MaterialSuggestions key={`${lernziel.berufsfeld}-${lernziel.titel}`} goal={lernziel} />}
-          <WebSearchSection thema={thema || lernziel?.titel || ''} onUseTopic={setThema} />
+          <WebSearchSection thema={thema} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>

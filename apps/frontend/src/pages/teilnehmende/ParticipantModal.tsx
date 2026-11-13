@@ -38,16 +38,12 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
       <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
         <div>
           <label htmlFor="tn-kennung" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ANONYME KENNUNG <span className="font-normal">(IW3-Nummer, Pflichtfeld)</span>
+            ANONYME KENNUNG <span className="font-normal">(optional)</span>
           </label>
           <input
             id="tn-kennung"
             type="text"
-            placeholder="z. B. IW3-0001"
-            required
-            readOnly={editing !== null}
-            maxLength={12}
-            aria-describedby="tn-kennung-hilfe"
+            placeholder="z.B. IW3-0001 oder leer lassen"
             value={id}
             onChange={(e) => {
               setId(e.target.value)
@@ -56,7 +52,6 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
             className="w-full px-3 py-2.5 rounded text-sm outline-none font-mono"
             style={inputStyle}
           />
-          <p id="tn-kennung-hilfe" className="text-xs mt-2" style={{ color: 'var(--muted-foreground)' }}>{editing ? 'Die Kennung eines bestehenden Profils kann nicht geändert werden.' : 'Nur eine pseudonyme Kennung verwenden, keine Namen oder Diagnosen.'}</p>
         </div>
 
         <div>
@@ -66,7 +61,6 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
             </span>
             <button
               type="button"
-              disabled={stations.length >= 10}
               onClick={() => setStations((prev) => [...prev, emptyStation])}
               className="text-xs px-2.5 py-1 rounded font-medium hover:opacity-80 transition-opacity"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}

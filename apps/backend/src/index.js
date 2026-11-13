@@ -7,15 +7,6 @@ import { createApp, describeConfig } from './app.js'
 import { config } from './config.js'
 import { ping, closePool } from './db.js'
 import { runMigrations } from './db/migrate.js'
-import { pruefeJwtKonfiguration } from './auth/token.js'
-
-// In Produktion nie mit dem Entwicklungs-Schlüssel starten – damit könnte jeder Tokens fälschen
-try {
-  pruefeJwtKonfiguration()
-} catch (error) {
-  console.error(`[backend] ${error.message}`)
-  process.exit(1)
-}
 
 const app = createApp()
 

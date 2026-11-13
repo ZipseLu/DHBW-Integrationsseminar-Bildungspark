@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { api } from '../helpers/auth.js'
 import { createApp } from '../../src/app.js'
 
 /**
@@ -31,7 +30,7 @@ describe.skipIf(!hasDb)('GET /api/health (Datenbank erreichbar)', () => {
   const app = createApp()
 
   it('antwortet mit 200 und Status "ok"', async () => {
-    const response = await api(app).get('/api/health')
+    const response = await request(app).get('/api/health')
 
     expect(response.status).toBe(200)
     expect(response.body).toMatchObject({
@@ -43,7 +42,7 @@ describe.skipIf(!hasDb)('GET /api/health (Datenbank erreichbar)', () => {
   })
 
   it('liefert einen ISO-Zeitstempel', async () => {
-    const response = await api(app).get('/api/health')
+    const response = await request(app).get('/api/health')
     expect(new Date(response.body.timestamp).toString()).not.toBe('Invalid Date')
   })
 })
@@ -52,7 +51,7 @@ describe.skipIf(hasDb)('GET /api/health (Datenbank nicht erreichbar)', () => {
   const app = createApp()
 
   it('antwortet mit 503 und Status "degraded"', async () => {
-    const response = await api(app).get('/api/health')
+    const response = await request(app).get('/api/health')
 
     expect(response.status).toBe(503)
     expect(response.body.status).toBe('degraded')
@@ -60,7 +59,7 @@ describe.skipIf(hasDb)('GET /api/health (Datenbank nicht erreichbar)', () => {
   })
 
   it('liefert auch im Fehlerfall einen Zeitstempel', async () => {
-    const response = await api(app).get('/api/health')
+    const response = await request(app).get('/api/health')
     expect(new Date(response.body.timestamp).toString()).not.toBe('Invalid Date')
   })
 })
@@ -69,7 +68,7 @@ describe('GET /api/ai/status', () => {
   const app = createApp()
 
   it('meldet den konfigurierten Provider', async () => {
-    const response = await api(app).get('/api/ai/status')
+    const response = await request(app).get('/api/ai/status')
 
     expect(response.status).toBe(200)
     expect(response.body).toHaveProperty('provider')
@@ -82,20 +81,20 @@ describe('POST /api/ai/generate', () => {
   const app = createApp()
 
   it('lehnt einen leeren Prompt mit 400 ab', async () => {
-    const response = await api(app).post('/api/ai/generate').send({ prompt: '   ' })
+    const response = await request(app).post('/api/ai/generate').send({ prompt: '   ' })
 
     expect(response.status).toBe(400)
     expect(response.body.error).toBe('validation_error')
   })
 
   it('lehnt einen fehlenden Prompt mit 400 ab', async () => {
-    const response = await api(app).post('/api/ai/generate').send({})
+    const response = await request(app).post('/api/ai/generate').send({})
 
     expect(response.status).toBe(400)
   })
 
   it('antwortet ohne API-Key im Mock-Modus statt zu crashen', async () => {
-    const response = await api(app)
+    const response = await request(app)
       .post('/api/ai/generate')
       .send({ system: 'Du bist Lehrkraft.', prompt: 'Erstelle ein Arbeitsblatt.' })
 
@@ -109,7 +108,7 @@ describe('Unbekannte Routen', () => {
   const app = createApp()
 
   it('antwortet mit 404 und maschinenlesbarem Fehlerformat', async () => {
-    const response = await api(app).get('/api/gibt-es-nicht')
+    const response = await request(app).get('/api/gibt-es-nicht')
 
     expect(response.status).toBe(404)
     expect(response.body.error).toBe('not_found')

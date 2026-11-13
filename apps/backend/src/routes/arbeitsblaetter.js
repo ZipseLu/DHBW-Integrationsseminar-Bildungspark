@@ -12,13 +12,9 @@
  *   GET    /api/arbeitsblaetter/:id/docx         Aktuelle Version als Word-Datei
  *
  * Ohne erreichbare MySQL antworten alle Routen mit 503 `db_unavailable`.
- * Anmeldung ist Pflicht (app.js, BE-06). Status ändern (freigeben, zurück auf Entwurf,
- * archivieren) sowie Archivieren und Löschen per DELETE nur für admin und dozent;
- * endgültig löschen nur für admin. Lesen, Speichern und Inhalt bearbeiten: alle Rollen.
  * Details und Beispiele: docs/persistenz-arbeitsblaetter.md
  */
 import { Router } from 'express'
-import { erfordereRolle, VERANTWORTLICHE_ROLLEN } from '../auth/rollen.js'
 import { arbeitsblattFileName, buildArbeitsblattDocx, DOCX_MIME } from '../arbeitsblatt/docx.js'
 import { formatZodError, zodIssues } from '../arbeitsblatt/schema.js'
 import * as repo from '../arbeitsblaetter/repository.js'
@@ -100,13 +96,8 @@ export function createArbeitsblaetterRouter() {
     }),
   )
 
-  const nurVerantwortliche = erfordereRolle(...VERANTWORTLICHE_ROLLEN)
-  const nurAdmin = erfordereRolle('admin')
-
   router.patch(
     '/:id',
-    // Statuswechsel (Freigabe, Archiv) nur für admin/dozent – Inhalt und Favorit für alle Rollen
-    (req, res, next) => (req.body?.status !== undefined ? nurVerantwortliche(req, res, next) : next()),
     wrap(async (req, res) => {
       const parsed = PatchSchema.safeParse(req.body ?? {})
       if (!parsed.success) return validationError(res, parsed.error, 'Die Änderung ist ungültig:')
@@ -116,13 +107,10 @@ export function createArbeitsblaetterRouter() {
     }),
   )
 
-  const istEndgueltig = (req) => req.query.endgueltig === 'true' || req.query.endgueltig === '1'
-
   router.delete(
     '/:id',
-    (req, res, next) => (istEndgueltig(req) ? nurAdmin : nurVerantwortliche)(req, res, next),
     wrap(async (req, res) => {
-      const endgueltig = istEndgueltig(req)
+      const endgueltig = req.query.endgueltig === 'true' || req.query.endgueltig === '1'
       if (endgueltig) {
         if (!(await repo.remove(req.params.id))) return notFound(res, req.params.id)
         return res.status(204).end()

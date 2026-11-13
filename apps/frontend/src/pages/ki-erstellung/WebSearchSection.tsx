@@ -48,6 +48,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
       setSearchRunning(false)
     }
   }
+
   return (
     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
       <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
@@ -288,17 +289,6 @@ export function WebSearchSection({ thema }: { thema: string }) {
           </div>
         )}
       </div>
-      {state.kind === 'loading' && <p role="status" className="text-sm">Materialien werden gesucht …</p>}
-      {state.kind === 'error' && <div role="alert" className="text-sm"><p>{state.error}</p><button type="button" className="underline py-2" onClick={() => void search()}>Erneut suchen</button></div>}
-      {state.kind === 'ready' && <p role="status" className="text-xs">{state.results.length ? state.results.length + ' Treffer für „' + state.query + '“' : 'Keine Treffer für „' + state.query + '“. Versuchen Sie einen anderen Suchbegriff.'}</p>}
-      <ul className="flex flex-col gap-3">
-        {state.results.map((result) => <li key={result.url} className="text-sm flex flex-col gap-1">
-          <a href={result.url} target="_blank" rel="noopener noreferrer" className="underline font-medium break-words">{result.title}</a>
-          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{result.source}</span>
-          {result.snippet && <p>{result.snippet}</p>}
-          {onUseTopic && <button type="button" className="self-start text-xs underline py-2" onClick={() => onUseTopic(result.title)}>Als Thema übernehmen</button>}
-        </li>)}
-      </ul>
-    </section>
+    </div>
   )
 }

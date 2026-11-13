@@ -27,12 +27,6 @@ const int = (value, fallback) => {
 /** Erster nicht-leerer Wert aus mehreren Umgebungsvariablen */
 const first = (...names) => names.map((name) => process.env[name]).find((value) => value !== undefined && value !== '')
 
-/** Nur für die Entwicklung – in Produktion startet das Backend damit nicht (src/auth/token.js) */
-export const DEV_JWT_SECRET = 'dev-secret-bitte-aendern'
-
-/** JWT_EXPIRES_IN: reine Zahl = Sekunden (jsonwebtoken läse "3600" sonst als Millisekunden), sonst z. B. '8h' */
-export const jwtLaufzeit = (value) => (typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value) : value)
-
 export const config = {
   env: process.env.NODE_ENV ?? 'development',
   isTest: process.env.NODE_ENV === 'test',
@@ -56,33 +50,8 @@ export const config = {
       .filter(Boolean),
   },
 
-  // Anmeldung (BE-01): Schlüssel für die Signatur der Tokens und deren Gültigkeit
-  // (Format von jsonwebtoken, z. B. '8h' = ein Arbeitstag, '30m')
-  jwtSecret: first('JWT_SECRET') ?? DEV_JWT_SECRET,
-  jwtExpiresIn: jwtLaufzeit(first('JWT_EXPIRES_IN')) ?? '8h',
-
-  // Rate limits (BE-06, src/http/rate-limit.js): failed logins per IP, KI generations per account
-  rateLimit: {
-    loginMax: int(process.env.RATE_LIMIT_LOGIN_MAX, 10),
-    loginWindowMs: int(process.env.RATE_LIMIT_LOGIN_WINDOW_MS, 15 * 60_000),
-    kiMax: int(process.env.RATE_LIMIT_KI_MAX, 30),
-    kiWindowMs: int(process.env.RATE_LIMIT_KI_WINDOW_MS, 10 * 60_000),
-    sucheMax: int(process.env.RATE_LIMIT_SUCHE_MAX, 60),
-    sucheWindowMs: int(process.env.RATE_LIMIT_SUCHE_WINDOW_MS, 10 * 60_000),
-  },
-  // Online-Suche (FE-14, src/suche/service.js) – ohne Anbieter antwortet /api/suche mit 503
-  webSearch: {
-    provider: process.env.WEB_SEARCH_PROVIDER ?? '',
-    searxngUrl: first('SEARXNG_URL') ?? '',
-    braveApiKey: first('BRAVE_SEARCH_API_KEY') ?? '',
-    // Kostenpflichtige Anbieter (brave) nur nach ausdrücklicher Freigabe im Team
-    kostenpflichtigErlaubt: process.env.WEB_SEARCH_KOSTENPFLICHTIG_ERLAUBT === 'true',
-    maxResults: Math.min(Math.max(int(process.env.WEB_SEARCH_MAX_RESULTS, 10), 1), 20),
-    timeoutMs: int(process.env.WEB_SEARCH_TIMEOUT_MS, 10_000),
-  },
-  // Express "trust proxy": number of reverse proxies in front of the backend (0 = none).
-  // Needed behind nginx/Caddy so rate limits see the client IP instead of the proxy's.
-  trustProxy: int(process.env.TRUST_PROXY, 0),
+  // Nur in Entwicklung/Test gibt es einen Fallback; in Produktion ist JWT_SECRET Pflicht (s. unten).
+  jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-bitte-aendern',
 
   ai: {
     // 'gemini' | 'azure' – hier zentral umschalten, wenn die Azure-Phase startet.
