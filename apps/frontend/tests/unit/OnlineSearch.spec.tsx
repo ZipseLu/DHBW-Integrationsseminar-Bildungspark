@@ -6,6 +6,16 @@ import { WebSearchSection } from '@/pages/ki-erstellung/WebSearchSection'
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 describe('FE-14 Online-Suche', () => {
+  it.each([
+    [503, 'suche_nicht_konfiguriert', 'Die Online-Suche ist nicht eingerichtet.'],
+    [429, 'zu_viele_suchanfragen', 'Zu viele Suchanfragen. Bitte später erneut versuchen.'],
+    [504, 'suchanbieter_timeout', 'Die Suchmaschine hat nicht rechtzeitig geantwortet.'],
+  ])('zeigt die genaue Backend-Meldung bei HTTP %s', async (status, code, message) => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'search_error', code, message }, status as number)))
+    render(<WebSearchSection thema="Holz" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Suchen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(message as string)
+  })
   it('kodiert Suchbegriffe und filtert unsichere oder doppelte Links', async () => {
     const fetchMock = vi.fn(async (_url: string) => json({ results: [
       { title: 'Holz', url: 'https://example.test/holz', source: 'Erfundene Quelle' },

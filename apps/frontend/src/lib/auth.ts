@@ -2,7 +2,7 @@ import { apiFetch, ApiError } from '@/lib/api'
 import { setSession, type Session } from '@/lib/session'
 import type { StaffRole } from '@/types'
 
-/** Proposed contract for BE-01; no authentication route exists on main yet. */
+/** BE-01 contract confirmed on integration/adi-frontend-backend. */
 export async function login(email: string, password: string, signal?: AbortSignal): Promise<void> {
   const response = await apiFetch(import.meta.env.VITE_AUTH_LOGIN_PATH || '/api/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

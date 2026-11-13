@@ -60,6 +60,31 @@ describe('FE-08 Anmeldung', () => {
     await expect(login(user.email, 'test')).rejects.toMatchObject({ code: 'invalid_auth_response' })
     expect(getSession()).toBeNull()
   })
+  it('zeigt das Login-Rate-Limit aus dem Backend', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'rate_limit', code: 'zu_viele_anmeldeversuche', message: 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.' }, 429)))
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: user.email } })
+    fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'test' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'Anmeldung' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Zu viele Anmeldeversuche')
+  })
+  it('übernimmt spezifische Backend-Fehlercodes, ohne bei 403 abzumelden', async () => {
+    setSession({ token: 'abc', user, expiresAt: Date.now() + 300_000 })
+    vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'forbidden', code: 'rolle_unzureichend', message: 'Keine Berechtigung.' }, 403)))
+    await expect(apiFetch('/api/test')).rejects.toMatchObject({ status: 403, code: 'forbidden', grund: 'rolle_unzureichend' })
+    expect(getSession()).not.toBeNull()
+  })
+  it('bricht einen angemeldeten Suchaufruf auch ohne native Signalkombination ab', async () => {
+    setSession({ token: 'abc', user, expiresAt: Date.now() + 300_000 })
+    const external = new AbortController()
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Abgebrochen', 'AbortError')), { once: true })
+    })))
+    const request = apiFetch('/api/suche?q=Holz', { signal: external.signal })
+    external.abort()
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
+    expect(getSession()).not.toBeNull()
+  })
   it('beendet abgelaufene Sitzungen', () => {
     vi.useFakeTimers()
     setSession({ token: 'abc', user, expiresAt: Date.now() + 1000 })

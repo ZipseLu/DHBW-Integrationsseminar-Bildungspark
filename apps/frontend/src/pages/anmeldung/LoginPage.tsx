@@ -23,7 +23,7 @@ export function LoginPage() {
       if (controller.signal.aborted) return
       setError(cause instanceof ApiError && cause.status === 401 ? 'E-Mail oder Passwort falsch.' :
         cause instanceof ApiError && [404, 501].includes(cause.status) ? 'Die Anmeldung ist noch nicht verfügbar. Bitte wenden Sie sich an die Administration.' :
-        'Die Anmeldung ist gerade nicht möglich. Bitte versuchen Sie es erneut.')
+        cause instanceof ApiError && cause.status > 0 ? cause.message : 'Die Anmeldung ist gerade nicht möglich. Bitte versuchen Sie es erneut.')
     } finally {
       if (!controller.signal.aborted) { setBusy(false); setPassword('') }
     }

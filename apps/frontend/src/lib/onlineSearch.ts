@@ -9,10 +9,11 @@ export function safeMaterialUrl(value: unknown): string | null {
   } catch { return null }
 }
 
-/** Proposed BE search contract: GET /api/suche?q=... -> { results: WebResult[] }. */
+/** Confirmed FE-14 search contract: GET /api/suche?q=... -> { results: WebResult[] }. */
 export async function searchOnline(query: string, signal?: AbortSignal): Promise<WebResult[]> {
   const q = query.trim()
   if (!q) return []
+  if (q.length > 200) throw new ApiError('Der Suchbegriff darf höchstens 200 Zeichen lang sein.', 400, 'validation_error')
   const path = import.meta.env.VITE_WEB_SEARCH_PATH || '/api/suche'
   const response = await apiFetch(`${path}?${new URLSearchParams({ q })}`, { signal })
   const body = await response.json()

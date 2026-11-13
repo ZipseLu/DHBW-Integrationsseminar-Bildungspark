@@ -21,14 +21,14 @@ export function WebSearchSection({ thema, onUseTopic }: { thema: string; onUseTo
       const results = await searchOnline(effective, controller.signal)
       if (!controller.signal.aborted) setState({ kind: 'ready', query: effective, results })
     } catch (error) {
-      if (!controller.signal.aborted) setState({ kind: 'error', query: effective, results: [], error: error instanceof ApiError && [404, 501].includes(error.status) ? 'Die Online-Suche ist noch nicht verfügbar.' : 'Die Online-Suche ist fehlgeschlagen. Bitte versuchen Sie es erneut.' })
+      if (!controller.signal.aborted) setState({ kind: 'error', query: effective, results: [], error: error instanceof ApiError && [404, 501].includes(error.status) ? 'Die Online-Suche ist noch nicht verfügbar.' : error instanceof ApiError && error.status > 0 ? error.message : 'Die Online-Suche ist fehlgeschlagen. Bitte versuchen Sie es erneut.' })
     }
   }
   return (
     <section className="rounded-lg p-4 flex flex-col gap-3" style={{ border: '1px solid var(--border)' }} aria-label="Online-Material suchen" aria-busy={state.kind === 'loading'}>
       <h3 className="text-sm font-semibold">Passendes Material im Internet</h3>
       <div className="flex flex-col sm:flex-row gap-2">
-        <input type="search" aria-label="Suchbegriff für die Internetsuche" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={thema || 'Thema oder Lernziel eingeben'} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void search() } }} className="flex-1 min-w-0 px-3 py-2 rounded text-sm" style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }} />
+        <input type="search" maxLength={200} aria-label="Suchbegriff für die Internetsuche" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={thema || 'Thema oder Lernziel eingeben'} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void search() } }} className="flex-1 min-w-0 px-3 py-2 rounded text-sm" style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }} />
         <button type="button" disabled={!effective} onClick={() => void search()} className="px-4 py-2 rounded text-sm disabled:opacity-40" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}>Suchen</button>
       </div>
       {state.kind === 'loading' && <p role="status" className="text-sm">Materialien werden gesucht …</p>}
