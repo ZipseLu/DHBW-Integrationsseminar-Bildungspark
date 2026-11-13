@@ -81,6 +81,8 @@ export type WebResult = {
   url: string
   snippet: string
   source: string
+  fileType?: string
+  mocked?: boolean
 }
 
 /** Status eines Berufsfelds im Lernweg einer/eines Teilnehmenden */

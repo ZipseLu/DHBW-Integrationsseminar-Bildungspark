@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_USER } from '@/data/users'
 import type { GespeichertesArbeitsblatt } from '@/lib/api'
-import { historyAusVerlauf, ladeGespeicherteArbeitsblaetter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
+import { historyAusVerlauf, loadSavedWorksheets, pageFilterToBackendFilter, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 
 /**
@@ -158,6 +158,19 @@ describe('Arbeitsblätter aus dem Backend', () => {
 })
 
 describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
+  it('lässt den Filterwert "Alle" für Ausbildungsbausteine weg', () => {
+    const filter = pageFilterToBackendFilter({
+      berufsbild: 'Alle Berufsbilder',
+      baustein: 'Alle',
+      ausbildungsbaustein: 'Alle',
+      niveau: 'Alle',
+      sprache: 'Alle',
+      format: 'Alle',
+    })
+
+    expect(filter).not.toHaveProperty('ausbildungsbaustein')
+  })
+
   it('wandelt ein gespeichertes Blatt in eine Karte um', () => {
     const w = worksheetAusGespeichertem(blatt({ baustein: null, ausbildungsbaustein: null }), 7)
     expect(w).toMatchObject({
@@ -181,14 +194,14 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
       .mockResolvedValueOnce(json(seite([blatt()], 1, 2)))
       .mockResolvedValueOnce(json(seite([blatt({ id: '33333333-3333-4333-8333-333333333333' })], 2, 2)))
     vi.stubGlobal('fetch', ohneUploads(fetchMock))
-    const alle = await ladeGespeicherteArbeitsblaetter()
+    const alle = await loadSavedWorksheets()
     expect(alle).toHaveLength(2)
     expect(String(fetchMock.mock.calls[1][0])).toContain('seite=2')
   })
 
   it('meldet eine unerwartete Antwort als Fehler', async () => {
     vi.stubGlobal('fetch', ohneUploads(vi.fn(async () => json({ anzahl: 0 }))))
-    await expect(ladeGespeicherteArbeitsblaetter()).rejects.toThrow('unerwartete Antwort')
+    await expect(loadSavedWorksheets()).rejects.toThrow('unerwartete Antwort')
   })
 
   it('übernimmt Autor, Aktion und Notiz in den Verlauf', () => {
