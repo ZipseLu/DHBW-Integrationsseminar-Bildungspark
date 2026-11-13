@@ -67,6 +67,18 @@ export const config = {
     loginWindowMs: int(process.env.RATE_LIMIT_LOGIN_WINDOW_MS, 15 * 60_000),
     kiMax: int(process.env.RATE_LIMIT_KI_MAX, 30),
     kiWindowMs: int(process.env.RATE_LIMIT_KI_WINDOW_MS, 10 * 60_000),
+    sucheMax: int(process.env.RATE_LIMIT_SUCHE_MAX, 60),
+    sucheWindowMs: int(process.env.RATE_LIMIT_SUCHE_WINDOW_MS, 10 * 60_000),
+  },
+  // Online-Suche (FE-14, src/suche/service.js) – ohne Anbieter antwortet /api/suche mit 503
+  webSearch: {
+    provider: process.env.WEB_SEARCH_PROVIDER ?? '',
+    searxngUrl: first('SEARXNG_URL') ?? '',
+    braveApiKey: first('BRAVE_SEARCH_API_KEY') ?? '',
+    // Kostenpflichtige Anbieter (brave) nur nach ausdrücklicher Freigabe im Team
+    kostenpflichtigErlaubt: process.env.WEB_SEARCH_KOSTENPFLICHTIG_ERLAUBT === 'true',
+    maxResults: Math.min(Math.max(int(process.env.WEB_SEARCH_MAX_RESULTS, 10), 1), 20),
+    timeoutMs: int(process.env.WEB_SEARCH_TIMEOUT_MS, 10_000),
   },
   // Express "trust proxy": number of reverse proxies in front of the backend (0 = none).
   // Needed behind nginx/Caddy so rate limits see the client IP instead of the proxy's.

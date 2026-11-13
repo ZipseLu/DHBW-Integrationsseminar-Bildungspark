@@ -18,9 +18,10 @@ import { createLehrplaeneRouter } from './routes/lehrplaene.js'
 import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
+import { createSucheRouter } from './routes/suche.js'
 import { createAuthRouter } from './routes/auth.js'
 import { authentifiziere, erfordereAnmeldung } from './auth/anmeldung.js'
-import { kiLimiter, loginLimiter } from './http/rate-limit.js'
+import { kiLimiter, loginLimiter, sucheLimiter } from './http/rate-limit.js'
 
 /**
  * @param {{ rateLimit?: Partial<typeof config.rateLimit> }} [options]
@@ -75,6 +76,9 @@ export function createApp({ rateLimit = {} } = {}) {
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
   // Staff accounts (table users, BE-03) – admins only
   app.use('/api/benutzer', createBenutzerRouter())
+  // Online-Suche nach Lehrmaterial (FE-14) – nur echte Treffer, ohne Anbieter 503
+  app.get('/api/suche', sucheLimiter({ max: limits.sucheMax, windowMs: limits.sucheWindowMs }))
+  app.use('/api/suche', createSucheRouter())
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {
