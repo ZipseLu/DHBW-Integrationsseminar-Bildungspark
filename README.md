@@ -172,6 +172,10 @@ Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
 Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) – Details:
 **[docs/benutzerverwaltung-api.md](docs/benutzerverwaltung-api.md)**.
 
+**Online-Suche (FE-14):** `GET /api/suche?q=…` → `{ results: [{ title, url, snippet }] }`, nur echte Treffer über SearXNG
+oder (nach Abstimmung, kostenpflichtig) Brave; ohne Anbieter `503 suche_nicht_konfiguriert` – Details:
+**[docs/online-suche.md](docs/online-suche.md)**.
+
 **Anmeldung (BE-01, BE-06):** `POST /api/auth/login` liefert ein JWT, `GET /api/auth/me` das eigene Konto; das Frontend
 schickt das Token als `Authorization: Bearer …` mit. **Jede API-Route außer `/api/health` und dem Login verlangt ein
 gültiges Token** (sonst `401`), Rollen siehe Doku – Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
@@ -317,7 +321,8 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │       ├── lehrplaene.js    GET /api/lehrplaene (aus data/lehrplaene.json, gitignored)
 │   │   │       ├── teilnehmende.js  /api/teilnehmende (Profile + Lernweg, BE-02)
 │   │   │       ├── benutzer.js      /api/benutzer (Mitarbeiterkonten, BE-03)
-│   │   │       └── auth.js          /api/auth/login, /api/auth/me (Anmeldung, BE-01; Token-Prüfung in src/auth/)
+│   │   │       ├── auth.js          /api/auth/login, /api/auth/me (Anmeldung, BE-01; Token-Prüfung in src/auth/)
+│   │   │       └── suche.js         /api/suche (Online-Suche, FE-14; Anbieter in src/suche/)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
 │   │       ├── integration/      Supertest (+ echte MySQL für db.test.js)
@@ -391,7 +396,8 @@ Echte Werte stehen nur in der lokalen `.env` (in `.gitignore`) oder in GitHub Se
 | `JWT_SECRET` | lokale `.env`, in Produktion Pflicht | Bei `NODE_ENV=production` bricht das Backend ohne Wert ab. Erzeugen: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | lokale `.env` | Die Dev-Defaults (`root-dev`, `bildungspark-dev`) nur auf dem eigenen Rechner nutzen, nie auf erreichbaren Servern. |
 | `SEED_PASSWORT` | lokale `.env` (optional) | Ohne Wert erzeugt `npm run db:seed` ein Zufallspasswort und zeigt es einmalig im Log. |
-| `AZURE_OPENAI_API_KEY`, `SERPAPI_API_KEY` | lokale `.env` | Bisher ungenutzt bzw. spätere Phase. |
+| `AZURE_OPENAI_API_KEY` | lokale `.env` | Spätere Phase. |
+| `BRAVE_SEARCH_API_KEY`, `SEARXNG_SECRET` | lokale `.env` bzw. Server | Online-Suche (`docs/online-suche.md`); Brave ist kostenpflichtig und nur nach Abstimmung. |
 
 Es gibt aktuell keinen Server. Sobald eine Dev-Stage in GitHub Actions läuft, werden die Werte unter
 *Settings → Secrets and variables → Actions* angelegt (Admin-Recht nötig) und im Workflow über

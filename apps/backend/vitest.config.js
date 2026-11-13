@@ -22,6 +22,11 @@ export default defineConfig({
       // egal was in einer lokalen .env steht – '' gilt in config.js als „nicht gesetzt“.
       JWT_SECRET: '',
       JWT_EXPIRES_IN: '',
+      // Online-Suche (FE-14) in Tests nie gegen echte Anbieter – die Tests bauen den Anbieter nach
+      WEB_SEARCH_PROVIDER: '',
+      SEARXNG_URL: '',
+      BRAVE_SEARCH_API_KEY: '',
+      WEB_SEARCH_KOSTENPFLICHTIG_ERLAUBT: '',
       // Datenbank nur, wenn DB_* im echten Prozess-Env steht (CI, Compose, Kommandozeile).
       // Diese Datei laeuft im Elternprozess ohne dotenv – ein DB_HOST oder MYSQL_*, das nur
       // in der Root-.env steht, wird hier zu '' und kann keinen Testlauf (der Arbeitsblaetter

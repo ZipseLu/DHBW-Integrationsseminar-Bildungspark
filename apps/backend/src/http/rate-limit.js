@@ -5,6 +5,7 @@
  *   login  per client IP, counts only failed attempts (a correct login is never blocked
  *          by its own earlier successes)
  *   ki     per logged-in account (falls back to the IP), every generation counts
+ *   suche  per logged-in account, every online search counts (a provider may bill per request)
  *
  * Limits come from the configuration (RATE_LIMIT_* in .env, see src/config.js).
  * The counters live in memory: they reset on restart and are not shared between
@@ -37,12 +38,24 @@ export function loginLimiter({ max, windowMs }) {
  * @returns {import('express').RequestHandler}
  */
 export function kiLimiter({ max, windowMs }) {
+  return kontoLimiter({ max, windowMs, code: 'zu_viele_ki_anfragen', was: 'KI-Anfragen' })
+}
+
+/**
+ * @param {{ max: number, windowMs: number }} limit
+ * @returns {import('express').RequestHandler}
+ */
+export function sucheLimiter({ max, windowMs }) {
+  return kontoLimiter({ max, windowMs, code: 'zu_viele_suchanfragen', was: 'Suchanfragen' })
+}
+
+function kontoLimiter({ max, windowMs, code, was }) {
   return rateLimit({
     windowMs,
     limit: max,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: (req) => (req.benutzer?.id ? `konto:${req.benutzer.id}` : `ip:${ipKeyGenerator(req.ip ?? '')}`),
-    handler: antwort('zu_viele_ki_anfragen', `Zu viele KI-Anfragen – bitte in ${Math.ceil(windowMs / 60_000)} Minuten erneut versuchen.`),
+    handler: antwort(code, `Zu viele ${was} – bitte in ${Math.ceil(windowMs / 60_000)} Minuten erneut versuchen.`),
   })
 }
