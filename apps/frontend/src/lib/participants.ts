@@ -1,7 +1,4 @@
-import type { BerufStation, Format, Level, Participant, StaffRole, Worksheet } from '@/types'
-
-/** Matches the participant DELETE route in BE-06. Server checks remain authoritative. */
-export const canDeleteParticipant = (role: StaffRole): boolean => role === 'admin' || role === 'dozent'
+import type { BerufStation, Format, Level, Participant, Worksheet } from '@/types'
 
 /** Arbeitsblaetter, die zu einem Berufsfeld gehoeren (Reihenfolge = Lernreihenfolge) */
 export function worksheetsFor(worksheets: readonly Worksheet[], berufsbild: string): Worksheet[] {
@@ -21,16 +18,6 @@ export function activeStation(p: Participant): BerufStation | undefined {
 /** Eingabe im Teilnehmer-Dialog: ein Berufsfeld mit Niveau und Format */
 export type StationDraft = { berufsbild: string; level: Level; format: Format }
 
-export const normalisiereKennung = (id: string) => id.trim().toUpperCase()
-export function pruefeProfil(id: string, drafts: readonly StationDraft[]): string | null {
-  if (!id.trim()) return 'Bitte geben Sie die IW3-Nummer an.'
-  if (!/^[A-Z][A-Z0-9]{1,4}-\d{1,6}$/.test(normalisiereKennung(id))) return 'Bitte eine pseudonyme Kennung wie IW3-4421 eingeben. Keine Namen verwenden.'
-  if (!drafts.length || drafts.length > 10) return 'Bitte wählen Sie ein bis zehn Berufsbereiche.'
-  const fields = drafts.map((d) => d.berufsbild.trim().toLowerCase())
-  if (fields.some((f) => !f) || new Set(fields).size !== fields.length) return 'Jeder Berufsbereich darf nur einmal vorkommen.'
-  return null
-}
-
 /**
  * Baut aus den Eingaben des Dialogs den Lernweg.
  * Bestehende Stationen behalten Fortschritt und Status, neue starten als
@@ -45,8 +32,8 @@ export function buildStations(drafts: readonly StationDraft[], existing: readonl
       level: draft.level,
       format: draft.format,
       progress: 0,
-      status: i === 0 && !existing.some((b) => b.status === 'aktiv') ? 'aktiv' : 'ausstehend',
-      startDate: i === 0 && !existing.some((b) => b.status === 'aktiv') ? today : '',
+      status: i === 0 ? 'aktiv' : 'ausstehend',
+      startDate: i === 0 ? today : '',
       worksheetsDone: 0,
     }
   })

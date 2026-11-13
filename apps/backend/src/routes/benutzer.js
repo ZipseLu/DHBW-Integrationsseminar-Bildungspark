@@ -8,9 +8,8 @@
  *   DELETE /api/benutzer/:id   delete an account
  *
  * Rules: the last admin account can be neither deleted nor downgraded (409);
- * your own account cannot be deleted (409, recognised by the login token).
- * Admins only – applies to every request with a login token (BE-01, src/auth/rollen.js);
- * BE-06 makes the token mandatory.
+ * your own account cannot be deleted (409, once BE-01 sets req.benutzer).
+ * Admins only – the check applies once the login (BE-01) exists (src/auth/rollen.js).
  * Without a reachable MySQL, all routes respond with 503 `db_unavailable`.
  * Details: docs/benutzerverwaltung-api.md
  */

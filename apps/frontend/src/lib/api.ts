@@ -1,7 +1,5 @@
 import { saveAs } from 'file-saver'
 import type { Format, Level, Sprache, Worksheet } from '@/types'
-import { getSession, sessionSignal, setSession } from '@/lib/session'
-import { combineAbortSignals } from '@/lib/abortSignals'
 
 /**
  * Zugriff auf das Backend (Express, Port 3000).
@@ -77,39 +75,27 @@ export class ApiError extends Error {
   status: number
   code: string
   details?: unknown
-  /** Specific backend code; code keeps the broader error category. */
-  grund?: string
 
-  constructor(message: string, status: number, code: string, details?: unknown, grund?: string) {
+  constructor(message: string, status: number, code: string, details?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.details = details
-    this.grund = grund
   }
 }
 
-type ErrorBody = { error?: string; code?: string; message?: string; details?: unknown }
+type ErrorBody = { error?: string; message?: string; details?: unknown }
 
 /** fetch mit einheitlicher Fehlerbehandlung: Netzwerkfehler und Nicht-2xx werden zu ApiError */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const session = getSession()
-  const headers = new Headers(init.headers)
-  if (session) headers.set('Authorization', `Bearer ${session.token}`)
-  const linked = session && init.signal ? combineAbortSignals([sessionSignal(), init.signal]) : null
-  const signal = linked?.signal ?? (session ? sessionSignal() : init.signal)
   let response: Response
   try {
-    response = await fetch(`${BASE_URL}${path}`, session ? { ...init, headers, signal } : init)
-  } catch (error) {
-    linked?.dispose()
-    if (signal?.aborted) throw error
+    response = await fetch(`${BASE_URL}${path}`, init)
+  } catch {
     throw new ApiError('Das Backend ist nicht erreichbar. Läuft `npm run dev` in apps/backend?', 0, 'network_error')
   }
 
-  linked?.dispose()
-  if (response.status === 401 && session && getSession() === session) setSession(null)
   if (response.ok) return response
 
   let body: ErrorBody = {}
@@ -119,7 +105,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     // keine JSON-Antwort (z. B. HTML-Fehlerseite des Proxys)
   }
   const message = body.message ?? `Fehler ${response.status} vom Backend`
-  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details, body.code)
+  throw new ApiError(message, response.status, body.error ?? 'http_error', body.details)
 }
 
 async function postJson(path: string, payload: unknown): Promise<Response> {

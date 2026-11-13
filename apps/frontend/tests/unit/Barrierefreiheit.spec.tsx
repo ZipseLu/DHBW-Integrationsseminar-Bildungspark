@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '../AuthenticatedTestApp'
+import App from '@/App'
 import { LEVELS } from '@/data/constants'
 import { AA_TEXT, hexToRgb, kontrast, mische, mitKontrast } from '@/lib/kontrast'
 import { ACCENT_COLORS, DEFAULT_SETTINGS, PRIMARY_COLORS, applyTheme, themeFarben } from '@/lib/settings'

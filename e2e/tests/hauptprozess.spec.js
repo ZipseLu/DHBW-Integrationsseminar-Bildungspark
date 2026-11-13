@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { anmelden } from './anmeldung.js'
 
 /**
  * FE-07: main process end to end
@@ -18,20 +17,16 @@ test.describe('Hauptprozess: Arbeitsblatt erstellen, speichern, in der Liste fin
   test.setTimeout(120_000)
 
   let gespeicherteId = null
-  let authHeaders = {}
 
   test.afterEach(async ({ request }) => {
     if (gespeicherteId) {
-      const response = await request.delete(`${apiURL}/api/arbeitsblaetter/${gespeicherteId}?endgueltig=true`, { headers: authHeaders })
-      expect(response.ok(), 'Das vom Test erzeugte Arbeitsblatt muss bereinigt werden.').toBeTruthy()
+      await request.delete(`${apiURL}/api/arbeitsblaetter/${gespeicherteId}?endgueltig=true`)
       gespeicherteId = null
     }
   })
 
   test('KI-Variante erstellen, speichern und in „Arbeitsblätter“ wiederfinden', async ({ page }) => {
-    const session = await anmelden(page)
-    expect(session.user.role, 'Dieser Test braucht ein Admin-Testkonto für die anschließende Bereinigung.').toBe('admin')
-    authHeaders = session.headers
+    await page.goto('/')
     const nav = page.getByRole('navigation', { name: 'Hauptnavigation' })
 
     // 1) Create one variant (default: Lagerlogistik, first learning goal, level A, standard text)

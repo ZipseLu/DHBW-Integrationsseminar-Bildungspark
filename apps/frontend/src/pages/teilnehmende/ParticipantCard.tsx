@@ -17,10 +17,9 @@ type Props = {
   onAssign: () => void
   onEdit: () => void
   onDelete: () => void
-  canDelete?: boolean
 }
 
-export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, canDelete = false }: Props) {
+export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete }: Props) {
   const [listCollapsed, setListCollapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = activeStation(p)
@@ -131,7 +130,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
             >
               ✎ Bearbeiten
             </button>
-            {canDelete && (confirmDelete ? (
+            {confirmDelete ? (
               <>
                 <span className="text-xs" style={{ color: 'var(--danger)' }}>
                   Wirklich löschen?
@@ -152,7 +151,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
               >
                 ✕ Löschen
               </button>
-            ))}
+            )}
           </div>
         </div>
       )}
