@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '@/App'
+import App from '../AuthenticatedTestApp'
 import type { ArbeitsblattResult } from '@/lib/api'
 
 /**

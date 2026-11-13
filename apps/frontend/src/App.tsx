@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { NAV_ITEMS } from '@/data/constants'
 import { PARTICIPANTS } from '@/data/participants'
-import { CURRENT_USER, STAFF_USERS } from '@/data/users'
+import { STAFF_USERS } from '@/data/users'
+import { getSession, setSession, subscribeSession } from '@/lib/session'
+import { LoginPage } from '@/pages/anmeldung/LoginPage'
 import { Header } from '@/layout/Header'
 import { Sidebar } from '@/layout/Sidebar'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
@@ -20,15 +22,19 @@ import type { AppSettings, NavItem, Participant, SavedDocument, StaffUser } from
  * Prototyp-Frontend der Arbeitsblattverwaltung.
  *
  * Alle Seiten des Figma-Mockups sind vorhanden. Die KI-Erstellung spricht mit
- * dem Backend, alle anderen Seiten arbeiten mit lokalen Beispieldaten.
- * Es gibt noch keine Anmeldung.
+ * dem Backend. Die Anmeldung erwartet den in docs/adi-frontend.md beschriebenen
+ * BE-01-Vertrag; Mitarbeiter- und Teilnehmerlisten bleiben im Prototyp lokal.
  *
  * Seitenuebergreifende Daten (Teilnehmende, Mitarbeiterkonten, gespeicherte
  * Dokumente, Einstellungen) liegen hier, damit sie beim Seitenwechsel erhalten bleiben.
  */
 export default function App() {
-  const user = CURRENT_USER
-  const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
+  const session = useSyncExternalStore(subscribeSession, getSession)
+  return session ? <AuthenticatedApp key={`${session.user.id}-${session.expiresAt}`} user={session.user} onLogout={() => setSession(null)} /> : <LoginPage />
+}
+
+export function AuthenticatedApp({ user, onLogout, initialPage = 'dashboard' }: { user: StaffUser; onLogout: () => void; initialPage?: NavItem }) {
+  const [activeNav, setActiveNav] = useState<NavItem>(initialPage === 'benutzerverwaltung' && user.role !== 'admin' ? 'dashboard' : initialPage)
   const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([])
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [participants, setParticipants] = useState<Participant[]>(PARTICIPANTS)
@@ -48,6 +54,7 @@ export default function App() {
   }
 
   function navigate(item: NavItem) {
+    if (item === 'benutzerverwaltung' && user.role !== 'admin') return
     setKiVorauswahl(null)
     zeigeSeite(item)
   }
@@ -78,7 +85,7 @@ export default function App() {
       <a href="#inhalt" className="sprunglink">
         Zum Inhalt springen
       </a>
-      <Sidebar user={user} active={activeNav} onNavigate={navigate} compact={settings.sidebarCompact} />
+      <Sidebar user={user} active={activeNav} onNavigate={navigate} compact={settings.sidebarCompact} onLogout={onLogout} />
 
       <div ref={inhaltRef} className="flex-1 flex flex-col min-w-0 h-screen" data-testid="inhalt-spalte">
         <Header title={title} onCreate={() => navigate('ki-erstellung')} />

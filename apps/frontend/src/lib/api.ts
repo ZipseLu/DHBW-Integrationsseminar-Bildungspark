@@ -1,5 +1,6 @@
 import { saveAs } from 'file-saver'
 import type { Format, Level, Sprache, Worksheet } from '@/types'
+import { getSession, sessionSignal, setSession } from '@/lib/session'
 
 /**
  * Zugriff auf das Backend (Express, Port 3000).
@@ -89,13 +90,19 @@ type ErrorBody = { error?: string; message?: string; details?: unknown }
 
 /** fetch mit einheitlicher Fehlerbehandlung: Netzwerkfehler und Nicht-2xx werden zu ApiError */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const session = getSession()
+  const headers = new Headers(init.headers)
+  if (session) headers.set('Authorization', `Bearer ${session.token}`)
+  const signal = session ? AbortSignal.any([sessionSignal(), ...(init.signal ? [init.signal] : [])]) : init.signal
   let response: Response
   try {
-    response = await fetch(`${BASE_URL}${path}`, init)
-  } catch {
+    response = await fetch(`${BASE_URL}${path}`, session ? { ...init, headers, signal } : init)
+  } catch (error) {
+    if (signal?.aborted) throw error
     throw new ApiError('Das Backend ist nicht erreichbar. Läuft `npm run dev` in apps/backend?', 0, 'network_error')
   }
 
+  if (response.status === 401 && session && getSession() === session) setSession(null)
   if (response.ok) return response
 
   let body: ErrorBody = {}
