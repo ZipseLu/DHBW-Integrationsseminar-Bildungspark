@@ -154,6 +154,67 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
     })
   })
 
+  describe('Pseudonyme Profile mit Niveau je Berufsbereich (FE-12, FE-13)', () => {
+    it('speichert getrennte Stufen und Formate je Berufsbereich und liefert sie nach dem Neuladen gleich zurück', async () => {
+      const profil = {
+        kennung: 'iw3-9100',
+        stufe: 'A',
+        stationen: [
+          { berufsfeld: LAGER, stufe: 'A', format: 'text', status: 'aktiv' },
+          { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
+          { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
+        ],
+      }
+      expect((await api(app, 'assistent').post('/api/teilnehmende').send(profil)).status).toBe(201)
+
+      const geladen = (await api(app, 'dozent').get('/api/teilnehmende')).body.eintraege.find((t) => t.kennung === 'IW3-9100')
+      expect(geladen.stationen.map(({ berufsfeld, stufe, format }) => ({ berufsfeld, stufe, format }))).toEqual([
+        { berufsfeld: LAGER, stufe: 'A', format: 'text' },
+        { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
+        { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
+      ])
+
+      // Nur ein Bereich ändert sich – die anderen behalten ihre Stufe
+      const aenderung = {
+        stufe: 'A',
+        stationen: [
+          { berufsfeld: LAGER, stufe: 'B', format: 'text', status: 'aktiv' },
+          { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
+          { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
+        ],
+      }
+      const put = await api(app, 'assistent').put('/api/teilnehmende/iw3-9100').send(aenderung)
+      expect(put.status).toBe(200)
+      expect(put.body.teilnehmer.stationen.map((s) => s.stufe)).toEqual(['B', 'T', 'F'])
+      const zeilen = await query('SELECT berufsfeld, stufe, format FROM teilnehmende_stationen WHERE kennung = ? ORDER BY position', ['IW3-9100'])
+      expect(zeilen.map((z) => z.stufe)).toEqual(['B', 'T', 'F'])
+    })
+
+    it.each([['Max Mustermann'], ['max.mustermann@example.org'], ['IW3'], ['1234']])('lehnt „%s“ als Kennung ab', async (kennung) => {
+      const response = await api(app).post('/api/teilnehmende').send({ kennung, stufe: 'T' })
+      expect(response.status).toBe(400)
+      expect(response.body.message).toMatch(/pseudonyme Kennung/)
+    })
+
+    it('lehnt doppelte Berufsbereiche ab', async () => {
+      const response = await api(app).post('/api/teilnehmende').send({
+        kennung: 'IW3-9101',
+        stufe: 'T',
+        stationen: [
+          { berufsfeld: LAGER, stufe: 'T', format: 'text' },
+          { berufsfeld: LAGER.toUpperCase(), stufe: 'A', format: 'text' },
+        ],
+      })
+      expect(response.status).toBe(400)
+    })
+
+    it('Assistenz darf Profile nicht löschen (403), Dozent/in schon', async () => {
+      await api(app).post('/api/teilnehmende').send(PROFIL)
+      expect((await api(app, 'assistent').delete('/api/teilnehmende/IW3-9001')).status).toBe(403)
+      expect((await api(app, 'dozent').delete('/api/teilnehmende/IW3-9001')).status).toBe(204)
+    })
+  })
+
   describe('Seed', () => {
     it('legt die Beispiel-Teilnehmenden einmal an', async () => {
       expect(await seedTeilnehmende()).toEqual({ angelegt: BEISPIEL_TEILNEHMENDE.length, uebersprungen: false })
