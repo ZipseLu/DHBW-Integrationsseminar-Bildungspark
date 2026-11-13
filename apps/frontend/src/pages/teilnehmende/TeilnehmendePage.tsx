@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
-import { buildStations, normalisiereKennung, pruefeProfil, type StationDraft } from '@/lib/participants'
-import type { Participant } from '@/types'
+import { buildStations, canDeleteParticipant, normalisiereKennung, pruefeProfil, type StationDraft } from '@/lib/participants'
+import type { Participant, StaffRole } from '@/types'
 import { AssignWorksheetModal } from './AssignWorksheetModal'
 import { ParticipantCard } from './ParticipantCard'
 import { ParticipantModal } from './ParticipantModal'
@@ -11,12 +11,14 @@ type Props = {
   participants: Participant[]
   onChange: (participants: Participant[]) => void
   defaultBerufsbild: string
+  role: StaffRole
 }
 
 /** Dialogzustand: geschlossen, neue Person oder Bearbeiten */
 type EditState = { mode: 'closed' } | { mode: 'new' } | { mode: 'edit'; participant: Participant }
 
-export function TeilnehmendePage({ participants, onChange, defaultBerufsbild }: Props) {
+export function TeilnehmendePage({ participants, onChange, defaultBerufsbild, role }: Props) {
+  const canDelete = canDeleteParticipant(role)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [edit, setEdit] = useState<EditState>({ mode: 'closed' })
   const [assignFor, setAssignFor] = useState<Participant | null>(null)
@@ -30,6 +32,7 @@ export function TeilnehmendePage({ participants, onChange, defaultBerufsbild }: 
     const today = todayIso()
     if (edit.mode === 'edit') {
       const original = edit.participant
+      if (id !== original.id) return 'Die Kennung eines bestehenden Profils kann nicht geändert werden.'
       const berufsbilder = buildStations(drafts, original.berufsbilder, today)
       if (id !== original.id && participants.some((p) => normalisiereKennung(p.id) === id)) return `Die Kennung ${id} gibt es bereits.`
       const updated: Participant = { ...original, id, level: berufsbilder.find((b) => b.status === 'aktiv')?.level ?? berufsbilder[0]?.level ?? original.level, berufsbilder }
@@ -78,7 +81,9 @@ export function TeilnehmendePage({ participants, onChange, defaultBerufsbild }: 
           onToggleExpand={() => setExpandedId(expandedId === p.id ? null : p.id)}
           onAssign={() => setAssignFor(p)}
           onEdit={() => setEdit({ mode: 'edit', participant: p })}
+          canDelete={canDelete}
           onDelete={() => {
+            if (!canDelete) return
             onChange(participants.filter((x) => x.id !== p.id))
             if (expandedId === p.id) setExpandedId(null)
           }}

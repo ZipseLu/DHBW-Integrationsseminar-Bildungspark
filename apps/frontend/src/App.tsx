@@ -106,7 +106,7 @@ export function AuthenticatedApp({ user, onLogout, initialPage = 'dashboard' }: 
             <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel}` : 'neu'} vorauswahl={kiVorauswahl} />
           )}
           {activeNav === 'teilnehmer' && (
-            <TeilnehmendePage participants={participants} onChange={setParticipants} defaultBerufsbild={settings.defaultBerufsbild} />
+            <TeilnehmendePage participants={participants} onChange={setParticipants} defaultBerufsbild={settings.defaultBerufsbild} role={user.role} />
           )}
           {activeNav === 'berichte' && <BerichtePage />}
           {activeNav === 'benutzerverwaltung' && user.role === 'admin' && (

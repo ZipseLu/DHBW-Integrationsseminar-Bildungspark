@@ -3,10 +3,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { normalisiereKennung, pruefeProfil, buildStations, type StationDraft } from '@/lib/participants'
 import { ParticipantModal } from '@/pages/teilnehmende/ParticipantModal'
 import { BERUFSBILD_LAGER, BERUFSBILD_METALL } from '@/data/constants'
+import { PARTICIPANTS } from '@/data/participants'
+import { TeilnehmendePage } from '@/pages/teilnehmende/TeilnehmendePage'
+import type { StaffRole } from '@/types'
 
 afterEach(cleanup)
 const drafts: StationDraft[] = [{ berufsbild: BERUFSBILD_LAGER, level: 'T', format: 'text' }, { berufsbild: BERUFSBILD_METALL, level: 'B', format: 'piktogramm' }]
 describe('Anonymisierte Profile und Niveaus', () => {
+  it.each<StaffRole>(['admin', 'dozent', 'assistent'])('zeigt Löschen passend zur Backend-Rolle %s', (role) => {
+    render(<TeilnehmendePage participants={[PARTICIPANTS[0]]} onChange={() => {}} defaultBerufsbild={BERUFSBILD_LAGER} role={role} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }))
+    expect(!!screen.queryByRole('button', { name: /Löschen/ })).toBe(role !== 'assistent')
+  })
+  it('verhindert das Umbenennen eines bestehenden Profils wie die Backend-API', () => {
+    render(<ParticipantModal editing={PARTICIPANTS[0]} defaultBerufsbild={BERUFSBILD_LAGER} onSave={() => null} onClose={() => {}} />)
+    expect(screen.getByLabelText(/ANONYME KENNUNG/)).toHaveAttribute('readonly')
+    expect(screen.getByText('Die Kennung eines bestehenden Profils kann nicht geändert werden.')).toBeInTheDocument()
+  })
   it('verlangt eine pseudonyme Kennung und verhindert doppelte Berufsbereiche', () => {
     expect(pruefeProfil('', drafts)).toContain('IW3-Nummer')
     expect(pruefeProfil('Adi Mustajbegovic', drafts)).toContain('Keine Namen')

@@ -1,4 +1,7 @@
-import type { BerufStation, Format, Level, Participant, Worksheet } from '@/types'
+import type { BerufStation, Format, Level, Participant, StaffRole, Worksheet } from '@/types'
+
+/** Matches the participant DELETE route in BE-06. Server checks remain authoritative. */
+export const canDeleteParticipant = (role: StaffRole): boolean => role === 'admin' || role === 'dozent'
 
 /** Arbeitsblaetter, die zu einem Berufsfeld gehoeren (Reihenfolge = Lernreihenfolge) */
 export function worksheetsFor(worksheets: readonly Worksheet[], berufsbild: string): Worksheet[] {

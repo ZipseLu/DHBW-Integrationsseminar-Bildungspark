@@ -45,6 +45,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
             type="text"
             placeholder="z. B. IW3-0001"
             required
+            readOnly={editing !== null}
             maxLength={12}
             aria-describedby="tn-kennung-hilfe"
             value={id}
@@ -55,7 +56,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
             className="w-full px-3 py-2.5 rounded text-sm outline-none font-mono"
             style={inputStyle}
           />
-          <p id="tn-kennung-hilfe" className="text-xs mt-2" style={{ color: 'var(--muted-foreground)' }}>Nur eine pseudonyme Kennung verwenden, keine Namen oder Diagnosen.</p>
+          <p id="tn-kennung-hilfe" className="text-xs mt-2" style={{ color: 'var(--muted-foreground)' }}>{editing ? 'Die Kennung eines bestehenden Profils kann nicht geändert werden.' : 'Nur eine pseudonyme Kennung verwenden, keine Namen oder Diagnosen.'}</p>
         </div>
 
         <div>
