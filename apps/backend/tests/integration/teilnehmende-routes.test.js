@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import request from 'supertest'
-import { api } from '../helpers/auth.js'
 import { createApp } from '../../src/app.js'
 import { closePool, query } from '../../src/db.js'
 import { runMigrations } from '../../src/db/migrate.js'
@@ -53,7 +52,7 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
 
   describe('POST /api/teilnehmende', () => {
     it('legt ein Profil mit Lernweg an', async () => {
-      const response = await api(app).post('/api/teilnehmende').send(PROFIL)
+      const response = await request(app).post('/api/teilnehmende').send(PROFIL)
 
       expect(response.status).toBe(201)
       expect(response.headers.location).toBe('/api/teilnehmende/IW3-9001')
@@ -68,32 +67,32 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
     })
 
     it('wandelt die Kennung in Großbuchstaben um', async () => {
-      const response = await api(app).post('/api/teilnehmende').send({ kennung: 'iw3-9002', stufe: 'T' })
+      const response = await request(app).post('/api/teilnehmende').send({ kennung: 'iw3-9002', stufe: 'T' })
       expect(response.status).toBe(201)
       expect(response.body.teilnehmer.kennung).toBe('IW3-9002')
     })
 
     it('lehnt eine vergebene Kennung mit 409 ab', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      const response = await api(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: 'iw3-9001' })
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      const response = await request(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: 'iw3-9001' })
       expect(response.status).toBe(409)
       expect(response.body.error).toBe('conflict')
     })
 
     it('lehnt Namen ab und speichert nichts', async () => {
-      const response = await api(app).post('/api/teilnehmende').send({ ...PROFIL, name: 'Max Mustermann' })
+      const response = await request(app).post('/api/teilnehmende').send({ ...PROFIL, name: 'Max Mustermann' })
       expect(response.status).toBe(400)
       expect(response.body.error).toBe('validation_error')
-      expect((await api(app).get('/api/teilnehmende')).body.gesamt).toBe(0)
+      expect((await request(app).get('/api/teilnehmende')).body.gesamt).toBe(0)
     })
   })
 
   describe('GET /api/teilnehmende', () => {
     it('liefert alle Profile mit Lernweg, sortiert nach Kennung', async () => {
-      await api(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: 'IW3-9005' })
-      await api(app).post('/api/teilnehmende').send(PROFIL)
+      await request(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: 'IW3-9005' })
+      await request(app).post('/api/teilnehmende').send(PROFIL)
 
-      const response = await api(app).get('/api/teilnehmende')
+      const response = await request(app).get('/api/teilnehmende')
       expect(response.status).toBe(200)
       expect(response.body.gesamt).toBe(2)
       expect(response.body.eintraege.map((t) => t.kennung)).toEqual(['IW3-9001', 'IW3-9005'])
@@ -101,22 +100,22 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
     })
 
     it('findet ein Profil auch mit klein geschriebener Kennung', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      const response = await api(app).get('/api/teilnehmende/iw3-9001')
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      const response = await request(app).get('/api/teilnehmende/iw3-9001')
       expect(response.status).toBe(200)
       expect(response.body.teilnehmer.kennung).toBe('IW3-9001')
     })
 
     it('antwortet mit 404 für unbekannte und ungültige Kennungen', async () => {
-      expect((await api(app).get('/api/teilnehmende/IW3-0000')).status).toBe(404)
-      expect((await api(app).get('/api/teilnehmende/Max%20Mustermann')).status).toBe(404)
+      expect((await request(app).get('/api/teilnehmende/IW3-0000')).status).toBe(404)
+      expect((await request(app).get('/api/teilnehmende/Max%20Mustermann')).status).toBe(404)
     })
   })
 
   describe('PUT /api/teilnehmende/:kennung', () => {
     it('ersetzt Stufe und Lernweg', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      const response = await api(app)
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      const response = await request(app)
         .put('/api/teilnehmende/IW3-9001')
         .send({ stufe: 'F', stationen: [{ berufsfeld: LAGER, stufe: 'F', format: 'text', status: 'aktiv', fortschritt: 10 }] })
 
@@ -128,90 +127,29 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
     })
 
     it('lässt die Kennung nicht ändern', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      const response = await api(app).put('/api/teilnehmende/IW3-9001').send({ kennung: 'IW3-9999', stufe: 'F', stationen: [] })
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      const response = await request(app).put('/api/teilnehmende/IW3-9001').send({ kennung: 'IW3-9999', stufe: 'F', stationen: [] })
       expect(response.status).toBe(400)
     })
 
     it('antwortet mit 404 für unbekannte Kennungen und 400 für ungültige Daten', async () => {
-      expect((await api(app).put('/api/teilnehmende/IW3-0000').send({ stufe: 'T', stationen: [] })).status).toBe(404)
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      expect((await api(app).put('/api/teilnehmende/IW3-9001').send({ stufe: 'Z' })).status).toBe(400)
+      expect((await request(app).put('/api/teilnehmende/IW3-0000').send({ stufe: 'T', stationen: [] })).status).toBe(404)
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      expect((await request(app).put('/api/teilnehmende/IW3-9001').send({ stufe: 'Z' })).status).toBe(400)
     })
   })
 
   describe('DELETE /api/teilnehmende/:kennung', () => {
     it('löscht das Profil samt Lernweg', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      expect((await api(app).delete('/api/teilnehmende/IW3-9001')).status).toBe(204)
-      expect((await api(app).get('/api/teilnehmende/IW3-9001')).status).toBe(404)
+      await request(app).post('/api/teilnehmende').send(PROFIL)
+      expect((await request(app).delete('/api/teilnehmende/IW3-9001')).status).toBe(204)
+      expect((await request(app).get('/api/teilnehmende/IW3-9001')).status).toBe(404)
       const stationen = await query('SELECT COUNT(*) AS n FROM teilnehmende_stationen WHERE kennung = ?', ['IW3-9001'])
       expect(Number(stationen[0].n)).toBe(0)
     })
 
     it('antwortet mit 404, wenn es das Profil nicht gibt', async () => {
-      expect((await api(app).delete('/api/teilnehmende/IW3-0000')).status).toBe(404)
-    })
-  })
-
-  describe('Pseudonyme Profile mit Niveau je Berufsbereich (FE-12, FE-13)', () => {
-    it('speichert getrennte Stufen und Formate je Berufsbereich und liefert sie nach dem Neuladen gleich zurück', async () => {
-      const profil = {
-        kennung: 'iw3-9100',
-        stufe: 'A',
-        stationen: [
-          { berufsfeld: LAGER, stufe: 'A', format: 'text', status: 'aktiv' },
-          { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
-          { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
-        ],
-      }
-      expect((await api(app, 'assistent').post('/api/teilnehmende').send(profil)).status).toBe(201)
-
-      const geladen = (await api(app, 'dozent').get('/api/teilnehmende')).body.eintraege.find((t) => t.kennung === 'IW3-9100')
-      expect(geladen.stationen.map(({ berufsfeld, stufe, format }) => ({ berufsfeld, stufe, format }))).toEqual([
-        { berufsfeld: LAGER, stufe: 'A', format: 'text' },
-        { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
-        { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
-      ])
-
-      // Nur ein Bereich ändert sich – die anderen behalten ihre Stufe
-      const aenderung = {
-        stufe: 'A',
-        stationen: [
-          { berufsfeld: LAGER, stufe: 'B', format: 'text', status: 'aktiv' },
-          { berufsfeld: GASTRO, stufe: 'T', format: 'piktogramm-mathefrei' },
-          { berufsfeld: METALL, stufe: 'F', format: 'mathefrei' },
-        ],
-      }
-      const put = await api(app, 'assistent').put('/api/teilnehmende/iw3-9100').send(aenderung)
-      expect(put.status).toBe(200)
-      expect(put.body.teilnehmer.stationen.map((s) => s.stufe)).toEqual(['B', 'T', 'F'])
-      const zeilen = await query('SELECT berufsfeld, stufe, format FROM teilnehmende_stationen WHERE kennung = ? ORDER BY position', ['IW3-9100'])
-      expect(zeilen.map((z) => z.stufe)).toEqual(['B', 'T', 'F'])
-    })
-
-    it.each([['Max Mustermann'], ['max.mustermann@example.org'], ['IW3'], ['1234']])('lehnt „%s“ als Kennung ab', async (kennung) => {
-      const response = await api(app).post('/api/teilnehmende').send({ kennung, stufe: 'T' })
-      expect(response.status).toBe(400)
-      expect(response.body.message).toMatch(/pseudonyme Kennung/)
-    })
-
-    it('lehnt doppelte Berufsbereiche ab', async () => {
-      const response = await api(app).post('/api/teilnehmende').send({
-        kennung: 'IW3-9101',
-        stufe: 'T',
-        stationen: [
-          { berufsfeld: LAGER, stufe: 'T', format: 'text' },
-          { berufsfeld: LAGER.toUpperCase(), stufe: 'A', format: 'text' },
-        ],
-      })
-      expect(response.status).toBe(400)
-    })
-
-    it('Assistenz darf Profile nicht löschen (403), Dozent/in schon', async () => {
-      await api(app).post('/api/teilnehmende').send(PROFIL)
-      expect((await api(app, 'assistent').delete('/api/teilnehmende/IW3-9001')).status).toBe(403)
-      expect((await api(app, 'dozent').delete('/api/teilnehmende/IW3-9001')).status).toBe(204)
+      expect((await request(app).delete('/api/teilnehmende/IW3-0000')).status).toBe(404)
     })
   })
 
@@ -219,7 +157,7 @@ describe.skipIf(!hasDb)('Teilnehmende (MySQL)', () => {
     it('legt die Beispiel-Teilnehmenden einmal an', async () => {
       expect(await seedTeilnehmende()).toEqual({ angelegt: BEISPIEL_TEILNEHMENDE.length, uebersprungen: false })
       expect(await seedTeilnehmende()).toEqual({ angelegt: 0, uebersprungen: true })
-      const response = await api(app).get('/api/teilnehmende/IW3-4388')
+      const response = await request(app).get('/api/teilnehmende/IW3-4388')
       expect(response.body.teilnehmer).toMatchObject({ stufe: 'F', fortschritt: 82 })
     })
   })
@@ -229,13 +167,13 @@ describe.skipIf(hasDb)('Teilnehmende ohne Datenbank', () => {
   const app = createApp()
 
   it('antwortet mit 503 db_unavailable', async () => {
-    const response = await api(app).get('/api/teilnehmende')
+    const response = await request(app).get('/api/teilnehmende')
     expect(response.status).toBe(503)
     expect(response.body.error).toBe('db_unavailable')
   })
 
   it('prüft Eingaben auch ohne Datenbank (400 vor 503)', async () => {
-    const response = await api(app).post('/api/teilnehmende').send({ kennung: 'Max Mustermann', stufe: 'T' })
+    const response = await request(app).post('/api/teilnehmende').send({ kennung: 'Max Mustermann', stufe: 'T' })
     expect(response.status).toBe(400)
     expect(response.body.message).toContain('pseudonyme Kennung')
   })

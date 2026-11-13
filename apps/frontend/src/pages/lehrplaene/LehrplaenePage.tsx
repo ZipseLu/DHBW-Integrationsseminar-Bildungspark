@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
-import { MaterialSuggestions } from '@/components/MaterialSuggestions'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { LEVELS, LEVEL_STYLES } from '@/data/constants'
 import { fetchLehrplaene, type LernzielInput } from '@/lib/api'
@@ -282,7 +281,6 @@ function LehrplanPreview({
                   ✦ Arbeitsblatt
                 </button>
               </div>
-              <MaterialSuggestions goal={ziel} />
               <table className="w-full text-xs" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#EBE5D6' }}>

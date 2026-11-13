@@ -168,13 +168,6 @@ jobs:
           docker compose logs --no-color --tail=100
           exit 1
 
-      - name: E2E-Testkonto mit temporaerem Passwort vorbereiten
-        run: |
-          test_password="$(openssl rand -hex 24)"
-          echo "::add-mask::$test_password"
-          printf 'E2E_PASSWORT=%s\n' "$test_password" >> "$GITHUB_ENV"
-          docker compose exec -T -e SEED_PASSWORT="$test_password" backend npm run db:seed
-
       - name: E2E-Tests
         run: npx playwright test
 

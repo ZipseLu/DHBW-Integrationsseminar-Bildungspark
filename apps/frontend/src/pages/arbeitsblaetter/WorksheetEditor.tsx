@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { fetchArbeitsblatt, updateArbeitsblatt, type Arbeitsblatt, type GespeichertesArbeitsblattMitInhalt } from '@/lib/api'
 import { LIMITS, bereinige, istGeaendert, pruefeEntwurf } from '@/lib/arbeitsblattBearbeiten'
 import { fehlertext } from '@/lib/gespeicherteArbeitsblaetter'
-import { TaskOptionsEditor } from './TaskOptionsEditor'
 
 type Props = {
   backendId: string
@@ -146,7 +145,13 @@ export function WorksheetEditor({ backendId, autor, onSaved, onDirtyChange }: Pr
               className="w-full px-3 py-2 rounded text-sm"
               style={feldStil}
             />
-            <TaskOptionsEditor task={aufgabe} taskNumber={i + 1} onChange={(optionen) => aendere({ aufgaben: entwurf.aufgaben.map((a, j) => j === i ? { ...a, optionen } : a) })} />
+            {aufgabe.optionen && aufgabe.optionen.length > 0 && (
+              <ul className="text-xs list-disc pl-5" style={{ color: 'var(--muted-foreground)' }} aria-label={`Auswahl Aufgabe ${i + 1}`}>
+                {aufgabe.optionen.map((o, k) => (
+                  <li key={k}>{o}</li>
+                ))}
+              </ul>
+            )}
             <label className="text-xs" htmlFor={`edit-loesung-${i}`} style={{ color: 'var(--muted-foreground)' }}>
               Lösung für die Anleitung (optional)
             </label>

@@ -48,7 +48,7 @@ Die Routen hängen hinter `erfordereRolle('admin')` (`src/auth/rollen.js`). Vert
 3. Zum Anmelden liefert `findForLogin(email)` (`src/benutzer/repository.js`) das Konto samt `passwortHash`;
    geprüft wird mit `pruefePasswort(passwort, passwortHash)`.
 
-**Seit BE-01 (03.11.) setzt `authentifiziere` (`src/auth/anmeldung.js`) `req.benutzer` für jede Anfrage mit gültigem Token – Details in `docs/anmeldung-api.md`. Ohne Token ist die Prüfung bis BE-06 weiter offen, wie bei allen anderen Routen des Prototyps.**
+**Bis BE-01 fertig ist, fehlt `req.benutzer` – dann ist die Prüfung offen, wie bei allen anderen Routen des Prototyps.**
 BE-06 („Schreibende Endpunkte absichern“) verlangt danach für jede Anfrage eine Anmeldung.
 
 ## Beispieldaten

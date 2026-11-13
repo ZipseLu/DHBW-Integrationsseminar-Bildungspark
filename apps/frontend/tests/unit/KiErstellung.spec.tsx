@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '../AuthenticatedTestApp'
-vi.mock('@/components/MaterialSuggestions', () => ({ MaterialSuggestions: () => null }))
+import App from '@/App'
 import type { ArbeitsblattResult } from '@/lib/api'
 
 /**
