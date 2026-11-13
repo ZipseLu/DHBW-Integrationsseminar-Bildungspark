@@ -92,6 +92,15 @@ Testpasswort enthalten; der Hauptprozesstest benötigt ein Admin-Testkonto für 
 Bereinigung. Keine echten Produktionszugänge nutzen. Die Variablen müssen auch im
 E2E-Container ankommen, falls die Tests über Docker laufen. Kein Passwort ist fest codiert.
 
+GitHub Actions bereitet das Testkonto jetzt automatisch vor: Nach dem Start des
+temporären Stacks erzeugt der E2E-Job ein zufälliges Passwort, maskiert es im Log,
+übergibt es nur dem vorhandenen Seed-Skript und stellt es Playwright als
+`E2E_PASSWORT` bereit. Das Seed-Skript läuft ohne `--reset`. Diese CI-Korrektur
+behebt den im Lauf `43414823705` belegten Abbruch wegen fehlender Testzugänge.
+In diesem Lauf waren Frontend-Unit-Tests, Backend-Unit-Tests, Backend-Integration
+und Docker-Build bereits grün; ein erfolgreicher E2E-Lauf nach der Korrektur muss
+noch durch GitHub Actions bestätigt werden.
+
 Online-Suche liefert erst Treffer, wenn das Backend-Team einen Anbieter eingerichtet
 hat. Die Frontend-Korrektur aktiviert keinen kostenpflichtigen Anbieter.
 
