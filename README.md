@@ -445,8 +445,8 @@ Für das Frontend analog mit `frontend` und
 
 Unter Docker Desktop für Windows meldet `node --watch` Änderungen an
 Bind-Mounts nicht zuverlässig. Das Backend antwortet dann weiter mit dem Code
-vom letzten Start – bei der Websuche z. B. mit „Simulierte Treffer
-(Mock-Modus)“, obwohl die Suche im Quellcode längst funktioniert.
+vom letzten Start – bei der Websuche z. B. mit einer alten Fehlermeldung,
+obwohl die Suche im Quellcode längst funktioniert.
 
 Nach Änderungen am Backend-Code deshalb neu starten und den Log prüfen:
 

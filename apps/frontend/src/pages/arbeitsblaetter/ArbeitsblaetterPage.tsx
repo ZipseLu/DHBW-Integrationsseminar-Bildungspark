@@ -34,8 +34,8 @@ async function download(w: Worksheet) {
     if (w.backend) await downloadGespeichertesDocx({ id: w.backend.id, titel: w.title })
     else await downloadWorksheetDocx(w)
   } catch (error) {
-    console.error('Word export failed', error)
-    window.alert('The Word file could not be created.')
+    console.error('Word-Export fehlgeschlagen', error)
+    window.alert('Die Word-Datei konnte nicht erstellt werden.')
   }
 }
 
@@ -55,6 +55,29 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
    *  already displayed list on every search/filter change. */
   const firstLoad = useRef(true)
 
+  /** Search term for the backend request, delayed by a short debounce so that
+   *  typing does not fire one request per keystroke. The visible list is still
+   *  filtered locally right away. */
+  const [debouncedSearch, setDebouncedSearch] = useState(filter.search)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(filter.search), 300)
+    return () => clearTimeout(timer)
+  }, [filter.search])
+
+  // Only search changes are debounced; all other filters take effect immediately.
+  const requestFilter = useMemo(
+    () => ({ ...filter, search: debouncedSearch }),
+    [
+      filter.berufsbild,
+      filter.baustein,
+      filter.ausbildungsbaustein,
+      filter.niveau,
+      filter.sprache,
+      filter.format,
+      debouncedSearch,
+    ],
+  )
+
   useEffect(() => {
     let aktiv = true
     // Search term and filters are passed as q + query parameters to the
@@ -65,9 +88,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
       setQuelle({ art: 'loading' })
       firstLoad.current = false
     }
-    // Search term and filters are passed as q + query parameters to the
-    // backend's online search (GET /api/arbeitsblaetter).
-    loadSavedWorksheets(filter.search, filter)
+    loadSavedWorksheets(requestFilter.search, requestFilter)
       .then((blaetter) => {
         if (!aktiv) return
         setWorksheets(blaetter.map((b, i) => worksheetAusGespeichertem(b, i + 1)))
@@ -81,7 +102,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
     return () => {
       aktiv = false
     }
-  }, [ladeVersuch, filter])
+  }, [ladeVersuch, requestFilter])
 
   const isFavorite = (w: Worksheet) => (w.backend ? w.backend.favorit : favoriteIds.includes(w.id))
 

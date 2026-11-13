@@ -193,7 +193,7 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
 
   it('meldet eine unerwartete Antwort als Fehler', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ anzahl: 0 })))
-    await expect(loadSavedWorksheets()).rejects.toThrow('unexpected response')
+    await expect(loadSavedWorksheets()).rejects.toThrow('unerwartete Antwort')
   })
 
   it('übernimmt Autor, Aktion und Notiz in den Verlauf', () => {

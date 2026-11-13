@@ -14,8 +14,11 @@
  *   intitle:              -> durchsucht nur den Titel
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
- * Wenn alle Suchmaschinen fehlschlagen, fallen wir auf Mock-Treffer zurueck,
- * damit die Oberflaeche funktionsfaehig bleibt.
+ * Wenn alle Suchmaschinen fehlschlagen oder das Gesamtzeitlimit erreicht ist,
+ * meldet die Suche einen Fehler (HTTP 503). Es werden bewusst keine
+ * erfundenen Treffer mit nicht existierenden Links geliefert. Simulierte
+ * Treffer gibt es nur im ausdruecklichen Entwicklungsmodus
+ * WEB_SEARCH_PROVIDER=mock.
  */
 
 import axios from 'axios'
@@ -55,28 +58,52 @@ const HTML_HEADERS = {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Fehler, wenn das Gesamtzeitlimit der Websuche erreicht ist. */
+function timeoutError() {
+  return new WebSearchError(
+    'Die Websuche hat das Zeitlimit überschritten. Bitte später erneut versuchen.',
+    503,
+    'web_search_unavailable',
+  )
+}
+
+/**
+ * Zeitlimit fuer die naechste Anfrage: der kleinere Wert aus Einzel-Timeout
+ * und verbleibender Gesamtzeit. Ist das Budget aufgebraucht, wird sofort
+ * abgebrochen.
+ */
+function requestTimeout(deadline) {
+  const remaining = deadline - Date.now()
+  if (remaining <= 0) throw timeoutError()
+  return Math.min(config.webSearch.timeoutMs, remaining)
+}
+
 /**
  * Holt eine HTML-Seite per GET. Die Suchmaschinen schliessen einzelne
  * Verbindungen sporadisch ohne Antwort; ein zweiter Versuch faengt das ab.
  */
-async function fetchHtml(url, attempts = 2) {
+async function fetchHtml(url, attempts = 2, deadline = Infinity) {
   let lastError
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       return await axios.get(url, {
         headers: HTML_HEADERS,
         httpsAgent: SEARCH_AGENT,
-        timeout: config.webSearch.timeoutMs,
+        timeout: requestTimeout(deadline),
         maxRedirects: 5,
         responseType: 'text',
         validateStatus: (status) => status >= 200 && status < 500,
       })
     } catch (error) {
       lastError = error
-      if (attempt < attempts - 1) await sleep(300)
+      if (attempt < attempts - 1) {
+        const pause = Math.min(300, deadline - Date.now())
+        if (pause <= 0) break
+        await sleep(pause)
+      }
     }
   }
-  throw lastError
+  throw lastError ?? timeoutError()
 }
 
 /** Ergebnis einer Websuche */
@@ -205,7 +232,7 @@ function resolveDuckDuckGoUrl(href) {
 }
 
 /** DuckDuckGo-HTML-Scraper – keine API, kein Key. */
-async function duckduckgoSearch(query, fileType, maxResults) {
+async function duckduckgoSearch(query, fileType, maxResults, deadline) {
   const searchQuery = withFileType(query, fileType)
 
   let response
@@ -216,7 +243,7 @@ async function duckduckgoSearch(query, fileType, maxResults) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       httpsAgent: SEARCH_AGENT,
-      timeout: config.webSearch.timeoutMs,
+      timeout: requestTimeout(deadline),
       maxRedirects: 5,
       responseType: 'text',
       // 202 liefert eine Bot-Schutz-Seite; die wird unten erkannt.
@@ -313,12 +340,14 @@ function resolveBingUrl(href) {
 }
 
 /** Yahoo-Scraper als schluesselfreier Ersatz, wenn DuckDuckGo blockiert. */
-async function yahooSearch(query, fileType, maxResults) {
+async function yahooSearch(query, fileType, maxResults, deadline) {
   const searchQuery = withFileType(query, fileType)
 
   let response
   const startIndex = yahooHostIndex
   for (let offset = 0; offset < YAHOO_SEARCH_HOSTS.length; offset += 1) {
+    if (Date.now() >= deadline) break
+
     const hostIndex = (startIndex + offset) % YAHOO_SEARCH_HOSTS.length
     const host = YAHOO_SEARCH_HOSTS[hostIndex]
     const url = `https://${host}/search?p=${encodeURIComponent(searchQuery)}&vl=lang_de`
@@ -326,7 +355,7 @@ async function yahooSearch(query, fileType, maxResults) {
     try {
       // Ein Versuch pro Host: bei HTTP 500 ist meist der Host das Problem,
       // ein anderer Host liefert dagegen sofort Ergebnisse.
-      const candidate = await fetchHtml(url, 1)
+      const candidate = await fetchHtml(url, 1, deadline)
       if (candidate.status < 400) {
         response = candidate
         yahooHostIndex = hostIndex
@@ -385,13 +414,13 @@ async function yahooSearch(query, fileType, maxResults) {
 }
 
 /** Bing-Scraper als weiterer schluesselfreier Ersatz. */
-async function bingSearch(query, fileType, maxResults) {
+async function bingSearch(query, fileType, maxResults, deadline) {
   const searchQuery = withFileType(query, fileType)
   const url = `${BING_SEARCH_URL}?q=${encodeURIComponent(searchQuery)}&setlang=de`
 
   let response
   try {
-    response = await fetchHtml(url)
+    response = await fetchHtml(url, 2, deadline)
   } catch {
     throw new WebSearchError('Bing ist nicht erreichbar.', 503, 'web_search_unavailable')
   }
@@ -454,10 +483,14 @@ export async function searchWeb(query, fileType) {
     return mockResults(normalizedQuery, normalizedFileType, maxResults)
   }
 
+  const deadline = Date.now() + config.webSearch.totalTimeoutMs
   const engines = [duckduckgoSearch, yahooSearch, bingSearch]
   for (const engine of engines) {
+    // Gesamtbudget aufgebraucht: nicht noch einen weiteren Anbieter starten.
+    if (Date.now() >= deadline) break
+
     try {
-      const results = await engine(normalizedQuery, normalizedFileType, maxResults)
+      const results = await engine(normalizedQuery, normalizedFileType, maxResults, deadline)
       const documents = results.filter((result) => isDocumentResult(result, normalizedFileType))
 
       if (documents.length > 0) {
@@ -477,6 +510,12 @@ export async function searchWeb(query, fileType) {
     }
   }
 
-  console.warn('[web-search] Keine echte Dokumentquelle erreichbar – liefere simulierte Treffer.')
-  return mockResults(normalizedQuery, normalizedFileType, maxResults)
+  // Keine erfundenen Treffer: die Oberflaeche soll klar sagen, dass die
+  // Websuche gerade nicht erreichbar ist (statt auf tote Links zu verweisen).
+  console.warn('[web-search] Keine echte Dokumentquelle erreichbar – melde 503.')
+  throw new WebSearchError(
+    'Die Websuche ist gerade nicht erreichbar. Bitte später erneut versuchen.',
+    503,
+    'web_search_unavailable',
+  )
 }

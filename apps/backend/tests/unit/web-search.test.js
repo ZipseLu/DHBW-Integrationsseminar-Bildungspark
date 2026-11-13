@@ -123,7 +123,10 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
 
   it('ergänzt den filetype-Operator aus dem separaten Filter', async () => {
     config.webSearch.provider = 'scrape'
-    vi.mocked(axios.post).mockResolvedValue({ status: 200, data: duckduckgoHtml })
+    vi.mocked(axios.post).mockResolvedValue({
+      status: 200,
+      data: '<html><body><div class="result"><a class="result__a" href="https://example.de/material.docx">Arbeitsblatt</a></div></body></html>',
+    })
 
     await searchWeb('Hygiene', 'docx')
 
@@ -131,15 +134,15 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     expect(calledBody).toBe('q=Hygiene+filetype%3Adocx')
   })
 
-  it('fällt auf Mock zurück, wenn DuckDuckGo keine Treffer liefert', async () => {
+  it('meldet einen Fehler, wenn keine Suchmaschine Dokumente liefert', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockResolvedValue({ status: 200, data: '<html><body>Keine Treffer</body></html>' })
     vi.mocked(axios.get).mockRejectedValue(new Error('Netzwerkfehler'))
 
-    const results = await searchWeb('XYZ123NichtVorhanden')
-
-    expect(results.length).toBeGreaterThan(0)
-    expect(results.every((r) => r.mocked === true)).toBe(true)
+    await expect(searchWeb('XYZ123NichtVorhanden')).rejects.toMatchObject({
+      code: 'web_search_unavailable',
+      status: 503,
+    })
   })
 
   it('nutzt Yahoo als Ersatz, wenn DuckDuckGo Bot-Schutz meldet', async () => {
@@ -331,25 +334,43 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     expect(results[0].url).toBe('https://example.de/hygiene.pdf')
   })
 
-  it('fällt auf Mock zurück, wenn DuckDuckGo nicht erreichbar ist', async () => {
+  it('meldet einen Fehler, wenn DuckDuckGo nicht erreichbar ist und die Ersatzquellen ausfallen', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockRejectedValue(new Error('Netzwerkfehler'))
     vi.mocked(axios.get).mockRejectedValue(new Error('Netzwerkfehler'))
 
-    const results = await searchWeb('Hygiene')
-
-    expect(results.length).toBeGreaterThan(0)
-    expect(results.every((r) => r.mocked === true)).toBe(true)
+    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
+      code: 'web_search_unavailable',
+      status: 503,
+      message: expect.stringContaining('Websuche'),
+    })
   })
 
-  it('fällt auf Mock zurück, wenn DuckDuckGo einen Fehler liefert', async () => {
+  it('meldet einen Fehler, wenn DuckDuckGo einen Fehler liefert und die Ersatzquellen ausfallen', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockResolvedValue({ status: 503, data: '' })
     vi.mocked(axios.get).mockRejectedValue(new Error('Netzwerkfehler'))
 
-    const results = await searchWeb('Hygiene')
+    await expect(searchWeb('Hygiene')).rejects.toMatchObject({
+      code: 'web_search_unavailable',
+      status: 503,
+    })
+  })
 
-    expect(results.length).toBeGreaterThan(0)
-    expect(results.every((r) => r.mocked === true)).toBe(true)
+  it('bricht ab, wenn das Gesamtzeitlimit bereits aufgebraucht ist', async () => {
+    const originalTotalTimeout = config.webSearch.totalTimeoutMs
+    config.webSearch.provider = 'scrape'
+    config.webSearch.totalTimeoutMs = 0
+
+    try {
+      await expect(searchWeb('Hygiene')).rejects.toMatchObject({
+        code: 'web_search_unavailable',
+        status: 503,
+      })
+      expect(axios.post).not.toHaveBeenCalled()
+      expect(axios.get).not.toHaveBeenCalled()
+    } finally {
+      config.webSearch.totalTimeoutMs = originalTotalTimeout
+    }
   })
 })

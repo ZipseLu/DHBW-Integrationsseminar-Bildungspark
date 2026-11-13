@@ -233,12 +233,17 @@ export function WebSearchSection({ thema }: { thema: string }) {
                           <GenerateButton
                             running={searchRunning}
                             count={levels.length * formats.length}
+                            verb="übernehmen"
                             onClick={() => setVariantsReady(true)}
                           />
                         ) : (
                           <div className="flex flex-col gap-2">
                             <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
-                              ✓ Alle Varianten bereit
+                              ✓ Auswahl übernommen
+                            </div>
+                            <div className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+                              Die eigentliche Generierung der Varianten aus einem Suchtreffer folgt noch. Die Auswahl
+                              zeigt nur, welche Varianten später erzeugt werden.
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
                               {levels.flatMap((l) =>

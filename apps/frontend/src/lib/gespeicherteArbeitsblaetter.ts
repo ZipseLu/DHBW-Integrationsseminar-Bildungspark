@@ -74,7 +74,7 @@ export async function loadSavedWorksheets(
       sortierung: 'neueste',
     })
     if (!response || !Array.isArray(response.eintraege)) {
-      throw new ApiError('The backend sent an unexpected response.', 0, 'invalid_response')
+      throw new ApiError('Das Backend hat eine unerwartete Antwort gesendet.', 0, 'invalid_response')
     }
     entries.push(...response.eintraege)
     if (page >= response.seiten) break
@@ -127,5 +127,5 @@ function uhrzeit(date: Date): string {
 /** Readable error message for the page */
 export function fehlertext(error: unknown): string {
   if (error instanceof ApiError) return error.message
-  return 'Unknown error while loading.'
+  return 'Unbekannter Fehler beim Laden.'
 }

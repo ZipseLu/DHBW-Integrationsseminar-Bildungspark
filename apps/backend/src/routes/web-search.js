@@ -10,16 +10,30 @@
  * API-Key. Optional kann ein Dateityp als fileType uebergeben werden.
  *
  * Fehler: { error, message, details? } mit deutschem Text
- *   (validation_error 400, web_search_unavailable 503, internal_error 500)
+ *   (validation_error 400, web_search_unavailable 503, too_many_requests 429,
+ *    internal_error 500)
+ *
+ * Die Route ist derzeit noch ohne Anmeldung erreichbar (BE-06 folgt). Damit sie
+ * auf Staging nicht als offener Such-Proxy missbraucht werden kann, gilt ein
+ * Rate-Limit pro Client-IP (WEB_SEARCH_RATE_LIMIT_MAX / _WINDOW_MS).
  */
 import { Router } from 'express'
+import { config } from '../config.js'
+import { createRateLimit } from '../http/rate-limit.js'
 import { searchWeb } from '../web-search/service.js'
 import { WebSearchQuerySchema } from '../web-search/schema.js'
 
 export const webSearchRouter = Router()
 
+const rateLimit = createRateLimit({
+  max: config.webSearch.rateLimit.max,
+  windowMs: config.webSearch.rateLimit.windowMs,
+  message: 'Zu viele Suchanfragen – bitte kurz warten und erneut versuchen.',
+})
+
 webSearchRouter.get(
   '/',
+  rateLimit,
   async (req, res, next) => {
     try {
       const parsed = WebSearchQuerySchema.safeParse(req.query)
