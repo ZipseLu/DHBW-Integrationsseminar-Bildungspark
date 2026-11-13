@@ -5,8 +5,9 @@ import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
 import { downloadWorksheetDocx } from '@/lib/docx'
 import { fehlertext, loadSavedWorksheets, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { EMPTY_FILTER, ausbildungsbausteinOptions, bausteinOptions, filterWorksheets, type WorksheetFilter } from '@/lib/worksheetFilter'
-import type { SavedDocument, StaffUser, Worksheet } from '@/types'
-import { SavedDocumentsList } from './SavedDocumentsList'
+import type { KiVorauswahl } from '@/lib/lehrplaene'
+import type { StaffUser, Worksheet } from '@/types'
+import { UploadListe } from './UploadListe'
 import { TransformPanel, type TransformSource } from './TransformPanel'
 import { UploadSection } from './UploadSection'
 import { WorksheetCard } from './WorksheetCard'
@@ -15,8 +16,8 @@ import { WorksheetFilters } from './WorksheetFilters'
 
 type Props = {
   user: StaffUser
-  savedDocs: SavedDocument[]
-  onSavedDocsChange: (docs: SavedDocument[]) => void
+  /** FE-05: opens the KI-Erstellung with an uploaded worksheet as template */
+  onKiAnpassen: (vorauswahl: KiVorauswahl) => void
   favoriteIds: number[]
   onFavoriteIdsChange: (ids: number[]) => void
 }
@@ -39,7 +40,7 @@ async function download(w: Worksheet) {
   }
 }
 
-export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favoriteIds, onFavoriteIdsChange }: Props) {
+export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavoriteIdsChange }: Props) {
   const [worksheets, setWorksheets] = useState<Worksheet[]>([])
   const [quelle, setQuelle] = useState<Source>({ art: 'loading' })
   const [ladeVersuch, setLadeVersuch] = useState(0)
@@ -50,6 +51,8 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
   const [transformSource, setTransformSource] = useState<TransformSource | null>(null)
+  // Bumped after each upload so the list of uploaded documents reloads
+  const [uploadVersion, setUploadVersion] = useState(0)
 
   /** True only on the first load, so the loading state does not hide the
    *  already displayed list on every search/filter change. */
@@ -153,7 +156,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
 
   return (
     <div className="flex flex-col gap-6">
-      <UploadSection savedBy={user.name} onSave={(doc) => onSavedDocsChange([doc, ...savedDocs])} />
+      <UploadSection savedBy={user.name} onUploaded={() => setUploadVersion((n) => n + 1)} onKiAnpassen={onKiAnpassen} />
 
       <WorksheetFilters
         filter={filter}
@@ -238,11 +241,7 @@ export function ArbeitsblaetterPage({ user, savedDocs, onSavedDocsChange, favori
         )}
       </div>
 
-      <SavedDocumentsList
-        documents={savedDocs}
-        onAdapt={(doc) => setTransformSource({ title: doc.thema, berufsbild: doc.berufsbild, ausbildungsbaustein: doc.name })}
-        onRemove={(id) => onSavedDocsChange(savedDocs.filter((d) => d.id !== id))}
-      />
+      <UploadListe reloadKey={uploadVersion} onKiAnpassen={onKiAnpassen} />
 
       {detail && (
         <WorksheetDetailPanel
