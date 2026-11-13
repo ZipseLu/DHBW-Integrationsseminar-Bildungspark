@@ -19,12 +19,19 @@ import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
 import { createAuthRouter } from './routes/auth.js'
-import { authentifiziere } from './auth/anmeldung.js'
+import { authentifiziere, erfordereAnmeldung } from './auth/anmeldung.js'
+import { kiLimiter, loginLimiter } from './http/rate-limit.js'
 
-export function createApp() {
+/**
+ * @param {{ rateLimit?: Partial<typeof config.rateLimit> }} [options]
+ *        override of the rate limits, e.g. small limits in tests
+ */
+export function createApp({ rateLimit = {} } = {}) {
   const app = express()
+  const limits = { ...config.rateLimit, ...rateLimit }
 
   app.disable('x-powered-by')
+  if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy)
   app.use(helmet())
 
   app.use(
@@ -49,11 +56,15 @@ export function createApp() {
   app.use('/api/health', healthRouter)
   // Login (BE-01) – vor der Token-Prüfung, damit die Anmeldung auch mit einem abgelaufenen
   // Token im Browser klappt; GET /api/auth/me prüft das Token selbst.
-  app.use('/api/auth', createAuthRouter())
-  // Ab hier: ein gültiges Bearer-Token setzt req.benutzer, ein ungültiges gibt 401.
-  // Ohne Token geht es (noch) weiter – Pflicht wird die Anmeldung mit BE-06.
-  app.use(authentifiziere)
+  app.use('/api/auth', createAuthRouter({ loginLimiter: loginLimiter({ max: limits.loginMax, windowMs: limits.loginWindowMs }) }))
+  // Ab hier (BE-06): jede Route verlangt ein gültiges Bearer-Token – ohne Token oder mit
+  // ungültigem Token 401. Ein gültiges Token setzt req.benutzer = { id, rolle, name }.
+  // Rollen prüfen die Router selbst (src/auth/rollen.js).
+  app.use(authentifiziere, erfordereAnmeldung)
 
+  // KI-Aufrufe kosten API-Kontingent – Limit pro Konto (BE-06). Der Statusabruf zählt nicht.
+  const kiLimit = kiLimiter({ max: limits.kiMax, windowMs: limits.kiWindowMs })
+  app.post(['/api/ai/arbeitsblatt', '/api/ai/generate'], kiLimit)
   // Spezifischere Route zuerst, damit /api/ai/arbeitsblatt nicht im aiRouter landet
   app.use('/api/ai/arbeitsblatt', arbeitsblattRouter)
   app.use('/api/ai', aiRouter)
@@ -62,7 +73,7 @@ export function createApp() {
   app.use('/api/arbeitsblaetter', createArbeitsblaetterRouter())
   // Teilnehmende mit Lernweg (MySQL, BE-02) – ohne DB ebenfalls 503
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
-  // Staff accounts (table users, BE-03) – admins only as soon as a token is sent (BE-01)
+  // Staff accounts (table users, BE-03) – admins only
   app.use('/api/benutzer', createBenutzerRouter())
 
   // 404 fuer alles Unbekannte

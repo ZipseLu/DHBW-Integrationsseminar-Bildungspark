@@ -106,6 +106,9 @@ services:
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
+      RATE_LIMIT_LOGIN_MAX: "${RATE_LIMIT_LOGIN_MAX:-10}"
+      RATE_LIMIT_KI_MAX: "${RATE_LIMIT_KI_MAX:-30}"
+      TRUST_PROXY: "${TRUST_PROXY:-0}"
       TZ: "Europe/Berlin"
     volumes:
       - ./apps/backend:/app

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
+import { api } from '../helpers/auth.js'
 import { createApp } from '../../src/app.js'
 import { REQUEST_T_TEXT, WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 
@@ -13,7 +14,7 @@ describe('POST /api/ai/arbeitsblatt', () => {
   const app = createApp()
 
   it('lehnt einen leeren Body mit 400 und deutscher Meldung ab', async () => {
-    const response = await request(app).post('/api/ai/arbeitsblatt').send({})
+    const response = await api(app).post('/api/ai/arbeitsblatt').send({})
     expect(response.status).toBe(400)
     expect(response.body.error).toBe('validation_error')
     expect(response.body.message).toContain('lernziel')
@@ -21,20 +22,20 @@ describe('POST /api/ai/arbeitsblatt', () => {
   })
 
   it('lehnt eine ungueltige Stufe mit 400 ab', async () => {
-    const response = await request(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'X' })
+    const response = await api(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'X' })
     expect(response.status).toBe(400)
     expect(response.body.message).toContain('stufe')
   })
 
   it('lehnt ein Lernziel ohne Niveaustufen mit 400 ab', async () => {
     const { niveaus: _ignored, ...lernziel } = REQUEST_T_TEXT.lernziel
-    const response = await request(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, lernziel })
+    const response = await api(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, lernziel })
     expect(response.status).toBe(400)
     expect(response.body.message).toContain('niveaus')
   })
 
   it('liefert im Mock-Modus 200 mit vollstaendigem Arbeitsblatt', async () => {
-    const response = await request(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'F', format: 'mathefrei', thema: 'LKW' })
+    const response = await api(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'F', format: 'mathefrei', thema: 'LKW' })
 
     expect(response.status).toBe(200)
     const { worksheet, meta } = response.body
@@ -58,18 +59,18 @@ describe('POST /api/ai/arbeitsblatt/docx', () => {
   it('exportiert ein Mock-Ergebnis mit langem Lernzieltitel (Rueckweg aus dem Frontend)', async () => {
     const titel =
       'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben auf Richtigkeit und Vollständigkeit prüfen'
-    const generated = await request(app)
+    const generated = await api(app)
       .post('/api/ai/arbeitsblatt')
       .send({ ...REQUEST_T_TEXT, lernziel: { ...REQUEST_T_TEXT.lernziel, titel } })
     expect(generated.status).toBe(200)
 
-    const response = await request(app).post('/api/ai/arbeitsblatt/docx').send({ worksheet: generated.body.worksheet }).responseType('blob')
+    const response = await api(app).post('/api/ai/arbeitsblatt/docx').send({ worksheet: generated.body.worksheet }).responseType('blob')
     expect(response.status).toBe(200)
     expect(Buffer.from(response.body).subarray(0, 2).toString()).toBe('PK')
   })
 
   it('liefert eine Word-Datei mit richtigem Content-Type und Magic Bytes', async () => {
-    const response = await request(app)
+    const response = await api(app)
       .post('/api/ai/arbeitsblatt/docx')
       .send({ worksheet: { ...WORKSHEET_T_TEXT, baustein: 1 } })
       .responseType('blob')
@@ -82,13 +83,13 @@ describe('POST /api/ai/arbeitsblatt/docx', () => {
   })
 
   it('lehnt ein ungueltiges Arbeitsblatt mit 400 ab', async () => {
-    const response = await request(app).post('/api/ai/arbeitsblatt/docx').send({ worksheet: { titel: 'nur ein Titel' } })
+    const response = await api(app).post('/api/ai/arbeitsblatt/docx').send({ worksheet: { titel: 'nur ein Titel' } })
     expect(response.status).toBe(400)
     expect(response.body.error).toBe('validation_error')
   })
 
   it('lehnt einen Body ohne worksheet mit 400 ab', async () => {
-    const response = await request(app).post('/api/ai/arbeitsblatt/docx').send({})
+    const response = await api(app).post('/api/ai/arbeitsblatt/docx').send({})
     expect(response.status).toBe(400)
   })
 })
@@ -97,7 +98,7 @@ describe('Bestehende KI-Routen bleiben erhalten', () => {
   const app = createApp()
 
   it('GET /api/ai/status antwortet weiterhin', async () => {
-    const response = await request(app).get('/api/ai/status')
+    const response = await api(app).get('/api/ai/status')
     expect(response.status).toBe(200)
     expect(response.body).toHaveProperty('configured')
   })

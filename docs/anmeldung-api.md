@@ -1,6 +1,6 @@
-# Anmeldung mit JWT und Rollen (BE-01)
+# Anmeldung mit JWT und Rollen (BE-01, BE-06)
 
-Stand: 03.11.2026 · Trello: BE-01 · Grundlage für FE-08 (Login-Maske), FE-09 (Benutzerverwaltung), BE-05 (Bearbeiter aus der Anmeldung) und BE-06 (schreibende Endpunkte absichern)
+Stand: 13.11.2026 · Trello: BE-01, BE-06 · Grundlage für FE-08 (Login-Maske), FE-09 (Benutzerverwaltung) und BE-05 (Bearbeiter aus der Anmeldung)
 
 Mitarbeitende melden sich mit E-Mail-Adresse und Passwort an (Konten aus der Benutzerverwaltung, `docs/benutzerverwaltung-api.md`).
 Das Backend antwortet mit einem **Token** (JSON Web Token, kurz JWT). Das Frontend schickt es bei jedem weiteren Aufruf im Header mit:
@@ -13,40 +13,74 @@ Authorization: Bearer <token>
 
 | Methode | Pfad | Zweck | Antworten |
 | --- | --- | --- | --- |
-| POST | `/api/auth/login` | `{ email, passwort }` prüfen | `200 { token, ablaufAm, benutzer }`, `400`, `401 anmeldung_fehlgeschlagen`, `503` |
-| GET | `/api/auth/me` | eigenes Konto (frisch aus der Datenbank) | `200 { benutzer }`, `401` |
+| POST | `/api/auth/login` | `{ email, password }` prüfen | `200 { token, expiresIn, user, ablaufAm, benutzer }`, `400`, `401 anmeldung_fehlgeschlagen`, `429`, `503` |
+| GET | `/api/auth/me` | eigenes Konto (frisch aus der Datenbank) | `200 { user, benutzer }`, `401` |
 
-`benutzer` hat dieselbe Form wie in der Benutzerverwaltung: `{ id, name, email, rolle, erstelltAm }` – nie ein Passwort oder Hash.
+### Login
 
 ```http
 POST /api/auth/login
 Content-Type: application/json
 
-{ "email": "c.hager@bildungspark.example", "passwort": "bildungspark-demo" }
+{ "email": "c.hager@bildungspark.example", "password": "<Startpasswort aus SEED_PASSWORT>" }
 ```
 
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs…",
-  "ablaufAm": "2026-11-04T05:12:00.000Z",
+  "expiresIn": 28800,
+  "user": { "id": "…", "name": "Celine Hager", "email": "c.hager@bildungspark.example", "role": "admin" },
+  "ablaufAm": "2026-11-13T18:12:00.000Z",
   "benutzer": { "id": "…", "name": "Celine Hager", "email": "c.hager@bildungspark.example", "rolle": "admin", "erstelltAm": "…" }
 }
 ```
 
-**Abmelden** heißt: Das Frontend verwirft das Token. Das Backend führt keine Sitzungen, deshalb gibt es keinen Logout-Endpunkt.
+| Feld | Bedeutung |
+| --- | --- |
+| `token` | JWT für den `Authorization`-Header |
+| `expiresIn` | Gültigkeit in Sekunden, ganzzahlig, höchstens `86400` (Standard `28800` = 8 Stunden) |
+| `user` | `{ id, name, email, role }`, `role` ∈ `admin`, `dozent`, `assistent` – Vertrag des Frontends (FE-08) |
+| `ablaufAm`, `benutzer` | ursprünglicher BE-01-Vertrag (Ablauf als ISO-Zeit, Konto mit `rolle` und `erstelltAm`), bleibt für Abwärtskompatibilität |
 
-## Was die Anmeldung schon bewirkt – und was erst mit BE-06 kommt
+Das Passwort darf als `password` (Frontend) oder `passwort` (BE-01) kommen, aber nicht beides gleichzeitig (`400`).
+Antworten enthalten nie ein Passwort oder einen Hash.
 
-| Anfrage | heute (BE-01) | ab BE-06 |
+**Abmelden** heißt: Das Frontend verwirft das Token. Das Backend führt keine Sitzungen, deshalb gibt es keinen Logout-Endpunkt
+und keinen serverseitigen Widerruf.
+
+## Zugriffsschutz und Rollen (BE-06)
+
+**Jede API-Route verlangt ein gültiges Token**, außer `GET /api/health` und `POST /api/auth/login`. Ohne Token oder mit
+ungültigem Token antwortet das Backend mit `401` (auch für unbekannte Pfade, damit nicht erkennbar ist, welche Routen es gibt).
+Die Prüfung läuft vor der Datenbank.
+
+| Bereich | admin | dozent | assistent |
+| --- | --- | --- | --- |
+| Arbeitsblätter lesen, suchen, Word-Download, Verlauf | ja | ja | ja |
+| Arbeitsblätter speichern, Inhalt bearbeiten, Favorit | ja | ja | ja |
+| Status ändern (`PATCH` mit `status`: freigeben, zurück auf Entwurf, archivieren) | ja | ja | `403` |
+| Archivieren (`DELETE /api/arbeitsblaetter/:id`) | ja | ja | `403` |
+| Endgültig löschen (`DELETE …?endgueltig=true`) | ja | `403` | `403` |
+| KI-Erstellung, Word-Export, Lehrpläne, Online-Suche | ja | ja | ja |
+| Teilnehmerprofile lesen, anlegen, ändern | ja | ja | ja |
+| Teilnehmerprofile löschen | ja | ja | `403` |
+| Benutzerverwaltung (`/api/benutzer`) | ja | `403` | `403` |
+
+Die Rechte der Rolle Assistent/in sind fachlich noch nicht bestätigt (`docs/fachliche-grundlagen.md`, offene Frage 5).
+Die Tabelle ist ein **Vorschlag**: Freigeben und Löschen bleiben bei Dozent/in und Admin, wie in `docs/persistenz-arbeitsblaetter.md`
+für FE-10 beschrieben. Änderungen betreffen nur `src/auth/rollen.js` und die Router.
+
+Die Rollenanzeige im Browser ersetzt diese Prüfung nicht: Das Backend prüft jede Anfrage selbst.
+
+### Rate-Limits
+
+| Was | Grenze (Standard) | Antwort |
 | --- | --- | --- |
-| ohne Token | wie bisher erlaubt (das Frontend sendet noch keins) | schreibende Endpunkte und KI: `401` |
-| mit gültigem Token | `req.benutzer = { id, rolle, name }` ist gesetzt | unverändert |
-| mit ungültigem oder abgelaufenem Token | `401` bei allen Routen außer `/api/health` und `/api/auth/login` | unverändert |
+| Fehlgeschlagene Logins pro IP | 10 in 15 Minuten; erfolgreiche Logins zählen nicht | `429 zu_viele_anmeldeversuche` |
+| KI-Generierungen (`POST /api/ai/arbeitsblatt`, `/api/ai/generate`) pro Konto | 30 in 10 Minuten | `429 zu_viele_ki_anfragen` |
 
-Mit Token greifen sofort die Regeln aus BE-03: `/api/benutzer` nur für die Rolle `admin` (sonst `403 forbidden`),
-das eigene Konto lässt sich nicht löschen (`409 eigenes_konto`).
-
-**Reihenfolge:** BE-06 erst mergen, wenn FE-08 das Token mitschickt – sonst antwortet das Backend dem Frontend überall mit `401`.
+Die Zähler liegen im Arbeitsspeicher (Neustart setzt sie zurück). Hinter einem Reverse Proxy `TRUST_PROXY=1` setzen,
+sonst zählt das Backend alle Anfragen für die IP des Proxys.
 
 ## Fehlercodes
 
@@ -60,50 +94,29 @@ Im Frontend landet `error` in `ApiError.code` (Fehlerart) und `code` in `ApiErro
 | 401 | `token_abgelaufen` | Token älter als `JWT_EXPIRES_IN` | neu anmelden |
 | 401 | `token_ungueltig` | Token kaputt, gefälscht oder falsches Header-Format | neu anmelden |
 | 401 | `konto_unbekannt` | Konto wurde nach der Anmeldung gelöscht (nur `/api/auth/me`) | neu anmelden |
-| 401 | `anmeldung_erforderlich` | kein Token (heute nur `/api/auth/me`) | Login-Maske |
+| 401 | `anmeldung_erforderlich` | kein Token (jede Route außer Health und Login) | Login-Maske |
+| 429 | `zu_viele_anmeldeversuche` / `zu_viele_ki_anfragen` | Rate-Limit erreicht | Meldung, später erneut |
 | 403 | – (`error: forbidden`) | Rolle reicht nicht (z. B. Dozent auf `/api/benutzer`) | Menüpunkt ausblenden |
 
 ## Token
 
 - Signiert mit **HS256** und `JWT_SECRET`; beim Prüfen ist der Algorithmus fest vorgegeben (Tokens mit `alg: none` oder anderem Verfahren werden abgelehnt).
 - Inhalt: Konto-ID (`sub`), `rolle`, `name`, Ausstellungs- und Ablaufzeit – keine E-Mail, keine Passwortdaten.
-- Gültig `JWT_EXPIRES_IN` lang, Standard **8 Stunden** (ein Arbeitstag).
+- Gültig `JWT_EXPIRES_IN` lang, Standard **8 Stunden** (ein Arbeitstag), höchstens **1 Tag** – längere Werte verhindern den Start.
 - Die Tokens sind zustandslos: Eine geänderte Rolle oder ein gelöschtes Konto wirkt bei der nächsten Anmeldung, spätestens nach Ablauf.
   `GET /api/auth/me` liest das Konto aber immer frisch aus der Datenbank – ein gelöschtes Konto merkt das Frontend dort sofort.
 - Bei unbekannter E-Mail-Adresse rechnet das Backend trotzdem einen scrypt-Vergleich, damit die Antwortzeit nicht verrät, ob es das Konto gibt.
 
-## Frontend (`apps/frontend/src/lib/api.ts`)
+## Frontend
 
-| Funktion | Zweck |
-| --- | --- |
-| `login(email, passwort)` | meldet an, merkt sich das Token, liefert `{ token, ablaufAm, benutzer }`; falsche Daten → `ApiError` mit Status `401` und `grund: 'anmeldung_fehlgeschlagen'` |
-| `fetchAktuellesKonto()` | `GET /api/auth/me` – z. B. beim Start der App, um eine Anmeldung nach dem Neuladen wiederherzustellen |
-| `logout()` | verwirft das Token |
-| `getAuthToken()` / `setAuthToken(token)` | Token lesen/setzen (liegt im `sessionStorage`: übersteht Neuladen, nicht das Schließen des Tabs) |
-| `setAbmeldeHandler(fn)` | wird gerufen, wenn das Backend ein mitgeschicktes Token mit `401` ablehnt; das Token ist dann schon verworfen |
-
-`apiFetch` hängt das Token automatisch an **jeden** Aufruf – die bestehenden Funktionen (Arbeitsblätter, KI, Word-Export …) brauchen keine Änderung.
-Ohne Token bleiben die Aufrufe unverändert.
-
-Skizze für FE-08:
-
-```ts
-// beim Start der App
-setAbmeldeHandler(() => setUser(null)) // Token abgelaufen -> Login-Maske
-if (getAuthToken()) fetchAktuellesKonto().then(setUser).catch(() => setUser(null))
-
-// Login-Maske
-const { benutzer } = await login(email, passwort) // ApiError 401 -> „E-Mail-Adresse oder Passwort ist falsch“
-
-// Sidedrawer
-logout(); setUser(null)
-```
-
-Zuordnung `Konto` → `StaffUser`: siehe Tabelle in `docs/benutzerverwaltung-api.md` (`rolle` → `role`, Initialen über `initialsOf`).
+Die Frontend-Anbindung (Login-Maske, Token im Arbeitsspeicher, `Authorization`-Header, Abmelden bei `401`) liegt auf
+`adi/frontend-trello` (`apps/frontend/src/lib/auth.ts`, `session.ts`, `api.ts`) und nutzt `token`, `expiresIn` und `user`.
+Die ursprüngliche BE-01-Anbindung in `lib/api.ts` (Token im `sessionStorage`) wurde **nicht** übernommen, damit sich die beiden
+Varianten nicht überschneiden; sie liegt weiter auf `feature/be-01-anmeldung`.
 
 ## Konten zum Ausprobieren
 
-`npm run db:seed` (in `apps/backend`) legt die vier Beispielkonten an – Startpasswort `bildungspark-demo` bzw. `SEED_PASSWORT`,
+`npm run db:seed` (in `apps/backend`) legt die vier Beispielkonten an – Startpasswort aus `SEED_PASSWORT` (ohne die Variable: zufällig, steht einmal im Log; siehe OPS-07),
 **nur für lokale Entwicklung und Demos**:
 
 | E-Mail | Rolle |
@@ -115,7 +128,7 @@ Zuordnung `Konto` → `StaffUser`: siehe Tabelle in `docs/benutzerverwaltung-api
 
 ```bash
 curl -s -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"c.hager@bildungspark.example","passwort":"bildungspark-demo"}'
+  -d '{"email":"c.hager@bildungspark.example","password":"<Startpasswort>"}'
 ```
 
 ## Konfiguration
@@ -123,7 +136,10 @@ curl -s -X POST http://localhost:3000/api/auth/login -H 'Content-Type: applicati
 | Variable | Standard | Bedeutung |
 | --- | --- | --- |
 | `JWT_SECRET` | `dev-secret-bitte-aendern` | Schlüssel für die Signatur. **In Produktion (`NODE_ENV=production`) startet das Backend nur mit einem eigenen Schlüssel ab 32 Zeichen**, z. B. `openssl rand -base64 48` |
-| `JWT_EXPIRES_IN` | `8h` | Gültigkeit eines Tokens, z. B. `30m`, `8h`, `1d`; eine reine Zahl gilt als Sekunden. Ungültige oder nicht positive Werte verhindern den Start |
+| `JWT_EXPIRES_IN` | `8h` | Gültigkeit eines Tokens, z. B. `30m`, `8h`, `1d`; eine reine Zahl gilt als Sekunden. Ungültige, nicht positive oder Werte über `1d` verhindern den Start |
+| `RATE_LIMIT_LOGIN_MAX` / `RATE_LIMIT_LOGIN_WINDOW_MS` | `10` / `900000` | fehlgeschlagene Logins pro IP und Zeitfenster |
+| `RATE_LIMIT_KI_MAX` / `RATE_LIMIT_KI_WINDOW_MS` | `30` / `600000` | KI-Generierungen pro Konto und Zeitfenster |
+| `TRUST_PROXY` | `0` | Anzahl Reverse-Proxys vor dem Backend (Staging hinter nginx: `1`) |
 
 Wer `JWT_SECRET` kennt, kann Tokens für jede Rolle ausstellen – der Schlüssel gehört deshalb nur in GitHub-Secrets bzw. auf den Server (OPS-03), nie ins Repository.
 
@@ -134,17 +150,16 @@ Symptom sonst: `Cannot find package 'jsonwebtoken'`.
 
 ## Bewusste Grenzen (Prototyp)
 
-- **Bis BE-06 ist die API ohne Token offen** – auch `/api/benutzer`: Ohne Token kann jede/r die Kontenliste lesen und Konten anlegen,
-  auch mit Rolle `admin`, und sich damit anmelden. Die Rollenprüfung greift nur, wenn ein Token mitkommt.
-  **BE-06 muss deshalb auch `/api/benutzer` ohne Token mit `401` sperren** (erstes Admin-Konto über `npm run db:seed` oder direkt in der Datenbank),
-  und der Staging-Server (OPS-01) sollte erst danach öffentlich erreichbar sein – oder bis dahin hinter einem Zugangsschutz des Webservers liegen.
-
-- Kein Rate-Limit für Login-Versuche – kommt mit BE-06 (zusammen mit dem Limit für KI-Aufrufe).
-- Token im `sessionStorage`: Ein eingeschleustes Skript (XSS) könnte es lesen. React escaped Ausgaben; für den Prototyp akzeptiert.
+- Token-Widerruf gibt es nicht: Ein gestohlenes Token gilt bis zum Ablauf. Rolle geändert oder Konto gelöscht → wirkt spätestens nach Ablauf;
+  `GET /api/auth/me` merkt ein gelöschtes Konto sofort.
+- Rate-Limits nur im Arbeitsspeicher eines Prozesses.
 - Kein „Passwort vergessen“: Admins setzen Passwörter in der Benutzerverwaltung zurück (`PATCH /api/benutzer/:id`).
+- Das erste Admin-Konto entsteht über `npm run db:seed` oder direkt in der Datenbank – ohne Token lässt sich keines anlegen.
+- Der Bearbeiter im Verlauf (`autor`) kommt noch aus dem Request-Body, nicht aus dem Token – das ist BE-05.
 
 ## Tests
 
 - `tests/unit/auth.test.js` – Token (Ablauf, fremder Schlüssel, `alg: none`, anderer Algorithmus), Middleware, Rollenprüfung, Schlüssel in Produktion; ohne Datenbank
 - `tests/integration/auth-routes.test.js` – Login, `/me`, gelöschtes Konto, Rollen in der Benutzerverwaltung; gegen MySQL
-- `apps/frontend/tests/unit/apiClient.spec.ts` – Token im Header, Abmelden bei `401`, falsches Passwort
+- `tests/integration/zugriffsschutz.test.js` – `401` ohne/mit ungültigem Token für alle Routen, Rollen (`403`), KI-Rate-Limit; ohne Datenbank
+- `tests/helpers/auth.js` – signiert Test-Tokens je Rolle für die übrigen Routentests

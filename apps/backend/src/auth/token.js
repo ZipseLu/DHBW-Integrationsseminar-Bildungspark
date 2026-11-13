@@ -15,6 +15,8 @@ import { ROLLEN } from '../benutzer/schema.js'
 
 const ALGORITHMUS = 'HS256'
 export const MIN_SECRET_LAENGE = 32
+/** Longest allowed token lifetime: one day. The frontend (FE-08) rejects a longer `expiresIn`. */
+export const MAX_LAUFZEIT_SEKUNDEN = 86_400
 
 /** Token missing parts, wrongly signed or expired (route -> 401 with `code`) */
 export class TokenError extends Error {
@@ -30,12 +32,13 @@ const ungueltig = () => new TokenError('Das Anmelde-Token ist ungültig – bitt
 /**
  * Signs a token for an account.
  * @param {{id: string, rolle: string, name: string}} konto
- * @returns {{token: string, ablaufAm: string}} token and its expiry as ISO time
+ * @returns {{token: string, ablaufAm: string, expiresIn: number}} token, its expiry as ISO time
+ *          and its lifetime in seconds (at most MAX_LAUFZEIT_SEKUNDEN)
  */
 export function erstelleToken({ id, rolle, name }, { secret = config.jwtSecret, expiresIn = config.jwtExpiresIn } = {}) {
   const token = jwt.sign({ rolle, name }, secret, { algorithm: ALGORITHMUS, subject: id, expiresIn })
-  const { exp } = jwt.decode(token)
-  return { token, ablaufAm: new Date(exp * 1000).toISOString() }
+  const { exp, iat } = jwt.decode(token)
+  return { token, ablaufAm: new Date(exp * 1000).toISOString(), expiresIn: exp - iat }
 }
 
 /**
@@ -57,7 +60,8 @@ export function pruefeToken(token, { secret = config.jwtSecret } = {}) {
 
 /**
  * Checks the token settings once at server start (src/index.js):
- *   - JWT_EXPIRES_IN must be a positive lifetime – otherwise every login would end with 500
+ *   - JWT_EXPIRES_IN must be a positive lifetime of at most one day (MAX_LAUFZEIT_SEKUNDEN) –
+ *     otherwise every login would end with 500 or the frontend would reject the answer
  *   - in production no development secret and at least MIN_SECRET_LAENGE characters –
  *     anyone who knows the secret can sign tokens for any role
  */
@@ -70,6 +74,9 @@ export function pruefeJwtKonfiguration({ env = config.env, secret = config.jwtSe
   }
   if (!probe || !(probe.exp > probe.iat)) {
     throw new Error(`JWT_EXPIRES_IN „${expiresIn}“ ist keine gültige Laufzeit – z. B. 30m, 8h, 1d oder Sekunden als Zahl.`)
+  }
+  if (probe.exp - probe.iat > MAX_LAUFZEIT_SEKUNDEN) {
+    throw new Error(`JWT_EXPIRES_IN „${expiresIn}“ ist zu lang – höchstens ${MAX_LAUFZEIT_SEKUNDEN} Sekunden (1d).`)
   }
 
   if (env !== 'production') return

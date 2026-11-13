@@ -6,11 +6,10 @@
  *                         req.benutzer = { id, rolle, name }
  *                       – the contract that erfordereRolle (src/auth/rollen.js) and
  *                       the user administration (BE-03) expect. An invalid or expired
- *                       token is rejected with 401. Requests WITHOUT a token pass
- *                       unchanged, so the frontend keeps working until it sends the
- *                       token (FE-08); BE-06 then makes the login mandatory.
- *   erfordereAnmeldung  401 without a valid login (GET /api/auth/me now, the write
- *                       endpoints with BE-06).
+ *                       token is rejected with 401. Requests without a token pass
+ *                       on to erfordereAnmeldung.
+ *   erfordereAnmeldung  401 without a valid login. Since BE-06 it runs in front of
+ *                       every API route except /api/health and /api/auth/login (app.js).
  */
 import { pruefeToken, TokenError } from './token.js'
 

@@ -61,6 +61,17 @@ export const config = {
   jwtSecret: first('JWT_SECRET') ?? DEV_JWT_SECRET,
   jwtExpiresIn: jwtLaufzeit(first('JWT_EXPIRES_IN')) ?? '8h',
 
+  // Rate limits (BE-06, src/http/rate-limit.js): failed logins per IP, KI generations per account
+  rateLimit: {
+    loginMax: int(process.env.RATE_LIMIT_LOGIN_MAX, 10),
+    loginWindowMs: int(process.env.RATE_LIMIT_LOGIN_WINDOW_MS, 15 * 60_000),
+    kiMax: int(process.env.RATE_LIMIT_KI_MAX, 30),
+    kiWindowMs: int(process.env.RATE_LIMIT_KI_WINDOW_MS, 10 * 60_000),
+  },
+  // Express "trust proxy": number of reverse proxies in front of the backend (0 = none).
+  // Needed behind nginx/Caddy so rate limits see the client IP instead of the proxy's.
+  trustProxy: int(process.env.TRUST_PROXY, 0),
+
   ai: {
     // 'gemini' | 'azure' – hier zentral umschalten, wenn die Azure-Phase startet.
     provider: process.env.AI_PROVIDER ?? 'gemini',

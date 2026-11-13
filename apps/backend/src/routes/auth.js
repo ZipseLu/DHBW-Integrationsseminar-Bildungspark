@@ -1,8 +1,13 @@
 /**
  * Login routes (BE-01, MySQL, table `users`).
  *
- *   POST /api/auth/login   { email, passwort } -> { token, ablaufAm, benutzer }
+ *   POST /api/auth/login   { email, password } -> { token, expiresIn, user, ablaufAm, benutzer }
  *   GET  /api/auth/me      own account (needs "Authorization: Bearer <token>")
+ *
+ * Login answer: `token`, `expiresIn` (seconds, at most 86400) and `user`
+ * ({ id, name, email, role }) are the contract of the frontend (FE-08). `ablaufAm`
+ * and `benutzer` (with `rolle`) are kept from the original BE-01 contract, so
+ * clients of either version work. The request accepts `password` or `passwort`.
  *
  * A wrong email and a wrong password get the same answer (401 anmeldung_fehlgeschlagen),
  * and an unknown email still runs one scrypt comparison – neither the message nor the
@@ -29,11 +34,20 @@ vergleichsHash.catch(() => {}) // a failure surfaces when awaited in the route, 
 const fehlgeschlagen = (res) =>
   res.status(401).json({ error: 'unauthorized', code: 'anmeldung_fehlgeschlagen', message: 'E-Mail-Adresse oder Passwort ist falsch' })
 
-export function createAuthRouter() {
+/** `benutzer` of the BE-01 contract -> `user` of the frontend contract (FE-08) */
+export const alsUser = ({ id, name, email, rolle }) => ({ id, name, email, role: rolle })
+
+/**
+ * @param {{ loginLimiter?: import('express').RequestHandler }} [options]
+ *        rate limit for POST /login (src/http/rate-limit.js); none if omitted
+ */
+export function createAuthRouter({ loginLimiter } = {}) {
   const router = Router()
+  const vorLogin = loginLimiter ? [loginLimiter] : []
 
   router.post(
     '/login',
+    ...vorLogin,
     wrap(async (req, res) => {
       const parsed = LoginSchema.safeParse(req.body ?? {})
       if (!parsed.success) return validationError(res, parsed.error, 'Anmeldung nicht möglich:')
@@ -43,10 +57,10 @@ export function createAuthRouter() {
       if (!konto || !passt) return fehlgeschlagen(res)
 
       const { passwortHash: _hash, ...benutzer } = konto
-      const { token, ablaufAm } = erstelleToken(benutzer)
+      const { token, ablaufAm, expiresIn } = erstelleToken(benutzer)
       // The answer contains a credential – no browser or proxy may cache it
       res.set('Cache-Control', 'no-store')
-      res.json({ token, ablaufAm, benutzer })
+      res.json({ token, expiresIn, user: alsUser(benutzer), ablaufAm, benutzer })
     }),
   )
 
@@ -62,7 +76,7 @@ export function createAuthRouter() {
         res.set('WWW-Authenticate', 'Bearer')
         return res.status(401).json({ error: 'unauthorized', code: 'konto_unbekannt', message: 'Das Konto existiert nicht mehr – bitte neu anmelden' })
       }
-      res.json({ benutzer })
+      res.json({ user: alsUser(benutzer), benutzer })
     }),
   )
 

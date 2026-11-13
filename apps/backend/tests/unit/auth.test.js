@@ -188,3 +188,27 @@ describe('LoginSchema', () => {
     expect(LoginSchema.safeParse({ email: 'a@test.example', passwort: 'x', rolle: 'admin' }).success).toBe(false)
   })
 })
+
+describe('Laufzeit und Vertrag für das Frontend (FE-08)', () => {
+  it('erstelleToken liefert expiresIn in Sekunden', async () => {
+    const { erstelleToken } = await import('../../src/auth/token.js')
+    const { expiresIn } = erstelleToken({ id: 'x', rolle: 'dozent', name: 'X' }, { secret: 'test', expiresIn: '30m' })
+    expect(expiresIn).toBe(1800)
+  })
+
+  it('verhindert den Start mit einer Laufzeit über einem Tag', async () => {
+    const { pruefeJwtKonfiguration } = await import('../../src/auth/token.js')
+    expect(() => pruefeJwtKonfiguration({ env: 'development', expiresIn: '25h' })).toThrow(/zu lang/)
+    expect(() => pruefeJwtKonfiguration({ env: 'development', expiresIn: 86_401 })).toThrow(/zu lang/)
+    expect(() => pruefeJwtKonfiguration({ env: 'development', expiresIn: '1d' })).not.toThrow()
+  })
+
+  it('LoginSchema akzeptiert password und passwort', async () => {
+    const { LoginSchema } = await import('../../src/auth/schema.js')
+    expect(LoginSchema.parse({ email: 'a@b.c', password: 'geheim' })).toEqual({ email: 'a@b.c', passwort: 'geheim' })
+    expect(LoginSchema.parse({ email: 'a@b.c', passwort: 'geheim' })).toEqual({ email: 'a@b.c', passwort: 'geheim' })
+    expect(LoginSchema.safeParse({ email: 'a@b.c' }).success).toBe(false)
+    expect(LoginSchema.safeParse({ email: 'a@b.c', password: 'x', passwort: 'y' }).success).toBe(false)
+    expect(LoginSchema.safeParse({ email: 'a@b.c', password: 'x', rolle: 'admin' }).success).toBe(false)
+  })
+})

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import request from 'supertest'
+import { api } from '../helpers/auth.js'
 import { createApp } from '../../src/app.js'
 import { closePool, query } from '../../src/db.js'
 import { runMigrations } from '../../src/db/migrate.js'
@@ -20,7 +21,7 @@ const META = { provider: 'gemini', model: 'gemini-3.5-flash', mocked: false, pro
 
 /** Speichert ein Blatt mit Abweichungen vom Fixture und liefert das API-Objekt */
 async function speichern(app, overrides = {}, body = {}) {
-  const response = await request(app).post('/api/arbeitsblaetter').send({ worksheet: { ...WORKSHEET_T_TEXT, baustein: 1, ausbildungsbaustein: 'Wareneingang', ...overrides }, ...body })
+  const response = await api(app).post('/api/arbeitsblaetter').send({ worksheet: { ...WORKSHEET_T_TEXT, baustein: 1, ausbildungsbaustein: 'Wareneingang', ...overrides }, ...body })
   expect(response.status).toBe(201)
   return response.body.arbeitsblatt
 }
@@ -57,7 +58,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
 
   describe('POST /api/arbeitsblaetter', () => {
     it('speichert ein Arbeitsblatt als Entwurf mit Version 1 und liefert es mit Inhalt zurueck', async () => {
-      const response = await request(app).post('/api/arbeitsblaetter').send({ worksheet: WORKSHEET_T_TEXT, meta: META, erstelltVon: 'S. Oturucu' })
+      const response = await api(app).post('/api/arbeitsblaetter').send({ worksheet: WORKSHEET_T_TEXT, meta: META, erstelltVon: 'S. Oturucu' })
 
       expect(response.status).toBe(201)
       expect(response.headers.location).toMatch(/^\/api\/arbeitsblaetter\/[0-9a-f-]{36}$/)
@@ -73,15 +74,15 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
     })
 
     it('uebernimmt das Ergebnis von POST /api/ai/arbeitsblatt unveraendert (Mock-Durchlauf)', async () => {
-      const generated = await request(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'A', format: 'piktogramm' })
+      const generated = await api(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'A', format: 'piktogramm' })
       expect(generated.status).toBe(200)
 
-      const saved = await request(app).post('/api/arbeitsblaetter').send({ worksheet: generated.body.worksheet, meta: generated.body.meta })
+      const saved = await api(app).post('/api/arbeitsblaetter').send({ worksheet: generated.body.worksheet, meta: generated.body.meta })
       expect(saved.status).toBe(201)
       expect(saved.body.arbeitsblatt).toMatchObject({ stufe: 'A', format: 'piktogramm', baustein: 1, ausbildungsbaustein: 'Wareneingang', kiGeneriert: true })
       expect(saved.body.arbeitsblatt.inhalt).toEqual(generated.body.worksheet)
 
-      const verlauf = await request(app).get(`/api/arbeitsblaetter/${saved.body.arbeitsblatt.id}/verlauf`)
+      const verlauf = await api(app).get(`/api/arbeitsblaetter/${saved.body.arbeitsblatt.id}/verlauf`)
       expect(verlauf.body.eintraege[0].kiMeta).toMatchObject({ mocked: true, model: 'mock' })
     })
 
@@ -93,7 +94,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
     it('behaelt Umlaute und Piktogramm-Emoji im Inhalt (utf8mb4)', async () => {
       const einleitung = 'Gefahrgut: ä ö ü ß – 🏗️ 📦 „Achtung“'
       const blatt = await speichern(app, { einleitung })
-      const response = await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)
+      const response = await api(app).get(`/api/arbeitsblaetter/${blatt.id}`)
       expect(response.body.arbeitsblatt.inhalt.einleitung).toBe(einleitung)
     })
 
@@ -102,30 +103,30 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const kind = await speichern(app, { stufe: 'A' }, { elternId: eltern.id })
       expect(kind.elternId).toBe(eltern.id)
 
-      const fehlt = await request(app).post('/api/arbeitsblaetter').send({ worksheet: WORKSHEET_T_TEXT, elternId: UNBEKANNT })
+      const fehlt = await api(app).post('/api/arbeitsblaetter').send({ worksheet: WORKSHEET_T_TEXT, elternId: UNBEKANNT })
       expect(fehlt.status).toBe(400)
       expect(fehlt.body.message).toContain('elternId')
 
-      const liste = await request(app).get(`/api/arbeitsblaetter?elternId=${eltern.id}`)
+      const liste = await api(app).get(`/api/arbeitsblaetter?elternId=${eltern.id}`)
       expect(liste.body.eintraege.map((e) => e.id)).toEqual([kind.id])
     })
 
     it('lehnt ein ungueltiges Arbeitsblatt mit 400 und deutscher Meldung ab', async () => {
-      const response = await request(app).post('/api/arbeitsblaetter').send({ worksheet: { ...WORKSHEET_T_TEXT, stufe: 'X' } })
+      const response = await api(app).post('/api/arbeitsblaetter').send({ worksheet: { ...WORKSHEET_T_TEXT, stufe: 'X' } })
       expect(response.status).toBe(400)
       expect(response.body.error).toBe('validation_error')
       expect(response.body.message).toContain('worksheet.stufe')
     })
 
     it('lehnt einen Body ohne worksheet ab', async () => {
-      const response = await request(app).post('/api/arbeitsblaetter').send({})
+      const response = await api(app).post('/api/arbeitsblaetter').send({})
       expect(response.status).toBe(400)
     })
   })
 
   describe('GET /api/arbeitsblaetter', () => {
     it('liefert eine leere erste Seite', async () => {
-      const response = await request(app).get('/api/arbeitsblaetter')
+      const response = await api(app).get('/api/arbeitsblaetter')
       expect(response.status).toBe(200)
       expect(response.body).toEqual({ eintraege: [], seite: 1, proSeite: 15, gesamt: 0, seiten: 1 })
     })
@@ -133,12 +134,12 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
     it('blaettert ab 15 Eintraegen, neueste zuerst, ohne Inhalt', async () => {
       for (let i = 1; i <= 17; i += 1) await speichern(app, { titel: `Blatt ${String(i).padStart(2, '0')}` })
 
-      const seite1 = await request(app).get('/api/arbeitsblaetter')
+      const seite1 = await api(app).get('/api/arbeitsblaetter')
       expect(seite1.body).toMatchObject({ seite: 1, proSeite: 15, gesamt: 17, seiten: 2 })
       expect(seite1.body.eintraege).toHaveLength(15)
       expect(seite1.body.eintraege[0]).not.toHaveProperty('inhalt')
 
-      const seite2 = await request(app).get('/api/arbeitsblaetter?seite=2')
+      const seite2 = await api(app).get('/api/arbeitsblaetter?seite=2')
       expect(seite2.body.eintraege).toHaveLength(2)
 
       // Neueste zuerst: Zeitstempel fallen ueber beide Seiten monoton, kein Blatt doppelt oder vergessen.
@@ -149,10 +150,10 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(zeiten).toEqual([...zeiten].sort().reverse())
       expect(seite2.body.eintraege.map((e) => e.titel)).toContain('Blatt 01')
 
-      const nachTitel = await request(app).get('/api/arbeitsblaetter?sortierung=titel&proSeite=3')
+      const nachTitel = await api(app).get('/api/arbeitsblaetter?sortierung=titel&proSeite=3')
       expect(nachTitel.body.eintraege.map((e) => e.titel)).toEqual(['Blatt 01', 'Blatt 02', 'Blatt 03'])
 
-      const aelteste = (await request(app).get('/api/arbeitsblaetter?sortierung=aelteste&proSeite=50')).body.eintraege.map((e) => e.geaendertAm)
+      const aelteste = (await api(app).get('/api/arbeitsblaetter?sortierung=aelteste&proSeite=50')).body.eintraege.map((e) => e.geaendertAm)
       expect(aelteste).toEqual([...aelteste].sort())
     })
 
@@ -161,7 +162,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       await speichern(app, { stufe: 'A', format: 'piktogramm', sprache: 'Standardsprache' }, { favorit: true })
       await speichern(app, { berufsfeld: 'Gastronomie & Hauswirtschaft', baustein: 2, ausbildungsbaustein: 'Küche', stufe: 'F' })
 
-      const get = async (qs) => (await request(app).get(`/api/arbeitsblaetter?${qs}`)).body.eintraege
+      const get = async (qs) => (await api(app).get(`/api/arbeitsblaetter?${qs}`)).body.eintraege
       expect(await get('berufsfeld=Gastronomie%20%26%20Hauswirtschaft')).toHaveLength(1)
       expect(await get('baustein=2')).toHaveLength(1)
       expect(await get('ausbildungsbaustein=Wareneingang')).toHaveLength(2)
@@ -178,7 +179,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       await speichern(app, { titel: 'Der LKW ist da' })
       await speichern(app, { titel: 'Regal einräumen', lernziel: 'Güter lagern' })
 
-      const get = async (q) => (await request(app).get(`/api/arbeitsblaetter?q=${encodeURIComponent(q)}`)).body.eintraege
+      const get = async (q) => (await api(app).get(`/api/arbeitsblaetter?q=${encodeURIComponent(q)}`)).body.eintraege
       expect(await get('lkw')).toHaveLength(1)
       expect(await get('güter')).toHaveLength(2)
       expect(await get('Wareneingang')).toHaveLength(2)
@@ -189,14 +190,14 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
 
     it('blendet archivierte Blaetter standardmaessig aus; status=alle zeigt sie', async () => {
       const blatt = await speichern(app)
-      await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`)
-      expect((await request(app).get('/api/arbeitsblaetter')).body.gesamt).toBe(0)
-      expect((await request(app).get('/api/arbeitsblaetter?status=alle')).body.gesamt).toBe(1)
-      expect((await request(app).get('/api/arbeitsblaetter?status=archiviert')).body.gesamt).toBe(1)
+      await api(app).delete(`/api/arbeitsblaetter/${blatt.id}`)
+      expect((await api(app).get('/api/arbeitsblaetter')).body.gesamt).toBe(0)
+      expect((await api(app).get('/api/arbeitsblaetter?status=alle')).body.gesamt).toBe(1)
+      expect((await api(app).get('/api/arbeitsblaetter?status=archiviert')).body.gesamt).toBe(1)
     })
 
     it('lehnt ungueltige Filter mit 400 ab', async () => {
-      const response = await request(app).get('/api/arbeitsblaetter?stufe=X&proSeite=999')
+      const response = await api(app).get('/api/arbeitsblaetter?stufe=X&proSeite=999')
       expect(response.status).toBe(400)
       expect(response.body.error).toBe('validation_error')
     })
@@ -208,9 +209,9 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       await speichern(app, { stufe: 'A' })
       await speichern(app, { berufsfeld: 'Gastronomie & Hauswirtschaft', baustein: 2, ausbildungsbaustein: 'Küche' })
       const archiviert = await speichern(app, { berufsfeld: 'Metalltechnik & Montage', baustein: 2, ausbildungsbaustein: 'Fügen' })
-      await request(app).delete(`/api/arbeitsblaetter/${archiviert.id}`)
+      await api(app).delete(`/api/arbeitsblaetter/${archiviert.id}`)
 
-      const response = await request(app).get('/api/arbeitsblaetter/filteroptionen')
+      const response = await api(app).get('/api/arbeitsblaetter/filteroptionen')
       expect(response.status).toBe(200)
       expect(response.body.berufsfelder).toEqual(['Gastronomie & Hauswirtschaft', 'Lagerlogistik, Handel & Versand'])
       expect(response.body.bausteine).toEqual([
@@ -223,14 +224,14 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
   describe('GET /api/arbeitsblaetter/:id', () => {
     it('liefert das Blatt mit Inhalt', async () => {
       const blatt = await speichern(app)
-      const response = await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)
+      const response = await api(app).get(`/api/arbeitsblaetter/${blatt.id}`)
       expect(response.status).toBe(200)
       expect(response.body.arbeitsblatt.inhalt.aufgaben).toHaveLength(4)
     })
 
     it('antwortet fuer unbekannte und ungueltige IDs mit 404', async () => {
-      expect((await request(app).get(`/api/arbeitsblaetter/${UNBEKANNT}`)).status).toBe(404)
-      const kaputt = await request(app).get('/api/arbeitsblaetter/keine-uuid')
+      expect((await api(app).get(`/api/arbeitsblaetter/${UNBEKANNT}`)).status).toBe(404)
+      const kaputt = await api(app).get('/api/arbeitsblaetter/keine-uuid')
       expect(kaputt.status).toBe(404)
       expect(kaputt.body.error).toBe('not_found')
     })
@@ -239,7 +240,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
   describe('PATCH /api/arbeitsblaetter/:id', () => {
     it('Favorit aendern schreibt keine neue Version', async () => {
       const blatt = await speichern(app)
-      const response = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true })
+      const response = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true })
       expect(response.status).toBe(200)
       expect(response.body.arbeitsblatt).toMatchObject({ favorit: true, version: 1 })
     })
@@ -247,101 +248,101 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
     it('neuer Inhalt wird Version 2 mit Aktion "bearbeitet" und aktualisiert die Listenfelder', async () => {
       const blatt = await speichern(app)
       const geaendert = { ...WORKSHEET_T_TEXT, titel: 'Der LKW ist weg', stufe: 'A' }
-      const response = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: geaendert, autor: 'T. Neumann', notiz: 'Titel angepasst' })
+      const response = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: geaendert, autor: 'T. Neumann', notiz: 'Titel angepasst' })
       expect(response.status).toBe(200)
       expect(response.body.arbeitsblatt).toMatchObject({ titel: 'Der LKW ist weg', stufe: 'A', version: 2 })
       expect(response.body.arbeitsblatt.inhalt).toEqual(geaendert)
 
-      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      const verlauf = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
       expect(verlauf.body.eintraege.map((e) => [e.version, e.aktion, e.autor, e.notiz])).toEqual([
         [2, 'bearbeitet', 'T. Neumann', 'Titel angepasst'],
         [1, 'erstellt', null, null],
       ])
       expect(verlauf.body.eintraege[0]).not.toHaveProperty('inhalt')
 
-      const alt = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1`)
+      const alt = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1`)
       expect(alt.body.version.inhalt.titel).toBe('Der LKW ist da')
-      expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/9`)).status).toBe(404)
-      expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1abc`)).status).toBe(404)
+      expect((await api(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/9`)).status).toBe(404)
+      expect((await api(app).get(`/api/arbeitsblaetter/${blatt.id}/versionen/1abc`)).status).toBe(404)
 
-      const mitInhalt = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf?inhalt=true`)
+      const mitInhalt = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf?inhalt=true`)
       expect(mitInhalt.body.eintraege.map((e) => e.inhalt.titel)).toEqual(['Der LKW ist weg', 'Der LKW ist da'])
-      expect((await request(app).get(`/api/arbeitsblaetter/${UNBEKANNT}/verlauf`)).status).toBe(404)
+      expect((await api(app).get(`/api/arbeitsblaetter/${UNBEKANNT}/verlauf`)).status).toBe(404)
     })
 
     it('KI-Anpassung mit meta macht ein manuelles Blatt zu einem KI-Blatt und protokolliert die Meta', async () => {
       const blatt = await speichern(app)
       expect(blatt.kiGeneriert).toBe(false)
-      const response = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst', meta: META })
+      const response = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst', meta: META })
       expect(response.status).toBe(200)
       expect(response.body.arbeitsblatt).toMatchObject({ kiGeneriert: true, version: 2 })
-      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      const verlauf = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
       expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'KI-angepasst', kiMeta: { model: 'gemini-3.5-flash', mocked: false } })
-      expect((await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true, meta: META })).status).toBe(400)
+      expect((await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true, meta: META })).status).toBe(400)
     })
 
     it('zwei gleichzeitige Aenderungen verlieren nichts und lassen das Blatt aenderbar (Zeilensperre)', async () => {
       const blatt = await speichern(app)
       const geaendert = { ...WORKSHEET_T_TEXT, titel: 'Parallel geändert' }
       const [a, b] = await Promise.all([
-        request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: geaendert }),
-        request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true }),
+        api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: geaendert }),
+        api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ favorit: true }),
       ])
       expect([a.status, b.status]).toEqual([200, 200])
 
-      const danach = (await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)).body.arbeitsblatt
+      const danach = (await api(app).get(`/api/arbeitsblaetter/${blatt.id}`)).body.arbeitsblatt
       expect(danach).toMatchObject({ titel: 'Parallel geändert', favorit: true, version: 2 })
       expect(danach.inhalt.titel).toBe('Parallel geändert')
 
-      const weiter = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben' })
+      const weiter = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben' })
       expect(weiter.status).toBe(200)
       expect(weiter.body.arbeitsblatt.version).toBe(3)
     })
 
     it('Freigabe und Archivierung werden als Versionen protokolliert, KI-angepasst ist waehlbar', async () => {
       const blatt = await speichern(app)
-      const frei = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben', autor: 'C. Hager' })
+      const frei = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben', autor: 'C. Hager' })
       expect(frei.body.arbeitsblatt).toMatchObject({ status: 'freigegeben', version: 2 })
 
-      const nochmal = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben' })
+      const nochmal = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'freigegeben' })
       expect(nochmal.body.arbeitsblatt.version).toBe(2)
 
-      const ki = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst' })
+      const ki = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ worksheet: WORKSHEET_T_TEXT, aktion: 'KI-angepasst' })
       expect(ki.body.arbeitsblatt.version).toBe(3)
 
-      const zurueck = await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'entwurf' })
+      const zurueck = await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({ status: 'entwurf' })
       expect(zurueck.body.arbeitsblatt).toMatchObject({ status: 'entwurf', version: 4 })
 
-      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      const verlauf = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
       expect(verlauf.body.eintraege.map((e) => e.aktion)).toEqual(['bearbeitet', 'KI-angepasst', 'freigegeben', 'erstellt'])
     })
 
     it('lehnt leere Aenderungen ab und meldet unbekannte Blaetter', async () => {
       const blatt = await speichern(app)
-      expect((await request(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({})).status).toBe(400)
-      expect((await request(app).patch(`/api/arbeitsblaetter/${UNBEKANNT}`).send({ favorit: true })).status).toBe(404)
+      expect((await api(app).patch(`/api/arbeitsblaetter/${blatt.id}`).send({})).status).toBe(400)
+      expect((await api(app).patch(`/api/arbeitsblaetter/${UNBEKANNT}`).send({ favorit: true })).status).toBe(404)
     })
   })
 
   describe('DELETE /api/arbeitsblaetter/:id', () => {
     it('archiviert standardmaessig (mit Autor und Notiz im Verlauf) und loescht nur mit ?endgueltig=true', async () => {
       const blatt = await speichern(app)
-      const archiviert = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ autor: 'T. Neumann', notiz: 'veraltet' })
+      const archiviert = await api(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ autor: 'T. Neumann', notiz: 'veraltet' })
       expect(archiviert.status).toBe(200)
       expect(archiviert.body.arbeitsblatt).toMatchObject({ status: 'archiviert', version: 2 })
-      const verlauf = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
+      const verlauf = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/verlauf`)
       expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'archiviert', autor: 'T. Neumann', notiz: 'veraltet' })
 
-      const weg = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)
+      const weg = await api(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)
       expect(weg.status).toBe(204)
-      expect((await request(app).get(`/api/arbeitsblaetter/${blatt.id}`)).status).toBe(404)
+      expect((await api(app).get(`/api/arbeitsblaetter/${blatt.id}`)).status).toBe(404)
       expect(await query('SELECT COUNT(*) AS n FROM arbeitsblatt_versionen WHERE arbeitsblatt_id = ?', [blatt.id])).toEqual([{ n: 0 }])
-      expect((await request(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)).status).toBe(404)
+      expect((await api(app).delete(`/api/arbeitsblaetter/${blatt.id}?endgueltig=true`)).status).toBe(404)
     })
 
     it('lehnt eine zu lange Notiz beim Archivieren mit 400 ab', async () => {
       const blatt = await speichern(app)
-      const response = await request(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ notiz: 'x'.repeat(501) })
+      const response = await api(app).delete(`/api/arbeitsblaetter/${blatt.id}`).send({ notiz: 'x'.repeat(501) })
       expect(response.status).toBe(400)
       expect(response.body.error).toBe('validation_error')
     })
@@ -351,10 +352,10 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const a = await speichern(app, { stufe: 'A' }, { elternId: wurzel.id })
       const f = await speichern(app, { stufe: 'F' }, { elternId: wurzel.id })
 
-      expect((await request(app).delete(`/api/arbeitsblaetter/${wurzel.id}?endgueltig=true`)).status).toBe(204)
+      expect((await api(app).delete(`/api/arbeitsblaetter/${wurzel.id}?endgueltig=true`)).status).toBe(204)
 
-      const neuA = (await request(app).get(`/api/arbeitsblaetter/${a.id}`)).body.arbeitsblatt
-      const neuF = (await request(app).get(`/api/arbeitsblaetter/${f.id}`)).body.arbeitsblatt
+      const neuA = (await api(app).get(`/api/arbeitsblaetter/${a.id}`)).body.arbeitsblatt
+      const neuF = (await api(app).get(`/api/arbeitsblaetter/${f.id}`)).body.arbeitsblatt
       expect(neuA.elternId).toBeNull()
       expect(neuF.elternId).toBe(a.id)
     })
@@ -363,7 +364,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
   describe('GET /api/arbeitsblaetter/:id/docx', () => {
     it('liefert die aktuelle Version als Word-Datei', async () => {
       const blatt = await speichern(app)
-      const response = await request(app).get(`/api/arbeitsblaetter/${blatt.id}/docx`).responseType('blob')
+      const response = await api(app).get(`/api/arbeitsblaetter/${blatt.id}/docx`).responseType('blob')
       expect(response.status).toBe(200)
       expect(response.headers['content-type']).toContain('wordprocessingml')
       expect(response.headers['content-disposition']).toContain('_T-text.docx')
@@ -377,7 +378,7 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(erst).toMatchObject({ angelegt: 8, uebersprungen: false })
       expect(await count()).toBe(8)
 
-      const liste = (await request(app).get('/api/arbeitsblaetter?proSeite=50&status=alle')).body.eintraege
+      const liste = (await api(app).get('/api/arbeitsblaetter?proSeite=50&status=alle')).body.eintraege
       const eltern = liste.filter((e) => e.elternId === null)
       expect(eltern).toHaveLength(2)
       expect(liste.filter((e) => e.elternId === eltern[0].id || e.elternId === eltern[1].id)).toHaveLength(6)
@@ -411,14 +412,14 @@ describe.skipIf(hasDb)('Arbeitsblatt-Verwaltung ohne Datenbank', () => {
   const app = createApp()
 
   it('antwortet mit 503 db_unavailable statt mit einem Absturz', async () => {
-    const response = await request(app).get('/api/arbeitsblaetter')
+    const response = await api(app).get('/api/arbeitsblaetter')
     expect(response.status).toBe(503)
     expect(response.body.error).toBe('db_unavailable')
     expect(response.body.message).toContain('MySQL')
   })
 
   it('prueft Eingaben auch ohne Datenbank (400 vor 503)', async () => {
-    const response = await request(app).post('/api/arbeitsblaetter').send({ worksheet: { titel: 'kaputt' } })
+    const response = await api(app).post('/api/arbeitsblaetter').send({ worksheet: { titel: 'kaputt' } })
     expect(response.status).toBe(400)
   })
 })

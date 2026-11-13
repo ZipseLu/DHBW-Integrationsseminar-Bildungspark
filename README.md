@@ -172,9 +172,9 @@ Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
 Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) – Details:
 **[docs/benutzerverwaltung-api.md](docs/benutzerverwaltung-api.md)**.
 
-**Anmeldung (BE-01):** `POST /api/auth/login` liefert ein JWT, `GET /api/auth/me` das eigene Konto; das Frontend
-schickt das Token als `Authorization: Bearer …` mit (`lib/api.ts`). Ohne Token bleiben die Routen bis BE-06 offen –
-Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
+**Anmeldung (BE-01, BE-06):** `POST /api/auth/login` liefert ein JWT, `GET /api/auth/me` das eigene Konto; das Frontend
+schickt das Token als `Authorization: Bearer …` mit. **Jede API-Route außer `/api/health` und dem Login verlangt ein
+gültiges Token** (sonst `401`), Rollen siehe Doku – Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
 
 Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
 Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
@@ -494,7 +494,7 @@ docker compose down -v && docker compose up --build
 ## Noch offen
 
 - [x] Repository-Layer für Arbeitsblätter (`mysql2`), Migrationen und Seed – siehe `docs/persistenz-arbeitsblaetter.md` (28.10.)
-- [ ] Auth (JWT) für Dozent/Assistent/Admin – **Backend fertig (`/api/auth`, BE-01, 03.11.)**, Login-Maske (FE-08) und Pflicht-Anmeldung für schreibende Endpunkte (BE-06) offen
+- [ ] Auth (JWT) für Dozent/Assistent/Admin – **Backend fertig (`/api/auth`, BE-01; Pflicht-Anmeldung und Rollen, BE-06)**, Login-Maske (FE-08) auf `adi/frontend-trello`, gemeinsame Prüfung offen
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
