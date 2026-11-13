@@ -19,6 +19,7 @@ import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
 import { createUploadsRouter } from './routes/uploads.js'
+import { webSearchRouter } from './routes/web-search.js'
 
 export function createApp() {
   const app = express()
@@ -58,6 +59,9 @@ export function createApp() {
   app.use('/api/benutzer', createBenutzerRouter())
   // Uploaded worksheets (table uploads) – raw file body up to 20 MB, parsed inside the router
   app.use('/api/uploads', createUploadsRouter())
+
+  // Websuche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock)
+  app.use('/api/web-search', webSearchRouter)
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {
