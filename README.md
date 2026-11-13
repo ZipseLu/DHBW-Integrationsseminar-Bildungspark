@@ -436,6 +436,46 @@ docker volume rm bildungspark_mysql_data
 docker compose up --build
 ```
 
+### Nach neuen npm-Paketen: `Cannot find package ...`
+
+Ein `docker compose up --build` baut zwar das Image neu, **ersetzt aber kein
+vorhandenes benanntes `node_modules`-Volume**. Das Volume verdeckt dann die
+frisch installierten Pakete aus dem Image. Typisches Symptom:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'axios'
+  imported from /app/src/web-search/service.js
+```
+
+Dann das betroffene Volume einmalig neu aufbauen (die Datenbank bleibt erhalten):
+
+```bash
+docker compose rm -sf backend
+docker volume rm bildungspark_backend_node_modules
+docker compose up -d --build backend
+```
+
+Für das Frontend analog mit `frontend` und
+`bildungspark_frontend_react_node_modules`.
+
+### Backend läuft nach Code-Änderungen noch mit altem Stand
+
+Unter Docker Desktop für Windows meldet `node --watch` Änderungen an
+Bind-Mounts nicht zuverlässig. Das Backend antwortet dann weiter mit dem Code
+vom letzten Start – bei der Websuche z. B. mit einer alten Fehlermeldung,
+obwohl die Suche im Quellcode längst funktioniert.
+
+Nach Änderungen am Backend-Code deshalb neu starten und den Log prüfen:
+
+```bash
+docker compose restart backend
+docker compose logs -f backend
+```
+
+Erwartet ist bei erfolgreicher Suche eine Zeile wie
+`[web-search] Fallback über yahooSearch: 7 Treffer`. Das Frontend (Vite) nutzt
+dagegen Polling und lädt automatisch neu.
+
 ### Nach einem Stack-Wechsel: alte Volumes entfernen
 
 **Benanntes `node_modules`-Volume:** Docker kopiert beim ersten Start den Inhalt
