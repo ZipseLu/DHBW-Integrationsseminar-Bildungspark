@@ -106,6 +106,22 @@ Hinweise für die Zusammenführung mit FE-12:
 - FE-12 und `adi/frontend-trello` ändern beide `App.tsx`, `ParticipantModal.tsx`, `TeilnehmendePage.tsx` und `Seiten.spec.tsx` –
   beim Zusammenführen sind dort Konflikte zu erwarten.
 
+## Befunde aus dem gemeinsamen Test (13.11.)
+
+Geprüft auf `integration/adi-frontend-backend` mit echter MySQL, Backend und Vite-Dev-Server in Chromium:
+Login mit falschem Passwort zeigt „E-Mail oder Passwort falsch.“, danach Login als Dozent/in, Dashboard, Lehrpläne,
+Materialvorschläge (`q` + `berufsfeld` + `proSeite=5`) und Online-Suche – alle Aufrufe mit `Authorization`-Header.
+
+Für Adi (Frontend, nicht vom Backend-Team geändert):
+
+1. **Test `Auth.spec.tsx` › „sendet den Token und behält vorhandene Header; 401 meldet ab“ schlägt fehl**:
+   `TypeError: AbortSignal.any is not a function`. `apiFetch` nutzt `AbortSignal.any`, das jsdom nicht kennt.
+   In Browsern gibt es es erst ab Chrome/Edge 116, Firefox 124 und Safari 17.4 – auf älteren Smartphones (FE-17) würde
+   jeder angemeldete Aufruf scheitern. Vorschlag: eigener Fallback (ein `AbortController`, der auf beide Signale hört).
+2. **Suche zeigt nur „Die Online-Suche ist fehlgeschlagen.“** Das Backend schickt bei `503 suche_nicht_konfiguriert` eine
+   genauere `message` („Die Online-Suche ist nicht eingerichtet …“). Diese anzuzeigen hilft bei der Demo, weil „Erneut suchen“
+   dann nichts ändert.
+
 ## Weitere Auswirkungen der Pflicht-Anmeldung
 
 - **E2E-Tests (Playwright, `e2e/`)** rufen die Seiten bisher ohne Anmeldung auf. Mit Adis Login-Maske und BE-06 müssen sie sich
