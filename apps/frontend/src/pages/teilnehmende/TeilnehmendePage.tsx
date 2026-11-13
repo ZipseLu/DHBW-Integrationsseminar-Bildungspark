@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
-import { buildStations, nextParticipantId, type StationDraft } from '@/lib/participants'
+import { buildStations, normalisiereKennung, pruefeProfil, type StationDraft } from '@/lib/participants'
 import type { Participant } from '@/types'
 import { AssignWorksheetModal } from './AssignWorksheetModal'
 import { ParticipantCard } from './ParticipantCard'
@@ -24,17 +24,20 @@ export function TeilnehmendePage({ participants, onChange, defaultBerufsbild }: 
 
   /** Speichert den Dialog. Gibt eine Fehlermeldung zurueck oder null bei Erfolg. */
   function handleSave(id: string, drafts: StationDraft[]): string | null {
+    const problem = pruefeProfil(id, drafts)
+    if (problem) return problem
+    id = normalisiereKennung(id)
     const today = todayIso()
     if (edit.mode === 'edit') {
       const original = edit.participant
       const berufsbilder = buildStations(drafts, original.berufsbilder, today)
-      if (id && id !== original.id && participants.some((p) => p.id === id)) return `Die Kennung ${id} gibt es bereits.`
-      const updated: Participant = { ...original, id: id || original.id, level: berufsbilder[0]?.level ?? original.level, berufsbilder }
+      if (id !== original.id && participants.some((p) => normalisiereKennung(p.id) === id)) return `Die Kennung ${id} gibt es bereits.`
+      const updated: Participant = { ...original, id, level: berufsbilder.find((b) => b.status === 'aktiv')?.level ?? berufsbilder[0]?.level ?? original.level, berufsbilder }
       onChange(participants.map((p) => (p.id === original.id ? updated : p)))
       if (expandedId === original.id) setExpandedId(updated.id)
     } else if (edit.mode === 'new') {
-      const newId = id || nextParticipantId(participants)
-      if (participants.some((p) => p.id === newId)) return `Die Kennung ${newId} gibt es bereits.`
+      const newId = id
+      if (participants.some((p) => normalisiereKennung(p.id) === newId)) return `Die Kennung ${newId} gibt es bereits.`
       const berufsbilder = buildStations(drafts, [], today)
       onChange([...participants, { id: newId, level: berufsbilder[0]?.level ?? 'T', progress: 0, lastActive: today, berufsbilder }])
     }
