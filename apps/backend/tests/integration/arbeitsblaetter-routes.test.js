@@ -372,6 +372,58 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
     })
   })
 
+  describe('Vertrag für Adis Materialvorschläge (FE-19)', () => {
+    // Gleiche Aufrufe wie apps/frontend/src/components/MaterialSuggestions.tsx (adi/frontend-trello)
+    it('sucht mit q, berufsfeld und proSeite, öffnet ein Blatt und lädt es als Word-Datei', async () => {
+      const lernziel = 'Ware auf Beschädigungen prüfen'
+      for (let i = 0; i < 7; i++) await speichern(app, { titel: `Wareneingang ${i + 1}`, lernziel })
+      await speichern(app, { titel: 'Anderes Berufsfeld', lernziel, berufsfeld: 'Metalltechnik & Montage' })
+      await speichern(app, { titel: 'Anderes Lernziel', lernziel: 'Regale einräumen' })
+
+      const params = new URLSearchParams({ q: lernziel, berufsfeld: WORKSHEET_T_TEXT.berufsfeld, proSeite: '5' })
+      const liste = await api(app, 'assistent').get(`/api/arbeitsblaetter?${params}`)
+      expect(liste.status).toBe(200)
+      expect(liste.body).toMatchObject({ seite: 1, proSeite: 5, gesamt: 7, seiten: 2 })
+      expect(liste.body.eintraege).toHaveLength(5)
+      for (const eintrag of liste.body.eintraege) {
+        expect(eintrag).toMatchObject({ berufsfeld: WORKSHEET_T_TEXT.berufsfeld, lernziel, stufe: 'T' })
+        expect(typeof eintrag.id).toBe('string')
+        expect(typeof eintrag.titel).toBe('string')
+        expect(eintrag.inhalt).toBeUndefined()
+      }
+
+      const id = liste.body.eintraege[0].id
+      const einzeln = await api(app, 'assistent').get(`/api/arbeitsblaetter/${id}`)
+      expect(einzeln.status).toBe(200)
+      const { inhalt } = einzeln.body.arbeitsblatt
+      expect(typeof inhalt.einleitung).toBe('string')
+      expect(Array.isArray(inhalt.aufgaben)).toBe(true)
+      expect(Array.isArray(inhalt.woerterbuch)).toBe(true)
+      expect(inhalt.aufgaben[0]).toHaveProperty('nr')
+      expect(inhalt.aufgaben[0]).toHaveProperty('anweisung')
+
+      const docx = await api(app, 'assistent').get(`/api/arbeitsblaetter/${id}/docx`).responseType('blob')
+      expect(docx.status).toBe(200)
+      expect(docx.headers['content-type']).toContain('wordprocessingml')
+      expect(docx.headers['content-disposition']).toMatch(/^attachment; filename=/)
+      expect(docx.headers['access-control-expose-headers']).toBe('Content-Disposition')
+      expect(Buffer.from(docx.body).subarray(0, 2).toString()).toBe('PK')
+    })
+
+    it('liefert eine leere Liste, wenn nichts passt', async () => {
+      await speichern(app)
+      const params = new URLSearchParams({ q: 'gibt es nicht', berufsfeld: WORKSHEET_T_TEXT.berufsfeld, proSeite: '5' })
+      const response = await api(app).get(`/api/arbeitsblaetter?${params}`)
+      expect(response.status).toBe(200)
+      expect(response.body).toMatchObject({ eintraege: [], gesamt: 0 })
+    })
+
+    it('lehnt proSeite über dem Maximum mit 400 ab', async () => {
+      expect((await api(app).get('/api/arbeitsblaetter?proSeite=0')).status).toBe(400)
+      expect((await api(app).get('/api/arbeitsblaetter?proSeite=100000')).status).toBe(400)
+    })
+  })
+
   describe('Seed', () => {
     it('legt je Lernziel vier verknuepfte Blaetter an und laeuft nicht doppelt', async () => {
       const erst = await seedArbeitsblaetter({ lernziele: 2 })
