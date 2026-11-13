@@ -72,8 +72,11 @@ describe('erfordereRolle', () => {
     return a
   }
 
-  it('lässt ohne Anmeldung durch (bis BE-01)', async () => {
-    expect((await request(app(undefined)).get('/geheim')).status).toBe(200)
+  it('antwortet ohne Anmeldung mit 401 (BE-06)', async () => {
+    const response = await request(app(undefined)).get('/geheim')
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('anmeldung_erforderlich')
+    expect(response.headers['www-authenticate']).toBe('Bearer')
   })
 
   it('lässt Admins durch und weist andere Rollen mit 403 ab', async () => {
