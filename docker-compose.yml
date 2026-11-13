@@ -112,6 +112,16 @@ services:
       WEB_SEARCH_RATE_LIMIT_WINDOW_MS: "${WEB_SEARCH_RATE_LIMIT_WINDOW_MS:-60000}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
+      RATE_LIMIT_LOGIN_MAX: "${RATE_LIMIT_LOGIN_MAX:-10}"
+      RATE_LIMIT_KI_MAX: "${RATE_LIMIT_KI_MAX:-30}"
+      TRUST_PROXY: "${TRUST_PROXY:-0}"
+      # --- Online-Suche (FE-14, docs/online-suche.md) ---
+      WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-}"
+      SEARXNG_URL: "${SEARXNG_URL:-http://searxng:8080}"
+      BRAVE_SEARCH_API_KEY: "${BRAVE_SEARCH_API_KEY:-}"
+      WEB_SEARCH_KOSTENPFLICHTIG_ERLAUBT: "${WEB_SEARCH_KOSTENPFLICHTIG_ERLAUBT:-false}"
+      RATE_LIMIT_SUCHE_MAX: "${RATE_LIMIT_SUCHE_MAX:-60}"
       TZ: "Europe/Berlin"
     volumes:
       - ./apps/backend:/app
@@ -132,6 +142,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # DB-Backup - taeglicher mysqldump (OPS-04), siehe docs/datenbank-backup.md
+  # Dumps liegen im Host-Ordner ./backups (nicht eingecheckt).
+  # ---------------------------------------------------------------------------
+  db-backup:
+    image: mysql:8.4
+    container_name: bp-db-backup
+    restart: unless-stopped
+    entrypoint: ["sh", "/scripts/backup-loop.sh"]
+    environment:
+      DB_HOST: db
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-bildungspark}"
+      BACKUP_HOUR: "${BACKUP_HOUR:-2}"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+      BACKUP_ON_START: "${BACKUP_ON_START:-false}"
+      TZ: "Europe/Berlin"
+    volumes:
+      - ./docker/backup:/scripts:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bp-net
 
   # ---------------------------------------------------------------------------
   # Frontend – React + TypeScript + Vite (Dev-Server mit Hot Reload)
@@ -280,6 +316,26 @@ services:
     depends_on:
       - frontend
       - backend
+
+  # ---------------------------------------------------------------------------
+  # SearXNG – eigene Metasuche fuer /api/suche (Profil: suche, optional)
+  # Start: docker compose --profile suche up -d searxng
+  # Dann in der .env: WEB_SEARCH_PROVIDER=searxng (SEARXNG_URL ist im Compose-Netz vorbelegt)
+  # ---------------------------------------------------------------------------
+  searxng:
+    image: searxng/searxng:latest
+    container_name: bp-searxng
+    profiles: ["suche"]
+    environment:
+      SEARXNG_SECRET: "${SEARXNG_SECRET:-}"
+      SEARXNG_BASE_URL: "http://localhost:${SEARXNG_PORT:-8888}/"
+    volumes:
+      - ./docker/searxng:/etc/searxng
+    ports:
+      # Nur lokal erreichbar – das Backend spricht SearXNG ueber das Compose-Netz an
+      - "127.0.0.1:${SEARXNG_PORT:-8888}:8080"
+    networks:
+      - bp-net
 
   # ---------------------------------------------------------------------------
   # Legacy – bestehendes React-Mockup (Profil: legacy)

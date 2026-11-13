@@ -1,0 +1,4 @@
+# Vom SearXNG-Container erzeugte Dateien nicht einchecken
+*
+!.gitignore
+!settings.yml

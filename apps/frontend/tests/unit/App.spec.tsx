@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '@/App'
+import App from '../AuthenticatedTestApp'
+vi.mock('@/components/MaterialSuggestions', () => ({ MaterialSuggestions: () => null }))
 
 /**
  * Komponententests: rendern die App in jsdom und klicken sie durch.
@@ -71,7 +72,7 @@ function navigate(label: string) {
 }
 
 describe('Start', () => {
-  it('oeffnet direkt die Arbeitsblaetter, ohne Anmeldung', () => {
+  it('zeigt den Arbeitsbereich mit dem angemeldeten Konto', () => {
     renderApp()
     expect(screen.getByRole('heading', { level: 1, name: 'Arbeitsblätter' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Anmelden' })).not.toBeInTheDocument()

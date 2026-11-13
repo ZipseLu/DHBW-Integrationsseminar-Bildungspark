@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { anmelden, apiAnmelden } from './anmeldung.js'
 
 /**
  * Smoke-Test: beweist, dass die komplette Kette steht.
@@ -12,19 +13,20 @@ import { test, expect } from '@playwright/test'
 const apiURL = process.env.PLAYWRIGHT_API_URL ?? 'http://localhost:3000'
 
 test.describe('Infrastruktur-Smoke-Test', () => {
-  test('Frontend laedt und zeigt die Seite Arbeitsblaetter', async ({ page }) => {
+  test('Frontend laedt und verlangt eine Anmeldung', async ({ page }) => {
     await page.goto('/')
 
     await expect(page).toHaveTitle(/Arbeitsblattverwaltung/)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Arbeitsblätter')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Arbeitsblattverwaltung')
+    await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible()
+    await expect(page.getByRole('navigation')).toHaveCount(0)
   })
 
   test('Seite Arbeitsblaetter laedt die Liste aus dem Backend', async ({ page }) => {
-    // FE-01: Die Liste kommt aus GET /api/arbeitsblaetter. Die CI-Datenbank ist leer
-    // (kein Seed), deshalb wird nicht die Anzahl geprueft, sondern dass die Daten
-    // vom Backend kommen und die Seite nicht auf Beispieldaten zurueckfaellt.
+    // The test account is seeded. Worksheet count is deliberately not fixed.
+    await anmelden(page)
     const antwort = page.waitForResponse((r) => r.url().includes('/api/arbeitsblaetter') && r.request().method() === 'GET')
-    await page.goto('/')
+    await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: /Arbeitsblätter/ }).click()
 
     expect((await antwort).ok()).toBeTruthy()
     await expect(page.getByText('Arbeitsblätter werden geladen')).toBeHidden()
@@ -52,7 +54,8 @@ test.describe('Infrastruktur-Smoke-Test', () => {
   })
 
   test('Backend meldet den KI-Provider', async ({ request }) => {
-    const response = await request.get(`${apiURL}/api/ai/status`)
+    const headers = await apiAnmelden(request, apiURL)
+    const response = await request.get(`${apiURL}/api/ai/status`, { headers })
 
     expect(response.ok()).toBeTruthy()
     const body = await response.json()
@@ -60,9 +63,14 @@ test.describe('Infrastruktur-Smoke-Test', () => {
   })
 
   test('unbekannte Routen ergeben 404 mit Fehlerformat', async ({ request }) => {
-    const response = await request.get(`${apiURL}/api/gibt-es-nicht`)
+    const headers = await apiAnmelden(request, apiURL)
+    const response = await request.get(`${apiURL}/api/gibt-es-nicht`, { headers })
 
     expect(response.status()).toBe(404)
     expect((await response.json()).error).toBe('not_found')
+  })
+  test('geschützte Routen verlangen ohne Token eine Anmeldung', async ({ request }) => {
+    const response = await request.get(`${apiURL}/api/arbeitsblaetter`)
+    expect(response.status()).toBe(401)
   })
 })

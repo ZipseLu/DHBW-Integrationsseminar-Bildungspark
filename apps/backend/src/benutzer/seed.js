@@ -3,11 +3,10 @@
  *
  * The same four accounts as in the frontend (apps/frontend/src/data/users.ts), addresses on the
  * reserved .example domain – no real accounts. All get the same initial password from
- * SEED_PASSWORT (default: bildungspark-demo). ONLY for local development and demos.
+ * SEED_PASSWORT; if unset, a random one is generated and logged once. ONLY for local development and demos.
  */
+import { randomBytes } from 'node:crypto'
 import * as repo from './repository.js'
-
-export const STANDARD_SEED_PASSWORT = 'bildungspark-demo'
 
 export const BEISPIEL_KONTEN = [
   { name: 'Celine Hager', email: 'c.hager@bildungspark.example', rolle: 'admin' },
@@ -20,7 +19,7 @@ export const BEISPIEL_KONTEN = [
  * Creates the sample accounts – only into an empty table; with `reset`, deletes everything first.
  * @returns {Promise<{angelegt: number, uebersprungen: boolean}>}
  */
-export async function seedBenutzer({ reset = false, passwort = process.env.SEED_PASSWORT || STANDARD_SEED_PASSWORT, log = () => {} } = {}) {
+export async function seedBenutzer({ reset = false, passwort = process.env.SEED_PASSWORT || randomBytes(9).toString('base64url'), log = () => {} } = {}) {
   if (!reset && (await repo.count()) > 0) {
     log('[seed] Es gibt schon Mitarbeiterkonten – nichts zu tun.')
     return { angelegt: 0, uebersprungen: true }
@@ -30,6 +29,6 @@ export async function seedBenutzer({ reset = false, passwort = process.env.SEED_
     log('[seed] Alle vorhandenen Mitarbeiterkonten gelöscht (--reset).')
   }
   for (const konto of BEISPIEL_KONTEN) await repo.create({ ...konto, passwort })
-  log(`[seed] ${BEISPIEL_KONTEN.length} Beispielkonten angelegt (Startpasswort aus SEED_PASSWORT bzw. „${STANDARD_SEED_PASSWORT}“).`)
+  log(`[seed] ${BEISPIEL_KONTEN.length} Beispielkonten angelegt (Startpasswort: ${process.env.SEED_PASSWORT ? 'aus SEED_PASSWORT' : passwort}).`)
   return { angelegt: BEISPIEL_KONTEN.length, uebersprungen: false }
 }

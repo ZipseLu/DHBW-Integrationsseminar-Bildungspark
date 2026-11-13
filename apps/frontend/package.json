@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Arbeitsblattverwaltung – Prototyp-Frontend (React + TypeScript)",
+  "description": "Arbeitsblattverwaltung ÔÇô Prototyp-Frontend (React + TypeScript)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:trello-core": "node tests/trello-core.mjs"
   },
   "dependencies": {
     "docx": "^9.8.1",

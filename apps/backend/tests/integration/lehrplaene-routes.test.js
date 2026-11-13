@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import express from 'express'
 import request from 'supertest'
+import { api } from '../helpers/auth.js'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -48,7 +49,7 @@ describe('GET /api/lehrplaene', () => {
   })
 
   it('ist in der App eingehaengt', async () => {
-    const response = await request(createApp()).get('/api/lehrplaene')
+    const response = await api(createApp()).get('/api/lehrplaene')
     expect(response.status).toBe(200)
     expect(Array.isArray(response.body.lernziele)).toBe(true)
   })

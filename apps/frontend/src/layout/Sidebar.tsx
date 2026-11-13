@@ -7,9 +7,10 @@ type Props = {
   onNavigate: (item: NavItem) => void
   /** Kompakte Seitenleiste: nur Icons (Einstellung "Kompakte Seitenleiste") */
   compact?: boolean
+  onLogout?: () => void
 }
 
-export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
+export function Sidebar({ user, active, onNavigate, compact = false, onLogout }: Props) {
   const items = NAV_ITEMS.filter((item) => !item.adminOnly || user.role === 'admin')
 
   return (
@@ -57,6 +58,7 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
         })}
       </nav>
 
+      {onLogout && <button type="button" onClick={onLogout} className="mx-3 mb-3 px-2 py-3 rounded text-sm hover:opacity-80" title="Abmelden" aria-label="Abmelden">{compact ? '↪' : 'Abmelden'}</button>}
       <div className={compact ? 'px-2 pb-6 pt-4 flex justify-center' : 'px-4 pb-6 pt-4'} style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div className="flex items-center gap-3" title={compact ? `${user.name} · ${ROLE_LABELS[user.role]}` : undefined}>
           <div

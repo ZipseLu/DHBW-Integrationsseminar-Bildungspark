@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '@/App'
+import App from '../AuthenticatedTestApp'
 import { PARTICIPANTS } from '@/data/participants'
 import { STAFF_USERS, initialsOf } from '@/data/users'
 import { buildStations, moveItem, nextParticipantId } from '@/lib/participants'

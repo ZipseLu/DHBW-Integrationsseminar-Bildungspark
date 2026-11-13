@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '@/App'
+import App from '../AuthenticatedTestApp'
 
 /**
  * Trello "Sidedrawer sticky machen": the content column is one screen high and

@@ -1,0 +1,18 @@
+# SearXNG fuer die Online-Suche (FE-14, docs/online-suche.md)
+# Start: docker compose --profile suche up -d searxng
+# Den geheimen Schluessel setzt der Container aus SEARXNG_SECRET (.env) – hier steht keiner.
+use_default_settings: true
+
+server:
+  # Private Instanz nur fuer das Backend: kein Bot-Limiter, keine Bild-Weiterleitung
+  limiter: false
+  image_proxy: false
+
+search:
+  # 1 = moderat (Inhalte fuer Lehrmaterial)
+  safe_search: 1
+  default_lang: "de"
+  # json ist Pflicht – das Backend fragt /search?format=json ab
+  formats:
+    - html
+    - json
