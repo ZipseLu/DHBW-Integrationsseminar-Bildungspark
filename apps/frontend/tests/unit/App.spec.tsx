@@ -194,13 +194,16 @@ describe('KI-Erstellung', () => {
     expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
   })
 
-  it('zeigt simulierte Suchtreffer', async () => {
+  it('zeigt Suchtreffer aus der Backend-Schnittstelle', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => String(url).startsWith('/api/suche')
+      ? new Response(JSON.stringify({ results: [{ title: 'Hygiene im Betrieb', url: 'https://example.test/hygiene', snippet: 'Arbeitsblatt' }] }), { status: 200 })
+      : emptyLehrplaene()))
     renderApp()
     navigate('KI-Erstellung')
 
     fireEvent.change(screen.getByLabelText('Suchbegriff für die Internetsuche'), { target: { value: 'Hygiene' } })
     fireEvent.click(screen.getByRole('button', { name: /Suchen/ }))
 
-    expect(await screen.findByText('5 Ergebnisse für „Hygiene"')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Hygiene im Betrieb' })).toHaveAttribute('href', 'https://example.test/hygiene')
   })
 })

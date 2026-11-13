@@ -230,7 +230,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
             </div>
           </div>
 
-          <WebSearchSection thema={thema} />
+          <WebSearchSection thema={thema || lernziel?.titel || ''} onUseTopic={setThema} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
