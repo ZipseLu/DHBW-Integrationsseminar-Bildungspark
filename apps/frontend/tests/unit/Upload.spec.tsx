@@ -186,6 +186,10 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
     await waitFor(() => expect(ki).toBeEnabled())
     expect(anfragen.find((a) => a.method === 'PATCH')?.body).toEqual({ text: 'Prüfe den Lieferschein.' })
 
+    // The list reloads after the PATCH and no longer claims that there is no text
+    const liste = (await screen.findByRole('heading', { name: 'Hochgeladene Dokumente' })).closest('section') as HTMLElement
+    expect(await within(liste).findByText('✓ Text vorhanden')).toBeInTheDocument()
+
     fireEvent.click(ki)
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('KI-Erstellung')
     expect(screen.getByText(/Vorlage „Lieferschein.pdf“ übernommen/)).toBeInTheDocument()

@@ -251,7 +251,11 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen }: Props) {
         {phase.art === 'fertig' && (
           <UploadErgebnis
             antwort={phase.antwort}
-            onTextGespeichert={(upload) => setPhase({ art: 'fertig', antwort: { upload, hinweise: [] } })}
+            onTextGespeichert={(upload) => {
+              setPhase({ art: 'fertig', antwort: { upload, hinweise: [] } })
+              // The list below shows "kein Text" / "✓ Text vorhanden" – reload it too
+              onUploaded(upload)
+            }}
             onKiAnpassen={onKiAnpassen}
             onNeu={zuruecksetzen}
           />
