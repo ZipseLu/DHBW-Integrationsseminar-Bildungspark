@@ -4,13 +4,13 @@ import { FormatPicker, LevelPicker } from '@/components/Pickers'
 import { GenerateButton, Spinner, VariantSummary } from '@/components/VariantSummary'
 import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { toggleKeepOne } from '@/lib/selection'
-import { useSimulatedTask } from '@/lib/simulation'
-import { simulateWebResults } from '@/lib/webSearch'
+import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
-/** "Ähnliche Dokumente im Internet suchen" – Ergebnisse sind im Prototyp simuliert */
+/** Ähnliche Dokumente im Internet über die DuckDuckGo-Suche finden. */
 export function WebSearchSection({ thema }: { thema: string }) {
   const [query, setQuery] = useState('')
+  const [fileType, setFileType] = useState('')
   const [results, setResults] = useState<WebResult[]>([])
   const [resultsFor, setResultsFor] = useState('')
   const [open, setOpen] = useState(true)
@@ -18,20 +18,35 @@ export function WebSearchSection({ thema }: { thema: string }) {
   const [levels, setLevels] = useState<Level[]>([...LEVELS])
   const [formats, setFormats] = useState<Format[]>(['text'])
 
-  const search = useSimulatedTask('websuche')
-  const adapt = useSimulatedTask('varianten')
+  const [searchRunning, setSearchRunning] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [variantsReady, setVariantsReady] = useState(false)
+  /** Wahr, wenn mindestens ein Treffer aus dem Mock-Modus stammt (keine echte Websuche) */
+  const [mockMode, setMockMode] = useState(false)
 
   const effectiveQuery = query.trim() || thema.trim()
 
-  function runSearch() {
+  async function runSearch() {
     if (!effectiveQuery) return
     const q = effectiveQuery
     setResults([])
+    setSearchError('')
     setResultsFor(q)
     setOpen(true)
     setSelectedUrl(null)
-    adapt.reset()
-    search.start(() => setResults(simulateWebResults(q)))
+    setVariantsReady(false)
+    setMockMode(false)
+    setSearchRunning(true)
+    try {
+      const fetched = await searchWebResults(q, fileType || undefined)
+      setResults(fetched)
+      setMockMode(fetched.some((r) => r.mocked === true))
+    } catch (error) {
+      console.error('Websuche fehlgeschlagen', error)
+      setSearchError(error instanceof Error ? error.message : 'Die Websuche ist fehlgeschlagen.')
+    } finally {
+      setSearchRunning(false)
+    }
   }
 
   return (
@@ -55,7 +70,6 @@ export function WebSearchSection({ thema }: { thema: string }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              // Enter darf das umgebende Formular nicht absenden
               if (e.key === 'Enter') {
                 e.preventDefault()
                 runSearch()
@@ -64,30 +78,61 @@ export function WebSearchSection({ thema }: { thema: string }) {
             className="flex-1 px-3 py-2 rounded text-sm outline-none"
             style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
           />
+          <select
+            aria-label="Dateityp filtern"
+            value={fileType}
+            onChange={(e) => setFileType(e.target.value)}
+            className="px-2 py-2 rounded text-sm outline-none"
+            style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+          >
+            <option value="">PDF &amp; DOCX</option>
+            <option value="pdf">PDF</option>
+            <option value="docx">DOCX</option>
+          </select>
           <button
             type="button"
             onClick={runSearch}
-            disabled={search.running || !effectiveQuery}
+            disabled={searchRunning || !effectiveQuery}
             className="px-4 py-2 rounded text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 flex items-center gap-1.5"
             style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
-            {search.running ? <Spinner className="text-xs" /> : <span aria-hidden="true">🔍</span>}
-            {search.running ? 'Suche…' : 'Suchen'}
+            {searchRunning ? <Spinner className="text-xs" /> : <span aria-hidden="true">🔍</span>}
+            {searchRunning ? 'Suche…' : 'Suchen'}
           </button>
         </div>
 
-        {search.running && (
+        {searchError && (
+          <div className="text-xs px-3 py-2 rounded" role="alert" style={{ backgroundColor: '#FDECEC', color: '#8A1C1C' }}>
+            {searchError}
+          </div>
+        )}
+
+        {!searchRunning && !searchError && resultsFor && results.length === 0 && (
+          <div className="text-xs py-3" role="status" style={{ color: 'var(--muted-foreground)' }}>
+            Keine Treffer gefunden.
+          </div>
+        )}
+
+        {searchRunning && (
           <div className="py-6 flex flex-col items-center gap-2" style={{ color: 'var(--muted-foreground)' }} role="status">
             <Spinner className="text-2xl" />
             <span className="text-xs">Suche nach ähnlichen Dokumenten…</span>
           </div>
         )}
 
-        {!search.running && results.length > 0 && (
+        {!searchRunning && results.length > 0 && (
           <div className="flex flex-col gap-2">
-            <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
-              Prototyp: Die Treffer sind Beispiele, die Links führen nicht zu echten Dokumenten.
-            </div>
+            {mockMode && (
+              <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
+                ⚠ Simulierte Treffer (Mock-Modus). Die echte Websuche ist
+                derzeit nicht erreichbar. Prüfen Sie die Internetverbindung des Backends.
+              </div>
+            )}
+            {!mockMode && (
+              <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#D4EDDA', color: '#1A5C32' }}>
+                ✓ Echte Websuchergebnisse vom Backend.
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}
@@ -116,9 +161,10 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-semibold mb-0.5 leading-snug" style={{ color: 'var(--primary-text)' }}>
                           {r.title}
+                          {r.mocked && <span className="text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>· simuliert</span>}
                         </div>
                         <a
-                          href={`https://${r.url}`}
+                          href={/^https?:\/\//i.test(r.url) ? r.url : `https://${r.url}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs mb-1.5 flex items-center gap-1 hover:opacity-70 w-fit max-w-full"
@@ -127,6 +173,11 @@ export function WebSearchSection({ thema }: { thema: string }) {
                           <span aria-hidden="true">🔗</span>
                           <span className="underline underline-offset-2 truncate">{r.url}</span>
                         </a>
+                        {r.fileType && (
+                          <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                            Dateityp: {r.fileType}
+                          </div>
+                        )}
                         <div className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
                           {r.snippet}
                         </div>
@@ -134,10 +185,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
                       <button
                         type="button"
                         aria-pressed={isSelected}
-                        onClick={() => {
-                          setSelectedUrl(isSelected ? null : r.url)
-                          adapt.reset()
-                        }}
+                        onClick={() => { setSelectedUrl(isSelected ? null : r.url) }}
                         className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded font-medium transition-all"
                         style={{
                           backgroundColor: isSelected ? 'var(--primary)' : 'var(--muted)',
@@ -163,7 +211,6 @@ export function WebSearchSection({ thema }: { thema: string }) {
                             selected={levels}
                             onToggle={(l) => {
                               setLevels((prev) => toggleKeepOne(prev, l))
-                              adapt.reset()
                             }}
                           />
                         </div>
@@ -176,19 +223,27 @@ export function WebSearchSection({ thema }: { thema: string }) {
                             selected={formats}
                             onToggle={(f) => {
                               setFormats((prev) => toggleKeepOne(prev, f))
-                              adapt.reset()
                             }}
                           />
                         </div>
 
                         <VariantSummary levels={levels} formats={formats} />
 
-                        {!adapt.done ? (
-                          <GenerateButton running={adapt.running} count={levels.length * formats.length} onClick={() => adapt.start()} />
+                        {!variantsReady ? (
+                          <GenerateButton
+                            running={searchRunning}
+                            count={levels.length * formats.length}
+                            verb="übernehmen"
+                            onClick={() => setVariantsReady(true)}
+                          />
                         ) : (
                           <div className="flex flex-col gap-2">
                             <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
-                              ✓ Alle Varianten bereit
+                              ✓ Auswahl übernommen
+                            </div>
+                            <div className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+                              Die eigentliche Generierung der Varianten aus einem Suchtreffer folgt noch. Die Auswahl
+                              zeigt nur, welche Varianten später erzeugt werden.
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
                               {levels.flatMap((l) =>

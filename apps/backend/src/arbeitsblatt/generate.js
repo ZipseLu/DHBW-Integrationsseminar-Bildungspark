@@ -5,6 +5,10 @@
  *   -> Schema pruefen -> bei Fehler genau EIN Wiederholungsversuch mit
  *   Korrekturhinweis -> Validator -> Ergebnis { worksheet, meta }
  *
+ * Tasks without answer options (e.g. "Kreuze an." with nothing to tick) use
+ * the same single retry. If that retry fails or times out, the first,
+ * incomplete worksheet is returned with validator hints instead of an error.
+ *
  * Ist der Anbieter ueberlastet (HTTP 503), wird einmal kurz gewartet und mit
  * dem Fallback-Modell (GEMINI_FALLBACK_MODEL) erneut aufgerufen.
  *
@@ -17,7 +21,7 @@ import { config } from '../config.js'
 import { generateText, isAiConfigured } from '../ai/provider.js'
 import { buildPrompt, PROMPT_VERSION } from './prompt.js'
 import { LlmWorksheetSchema, WORKSHEET_JSON_SCHEMA, formatZodError } from './schema.js'
-import { validateWorksheet } from './validator.js'
+import { fehlendeOptionen, validateWorksheet } from './validator.js'
 import { buildMockWorksheet } from './mock.js'
 
 /** Fehler mit HTTP-Status und Code – die Route gibt ihn als JSON weiter. */
@@ -86,6 +90,23 @@ export async function generateArbeitsblatt(input, deps = {}) {
   let unavailableRetried = false // einmal bei 503 (Anbieter ueberlastet) -> Fallback-Modell
   let jsonRetried = false // einmal bei ungueltigem JSON/Schema -> Korrekturhinweis
   let attempts = 0
+  // First worksheet with missing answer options; returned if the retry fails
+  let unvollstaendig = null
+
+  const ergebnis = (worksheet, result, usedModel, attemptCount) => ({
+    worksheet,
+    meta: {
+      provider: result.provider ?? providerName,
+      model: result.model ?? usedModel,
+      mocked: Boolean(result.mocked),
+      fallbackUsed: usedModel !== primaryModel,
+      durationMs: Date.now() - started,
+      promptVersion: PROMPT_VERSION,
+      attempts: attemptCount,
+      usage: result.usage ?? null,
+      validation: validateWorksheet(worksheet),
+    },
+  })
 
   // Hoechstens drei Aufrufe: 503-Wechsel + JSON-Wiederholung + Erfolg
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
@@ -116,6 +137,10 @@ export async function generateArbeitsblatt(input, deps = {}) {
         model = nextModel
         continue
       }
+      if (unvollstaendig) {
+        console.warn(`[arbeitsblatt] Versuch ${attempt} gescheitert (${translated.code}), erstes Ergebnis mit Hinweisen wird verwendet`)
+        return unvollstaendig
+      }
       throw translated
     }
 
@@ -135,31 +160,28 @@ export async function generateArbeitsblatt(input, deps = {}) {
     const parsed = parseWorksheet(result.text)
     if (parsed.ok) {
       const worksheet = finalizeWorksheet(parsed.worksheet, input)
-      return {
-        worksheet,
-        meta: {
-          provider: result.provider ?? providerName,
-          model: result.model ?? model,
-          mocked: Boolean(result.mocked),
-          fallbackUsed: model !== primaryModel,
-          durationMs: Date.now() - started,
-          promptVersion: PROMPT_VERSION,
-          attempts,
-          usage: result.usage ?? null,
-          validation: validateWorksheet(worksheet),
-        },
+      const luecken = fehlendeOptionen(worksheet)
+      if (luecken.length === 0 || jsonRetried || signal.aborted) {
+        return ergebnis(worksheet, result, model, attempts)
       }
+      // Answer options missing: ask once more, keep this worksheet as fallback
+      unvollstaendig = ergebnis(worksheet, result, model, attempts)
+      korrektur =
+        `Aufgaben ohne Antwortmöglichkeiten – ${luecken.join(' ')} ` +
+        'Jede Aufgabe vom Typ reihenfolge, ankreuzen oder zuordnen braucht das Feld optionen mit mindestens 2 Einträgen, auch in Piktogramm-Formaten.'
+    } else {
+      korrektur =
+        result.finishReason === 'MAX_TOKENS'
+          ? 'Die Antwort war zu lang und wurde abgeschnitten. Fasse dich kürzer.'
+          : parsed.error
     }
-
-    korrektur =
-      result.finishReason === 'MAX_TOKENS'
-        ? 'Die Antwort war zu lang und wurde abgeschnitten. Fasse dich kürzer.'
-        : parsed.error
     console.warn(`[arbeitsblatt] Versuch ${attempt} ungültig: ${korrektur}`)
 
     if (jsonRetried || signal.aborted) break
     jsonRetried = true
   }
+
+  if (unvollstaendig) return unvollstaendig
 
   throw new ArbeitsblattError(
     `Die KI-Antwort war auch nach einem zweiten Versuch kein gültiges Arbeitsblatt. Letzter Fehler: ${korrektur}`,
