@@ -3,7 +3,8 @@
  *
  * The same four accounts as in the frontend (apps/frontend/src/data/users.ts), addresses on the
  * reserved .example domain – no real accounts. All get the same initial password from
- * SEED_PASSWORT; if unset, a random one is generated and logged once. ONLY for local development and demos.
+ * SEED_PASSWORT; if unset, a random one is generated. The password is never logged.
+ * ONLY for local development and demos.
  */
 import { randomBytes } from 'node:crypto'
 import * as repo from './repository.js'
@@ -29,6 +30,6 @@ export async function seedBenutzer({ reset = false, passwort = process.env.SEED_
     log('[seed] Alle vorhandenen Mitarbeiterkonten gelöscht (--reset).')
   }
   for (const konto of BEISPIEL_KONTEN) await repo.create({ ...konto, passwort })
-  log(`[seed] ${BEISPIEL_KONTEN.length} Beispielkonten angelegt (Startpasswort: ${process.env.SEED_PASSWORT ? 'aus SEED_PASSWORT' : passwort}).`)
+  log(`[seed] ${BEISPIEL_KONTEN.length} Beispielkonten angelegt.`)
   return { angelegt: BEISPIEL_KONTEN.length, uebersprungen: false }
 }

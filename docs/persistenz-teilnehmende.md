@@ -2,10 +2,11 @@
 
 Stand: 30.10.2026 · Trello: BE-02 · Grundlage für FE-12 (Profile) und FE-13 (Niveaustufen je Berufsfeld)
 
-Das Backend speichert anonymisierte Teilnehmerprofile mit ihrem Lernweg in MySQL. Ein Profil besteht nur aus einer
+Das Backend speichert pseudonymisierte Teilnehmerprofile mit ihrem Lernweg in MySQL. Ein Profil besteht nur aus einer
 **pseudonymen Kennung** (z. B. `IW3-4421`), einer Niveaustufe und den Stationen des Lernwegs. Namen, Diagnosen und
 freie Textfelder gibt es bewusst nicht (§ 60 SGB IX, siehe `docs/fachliche-grundlagen.md`); die API lehnt unbekannte
-Felder wie `name` mit `400` ab, statt sie still zu verwerfen.
+Felder wie `name` mit `400` ab, statt sie still zu verwerfen. Datenschutz, Logs und Löschverhalten stehen in
+**[docs/datenschutz-loeschkonzept-logging.md](datenschutz-loeschkonzept-logging.md)**.
 
 ## Datenmodell (Migration `002_teilnehmende.sql`)
 

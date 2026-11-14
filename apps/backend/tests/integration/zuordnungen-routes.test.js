@@ -196,10 +196,16 @@ describe.skipIf(!hasDb)('Zuordnungen und Lernstand (MySQL)', () => {
   })
 
   describe('Löschen (BE-08: keine verwaisten Zuordnungen)', () => {
-    it('Profil löschen entfernt seine Zuordnungen', async () => {
-      await zuordnen(await blatt())
+    it('Profil löschen entfernt Lernweg und eigene Zuordnungen, aber nicht die anderer Profile', async () => {
+      const andereKennung = 'IW3-9102'
+      expect((await request(app).post('/api/teilnehmende').send({ ...PROFIL, kennung: andereKennung })).status).toBe(201)
+      await zuordnen(await blatt({ titel: 'Nur für das zu löschende Profil' }), KENNUNG)
+      await zuordnen(await blatt({ titel: 'Bleibt beim anderen Profil' }), andereKennung)
+
       expect((await request(app).delete(basis)).status).toBe(204)
-      expect(await query('SELECT id FROM zuordnungen')).toHaveLength(0)
+      expect(await query('SELECT position FROM teilnehmende_stationen WHERE kennung = ?', [KENNUNG])).toHaveLength(0)
+      expect(await query('SELECT id FROM zuordnungen WHERE kennung = ?', [KENNUNG])).toHaveLength(0)
+      expect(await query('SELECT id FROM zuordnungen WHERE kennung = ?', [andereKennung])).toHaveLength(1)
     })
 
     it('endgültiges Löschen eines Blatts entfernt die Zuordnung, Archivieren nicht', async () => {

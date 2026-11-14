@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildPrompt, buildUserPrompt, PROMPT_VERSION, SYSTEM_PROMPT, sanitizeFreitext } from '../../src/arbeitsblatt/prompt.js'
 import { REQUEST_T_TEXT } from '../fixtures/arbeitsblatt.js'
-import { LlmWorksheetSchema } from '../../src/arbeitsblatt/schema.js'
+import { GenerateRequestSchema, LlmWorksheetSchema } from '../../src/arbeitsblatt/schema.js'
 import { validateWorksheet } from '../../src/arbeitsblatt/validator.js'
 
 describe('System-Prompt (stabiler Teil)', () => {
@@ -63,6 +63,17 @@ describe('User-Prompt (variabler Teil)', () => {
     const prompt = buildUserPrompt({ ...REQUEST_T_TEXT, thema: 'LKW am Tor', erwartungen: 'Sicherheit betonen' })
     expect(prompt).toContain('Thema / Titelwunsch:\n"""\nLKW am Tor\n"""')
     expect(prompt).toContain('Erwartungen an das Arbeitsblatt:\n"""\nSicherheit betonen\n"""')
+  })
+
+  it('übernimmt keine Frontend-Importmetadaten in den Prompt', () => {
+    const request = GenerateRequestSchema.parse({
+      ...REQUEST_T_TEXT,
+      lernziel: { ...REQUEST_T_TEXT.lernziel, id: 17, abschnitt: 2, tq: 'Import-Metadatum', quelle: 'Lehrplan.docx' },
+    })
+    const { prompt } = buildPrompt(request)
+
+    expect(prompt).not.toContain('Import-Metadatum')
+    expect(prompt).not.toContain('Lehrplan.docx')
   })
 
   it('haengt beim Wiederholungsversuch den Korrekturhinweis an', () => {

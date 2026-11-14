@@ -33,6 +33,29 @@ describe('POST /api/ai/arbeitsblatt', () => {
     expect(response.body.message).toContain('niveaus')
   })
 
+  it('weist Teilnehmerdaten zurück, bevor ein KI-Prompt gebaut wird', async () => {
+    const kennung = 'IW3-9701'
+    const name = 'Max Mustermann'
+    const response = await request(app)
+      .post('/api/ai/arbeitsblatt')
+      .send({ ...REQUEST_T_TEXT, teilnehmer: { kennung, name } })
+
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).not.toContain(kennung)
+    expect(JSON.stringify(response.body)).not.toContain(name)
+  })
+
+  it('akzeptiert bekannte Lehrplan-Importmetadaten, die nicht Teil des Prompts sind', async () => {
+    const response = await request(app)
+      .post('/api/ai/arbeitsblatt')
+      .send({
+        ...REQUEST_T_TEXT,
+        lernziel: { ...REQUEST_T_TEXT.lernziel, id: 17, abschnitt: 2, tq: 'TQ', quelle: 'Lehrplan.docx' },
+      })
+
+    expect(response.status).toBe(200)
+  })
+
   it('liefert im Mock-Modus 200 mit vollstaendigem Arbeitsblatt', async () => {
     const response = await request(app).post('/api/ai/arbeitsblatt').send({ ...REQUEST_T_TEXT, stufe: 'F', format: 'mathefrei', thema: 'LKW' })
 

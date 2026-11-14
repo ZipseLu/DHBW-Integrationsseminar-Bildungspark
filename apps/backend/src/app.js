@@ -8,7 +8,6 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
-import morgan from 'morgan'
 
 import { config, describeConfig } from './config.js'
 import { healthRouter } from './routes/health.js'
@@ -23,6 +22,7 @@ import { createZuordnungenRouter } from './routes/zuordnungen.js'
 import { authentifiziere } from './auth/anmeldung.js'
 import { createUploadsRouter } from './routes/uploads.js'
 import { webSearchRouter } from './routes/web-search.js'
+import { createRequestLogger } from './http/request-logger.js'
 
 export function createApp() {
   const app = express()
@@ -46,7 +46,7 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true }))
 
   if (!config.isTest) {
-    app.use(morgan(config.env === 'production' ? 'combined' : 'dev'))
+    app.use(createRequestLogger(config.env))
   }
 
   app.use('/api/health', healthRouter)
@@ -88,7 +88,7 @@ export function createApp() {
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, _next) => {
     const status = err.status ?? 500
-    if (status >= 500) console.error('[error]', err)
+    if (status >= 500) console.error(`[error] HTTP ${status}`)
     res.status(status).json({
       error: err.code ?? 'internal_error',
       message: status >= 500 ? 'Interner Serverfehler' : err.message,
