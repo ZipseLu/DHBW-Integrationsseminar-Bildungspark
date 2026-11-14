@@ -181,14 +181,31 @@ describe('generateArbeitsblatt – mit Provider', () => {
     })
   })
 
-  it('uebersetzt Provider-Fehler (Rate-Limit) ohne Wiederholung', async () => {
+  it('uebersetzt Provider-Fehler (Rate-Limit) ohne Wiederholung, wenn es kein anderes Modell gibt', async () => {
     const provider = vi.fn().mockRejectedValue(Object.assign(new Error('429 Too Many Requests'), { status: 429 }))
-    const error = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true }).catch((e) => e)
+    const error = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true, model: 'gross', fallbackModel: 'gross' }).catch((e) => e)
     expect(error.status).toBe(502)
     expect(error.code).toBe('llm_rate_limit')
     expect(error.message).toContain('Rate-Limit')
     expect(provider).toHaveBeenCalledTimes(1)
   })
+
+  // BE-11: the free daily quota (429) is per model, the fallback model has its own
+  it('wechselt bei 429 (Kontingent erschöpft) einmal auf das Fallback-Modell', async () => {
+    const provider = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error('You exceeded your current quota'), { status: 429 }))
+      .mockImplementationOnce(async ({ model }) => ({ text: valid, model, provider: 'fake', usage: null, mocked: false, finishReason: 'STOP' }))
+    const { meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true, model: 'gross', fallbackModel: 'klein' })
+    expect(provider.mock.calls.map(([call]) => call.model)).toEqual(['gross', 'klein'])
+    expect(meta).toMatchObject({ attempts: 2, model: 'klein', fallbackUsed: true })
+  }, 10_000)
+
+  it('meldet 429, wenn auch das Fallback-Modell sein Kontingent verbraucht hat', async () => {
+    const provider = vi.fn().mockRejectedValue(Object.assign(new Error('RESOURCE_EXHAUSTED'), { status: 429 }))
+    const error = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true, model: 'gross', fallbackModel: 'klein' }).catch((e) => e)
+    expect(error.code).toBe('llm_rate_limit')
+    expect(provider).toHaveBeenCalledTimes(2)
+  }, 10_000)
 
   it('wechselt bei 503 (Anbieter ueberlastet) nach kurzer Wartezeit einmal auf das Fallback-Modell', async () => {
     vi.useFakeTimers()

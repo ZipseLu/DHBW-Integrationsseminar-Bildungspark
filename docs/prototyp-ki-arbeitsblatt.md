@@ -58,7 +58,7 @@ flowchart TD
         Schema["arbeitsblatt/schema.js<br/>Anfrage prüfen (zod)"]
         Mock["arbeitsblatt/mock.js<br/>feste Beispielantwort"]
         Prompt["arbeitsblatt/prompt.js<br/>stabiler Teil: prompts/arbeitsblatt-system.md<br/>variabler Teil: Lernziel, Zielstufe, Format, Wünsche"]
-        Gen["arbeitsblatt/generate.js<br/>Ablauf, 1 Wiederholung bei ungültigem JSON<br/>oder fehlenden Optionen, Fallback-Modell bei 503, Timeout 180 s"]
+        Gen["arbeitsblatt/generate.js<br/>Ablauf, 1 Wiederholung bei ungültigem JSON<br/>oder fehlenden Optionen, Fallback-Modell bei 503 und 429, Timeout 180 s"]
         Prov["ai/provider.js → ai/gemini.js<br/>@google/genai, responseJsonSchema"]
         Parse["JSON parsen + gegen Schema prüfen"]
         Val["arbeitsblatt/validator.js<br/>Satzlänge, Aufgabenanzahl, mathefrei,<br/>piktogramm, Optionen, Verbotsliste → Hinweise"]
@@ -105,7 +105,7 @@ Browser (React, Port 5173)                 Backend (Express, Port 3000)         
                                            4. Gemini aufrufen, JSON-Schema mitschicken  ──────►  erzeugt JSON
                                            5. Antwort parsen + gegen Schema prüfen     ◄──────  (ca. 5–10 s)
                                               ungültig oder Optionen fehlen? → genau EIN zweiter Versuch mit Korrekturhinweis
-                                              Anbieter überlastet (503)? → kurz warten, Fallback-Modell
+                                              Anbieter überlastet (503) oder Kontingent leer (429)? → kurz warten, Fallback-Modell
                                            6. Validator: Satzlänge, Aufgabenanzahl, Format-Regeln,
                                               Verbotsliste → Liste von Hinweisen (blockiert nichts)
 7. Anzeige der Variante      ◄──────────   7. Antwort { worksheet, meta }
@@ -137,7 +137,7 @@ Keine Teilnehmer- oder Nutzerdaten. Der Prompt verbietet dem Modell ausdrücklic
 | **Mock** | Eine Attrappe: verhält sich nach außen wie das Echte (gleiche Felder), liefert aber feste Inhalte. Damit läuft die Demo ohne API-Key, ohne Internet und ohne Kosten; auch alle Tests laufen im Mock-Modus. |
 | **Validator** | Ein Prüfprogramm mit festen Regeln (ohne KI): Satzlänge je Stufe, Anzahl Aufgaben, „Ohne Rechnen“ (keine Zahlen > 3, keine Rechenzeichen), Piktogramm-Regeln, fehlende Antwortmöglichkeiten bei Reihenfolge/Ankreuzen/Zuordnen, Verbotsliste. Es blockiert nichts, sondern gibt Hinweise für die Lehrkraft. |
 | **Token** | Die Zähleinheit der Sprachmodelle, ungefähr ein Wortteil (ca. ¾ Wort). Ein Arbeitsblatt kostet bei uns etwa 2 800 Tokens Eingabe (der Prompt) und 500–800 Tokens Ausgabe. Nach Tokens wird abgerechnet. |
-| **Rate-Limit** | Die Obergrenze an Anfragen pro Minute und pro Tag. Der kostenlose Gemini-Zugang („Free-Tier“) ist knapp bemessen – deshalb erzeugen wir Varianten nacheinander, nie parallel. Bei Überschreitung antwortet Gemini mit Fehler 429; das Backend meldet „Rate-Limit erreicht, bitte eine Minute warten“. |
+| **Rate-Limit** | Die Obergrenze an Anfragen pro Minute und pro Tag. Der kostenlose Gemini-Zugang („Free-Tier“) ist knapp bemessen – deshalb erzeugen wir Varianten nacheinander, nie parallel. Bei Überschreitung antwortet Gemini mit Fehler 429. Das Backend versucht es dann einmal mit dem Fallback-Modell (eigenes Kontingent); klappt das nicht, meldet es „Rate-Limit erreicht, bitte eine Minute warten“. Das Tageskontingent im Free-Tier liegt bei etwa 20 Anfragen je Modell. |
 | **Timeout** | Zeitlimit. Antwortet Gemini nicht innerhalb von 180 Sekunden (`AI_TIMEOUT_MS`; in QS-04 brauchten einzelne Blätter bis zu 95 Sekunden), bricht das Backend ab und meldet eine Zeitüberschreitung. |
 | **Fallback-Modell** | Meldet Gemini „Modell überlastet“ (Fehler 503), wartet das Backend 2,5 Sekunden und versucht es einmal mit einem kleineren Modell (`GEMINI_FALLBACK_MODEL`, Standard `gemini-3.5-flash-lite`). In `meta.model` steht, welches Modell tatsächlich geantwortet hat. |
 | **Few-Shot-Beispiel** | Ein fertiges Beispiel im Prompt, an dem das Modell Stil und Struktur ablesen kann. Unseres ist an das Bildungspark-Blatt „Waren sicher ver-packen“ angelehnt. |
@@ -197,7 +197,7 @@ Dann wie oben <http://localhost:5173>. Ohne Key in der `.env` läuft die Demo im
 |---|---|---|
 | „Das Backend ist nicht erreichbar“ | Backend läuft nicht | Terminal 1 prüfen, `npm run dev` in `apps/backend` |
 | Gelber Hinweis „Kein API-Key – Beispielantwort (Mock)“ | `.env` fehlt oder Key leer | Root-`.env` anlegen (`cp .env.example .env`), Key eintragen, Backend neu starten |
-| „Rate-Limit des KI-Anbieters erreicht“ | zu viele Anfragen (Free-Tier) | eine Minute warten, weniger Varianten auf einmal |
+| „Rate-Limit des KI-Anbieters erreicht“ | zu viele Anfragen (Free-Tier), auch beim Fallback-Modell | eine Minute warten, weniger Varianten auf einmal; ist das Tageskontingent leer, erst am nächsten Tag (ab ca. 9 Uhr) oder mit einem anderen Schlüssel |
 | „Der KI-Anbieter ist gerade nicht erreichbar“ | Gemini überlastet (503), auch das Fallback-Modell | kurz warten, erneut klicken; notfalls `GEMINI_MODEL=gemini-3.5-flash-lite` setzen |
 | „Das konfigurierte KI-Modell ist für diesen API-Key nicht verfügbar“ | Modellname veraltet (z. B. `gemini-2.5-flash`, seit Oktober 2026 für neue Keys gesperrt) | `GEMINI_MODEL` in `.env` auf `gemini-3.5-flash` oder `gemini-3.5-flash-lite` setzen |
 | „Zeitüberschreitung“ | Gemini antwortet > 180 s nicht | erneut versuchen; `AI_TIMEOUT_MS` erhöhen |
@@ -254,7 +254,7 @@ oder auf den Mock-Modus wechseln (Plan B).
 1. Datei öffnen: `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md` – normales Markdown, jede Zeile
    wird so an Gemini geschickt. Abschnitte: Rolle, Sprache, Stufen, Formate, Aufgabentypen, Sicherheitsregeln, Beispiel.
 2. Ändern, z. B. eine neue Regel für Leichte Sprache ergänzen oder das Beispiel anpassen.
-3. **Versionsnummer in Zeile 1 erhöhen** (aktuell `Prompt-Version: 1.0.2`, nächste wäre `1.0.3`). Sie wird mit jeder Antwort als `meta.promptVersion`
+3. **Versionsnummer in Zeile 1 erhöhen** (aktuell `Prompt-Version: 1.0.3`, nächste wäre `1.0.4`). Sie wird mit jeder Antwort als `meta.promptVersion`
    zurückgegeben – so sieht man später, mit welchem Prompt ein Blatt entstanden ist.
 4. Tests laufen lassen (ohne Key, ohne Kosten):
 

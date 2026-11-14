@@ -1,4 +1,4 @@
-Prompt-Version: 1.0.2
+Prompt-Version: 1.0.3
 
 # Deine Rolle
 
@@ -101,6 +101,11 @@ Das Wörterbuch enthält 2 bis 6 schwere Wörter aus dem Arbeitsblatt mit je ein
 4. Keine Inhalte, die Teilnehmende herabsetzen. Keine Kindersprache, kein „brav“, kein „artig“.
 5. Die Felder `stufe`, `format`, `sprache`, `berufsfeld` und `lernziel` übernimmst du
    wörtlich aus dem Auftrag.
+6. Fachlich richtig bei Lebensmitteln: Nach dem Mindesthaltbarkeitsdatum (MHD, „mindestens
+   haltbar bis“) darf einwandfreie Ware grundsätzlich noch verkauft werden – der Betrieb prüft
+   sie und sortiert sie oft aus. Nach dem Verbrauchsdatum („zu verbrauchen bis“, z. B. Hackfleisch)
+   darf Ware nicht mehr verkauft werden. Schreibe nie, dass Ware nach dem MHD verboten ist.
+   Was im Betrieb mit solcher Ware passiert, entscheidet der Anleiter („Frage deinen Anleiter“).
 
 # Beispiel für Stil und Struktur
 

@@ -11,6 +11,8 @@
  *
  * Ist der Anbieter ueberlastet (HTTP 503), wird einmal kurz gewartet und mit
  * dem Fallback-Modell (GEMINI_FALLBACK_MODEL) erneut aufgerufen.
+ * BE-11: The same happens for a rate limit (429, e.g. the free daily quota), but
+ * only if a different fallback model exists – it has its own quota.
  *
  * Ohne API-Key liefert der Ablauf ein Mock-Arbeitsblatt (meta.mocked = true).
  *
@@ -87,7 +89,7 @@ export async function generateArbeitsblatt(input, deps = {}) {
   const signal = AbortSignal.timeout(timeoutMs)
   let model = primaryModel
   let korrektur = null
-  let unavailableRetried = false // einmal bei 503 (Anbieter ueberlastet) -> Fallback-Modell
+  let unavailableRetried = false // einmal bei 503 (Anbieter ueberlastet) oder 429 (Kontingent) -> Fallback-Modell
   let jsonRetried = false // einmal bei ungueltigem JSON/Schema -> Korrekturhinweis
   let attempts = 0
   // First worksheet with missing answer options; returned if the retry fails
@@ -129,10 +131,14 @@ export async function generateArbeitsblatt(input, deps = {}) {
       const translated = toArbeitsblattError(error, timeoutMs)
       // "Server ueberlastet" (503) ist meist ein kurzer Spitzenwert: einmal kurz warten
       // und – falls konfiguriert – mit dem Fallback-Modell erneut versuchen.
-      if (translated.code === 'llm_unavailable' && !unavailableRetried && !signal.aborted) {
+      const anderesModell = fallbackModel && fallbackModel !== model ? fallbackModel : null
+      // 429 with the same model would fail again at once, so only switch if there is another model
+      const wechseln = translated.code === 'llm_unavailable' || (translated.code === 'llm_rate_limit' && anderesModell)
+      if (wechseln && !unavailableRetried && !signal.aborted) {
         unavailableRetried = true
-        const nextModel = fallbackModel && fallbackModel !== model ? fallbackModel : model
-        console.warn(`[arbeitsblatt] Versuch ${attempt}: Modell ${model} nicht erreichbar, neuer Versuch mit ${nextModel} in ${RETRY_DELAY_MS} ms`)
+        const nextModel = anderesModell ?? model
+        const grund = translated.code === 'llm_rate_limit' ? 'Kontingent erschöpft (429)' : 'nicht erreichbar'
+        console.warn(`[arbeitsblatt] Versuch ${attempt}: Modell ${model} ${grund}, neuer Versuch mit ${nextModel} in ${RETRY_DELAY_MS} ms`)
         await sleep(RETRY_DELAY_MS, signal)
         model = nextModel
         continue
