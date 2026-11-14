@@ -377,7 +377,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 | `GEMINI_API_KEY` | leer | Ohne Key läuft KI im Mock-Modus |
 | `GEMINI_MODEL` | `gemini-3.5-flash` | `gemini-2.5-flash` ist seit Oktober 2026 für neue Keys nicht mehr verfügbar |
 | `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | Wird einmalig versucht, wenn das Modell mit 503 (überlastet) antwortet |
-| `AI_TIMEOUT_MS` | `60000` | Zeitlimit je Generierungsauftrag |
+| `AI_TIMEOUT_MS` | `180000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
 
 ### Secrets

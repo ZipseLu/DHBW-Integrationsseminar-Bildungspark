@@ -41,10 +41,11 @@ export function sanitizeFreitext(value, maxLength = 2000) {
 
 const FORMAT_HINWEIS = {
   text: 'keine Besonderheiten',
-  piktogramm: 'jede Aufgabe mit piktogramm-Schlüssel aus der Whitelist, Anweisung höchstens 8 Wörter',
+  piktogramm:
+    'jede Aufgabe mit piktogramm-Schlüssel aus der Whitelist, Anweisung höchstens 8 Wörter, optionen bei reihenfolge/ankreuzen/zuordnen nie weglassen',
   mathefrei: 'keine Rechenaufgaben, keine Rechenzeichen, keine Zahlen größer als 3, Mengen qualitativ',
   'piktogramm-mathefrei':
-    'jede Aufgabe mit piktogramm-Schlüssel, Anweisung höchstens 8 Wörter, keine Rechenaufgaben, keine Zahlen größer als 3',
+    'jede Aufgabe mit piktogramm-Schlüssel, Anweisung höchstens 8 Wörter, optionen bei reihenfolge/ankreuzen/zuordnen nie weglassen, keine Rechenaufgaben, keine Zahlen größer als 3',
 }
 
 /**
