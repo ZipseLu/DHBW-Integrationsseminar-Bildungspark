@@ -85,6 +85,8 @@ Regeln (`src/zuordnungen/lernstand.js`, mit Unit-Tests):
 - **Als Nächstes insgesamt** = nächstes Blatt der **aktiven** Station; ist dort nichts offen, das nächste offene Blatt in den
   **folgenden** Stationen, danach in den früheren (liegengebliebene Blätter), zuletzt in Berufsfeldern ohne Station.
   Ohne aktive Station: entlang des Lernwegs von vorn.
+- **Archivierte Blätter** bleiben zugeordnet und stehen weiter in `offen` (mit `arbeitsblatt.status: "archiviert"`), werden aber
+  **nie als „Als Nächstes“ vorgeschlagen** – weder je Berufsfeld noch insgesamt. FE-11 kann sie in der Liste deshalb ausgrauen.
 - `offen` ist nach Zuordnung sortiert (älteste zuerst), `erledigt` nach Erledigung (zuletzt erledigte zuerst).
 
 **Abgrenzung zum Lernweg (BE-02):** Die Felder `fortschritt` und `blaetterErledigt` einer Station bleiben die Werte aus dem

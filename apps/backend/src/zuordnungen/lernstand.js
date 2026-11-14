@@ -12,6 +12,9 @@
  *     the next open sheet in the following stations of the Lernweg, then in the earlier
  *     ones (left-overs), then in fields without a station. Without an active station:
  *     along the Lernweg from the start.
+ *   - Archived sheets stay assigned and visible (arbeitsblatt.status = 'archiviert'),
+ *     but are never proposed as "next" – neither per Berufsfeld nor overall. The
+ *     frontend (FE-11) can therefore gray them out in the open list.
  *
  * The station fields `fortschritt` and `blaetterErledigt` (BE-02) stay as entered in
  * the profile dialog; this computation does not change them.
@@ -26,6 +29,9 @@ const nachZuordnung = (a, b) => a.zugeordnetAm.localeCompare(b.zugeordnetAm) || 
 const nachErledigt = (a, b) => (b.erledigtAm ?? '').localeCompare(a.erledigtAm ?? '') || a.id.localeCompare(b.id)
 
 const anzahlVon = (offen, erledigt) => ({ erledigt: erledigt.length, offen: offen.length, gesamt: offen.length + erledigt.length })
+
+/** Archived sheets stay in the lists (and counts), but are not suggested as "next" */
+const istArchiviert = (zuordnung) => zuordnung.arbeitsblatt.status === 'archiviert'
 
 /**
  * @param {{kennung: string, stationen: {berufsfeld: string, status: string, stufe: string, format: string}[]}} teilnehmer  from the teilnehmende repository
@@ -66,7 +72,7 @@ export function berechneLernstand(teilnehmer, zuordnungen) {
       station,
       fortschritt: anzahl.gesamt === 0 ? 0 : Math.round((anzahl.erledigt / anzahl.gesamt) * 100),
       anzahl,
-      alsNaechstes: offen[0] ?? null,
+      alsNaechstes: offen.find((zuordnung) => !istArchiviert(zuordnung)) ?? null,
       offen,
       erledigt,
     }
