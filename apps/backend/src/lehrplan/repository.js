@@ -42,10 +42,20 @@ export async function listLernziele() {
   })
 }
 
-/** Datum des letzten Imports (JJJJ-MM-TT) oder null, wenn noch nichts importiert ist */
+/**
+ * UTC-DATETIME aus MySQL ('2026-11-03 23:30:00.000') als Datum in Europe/Berlin.
+ * Zwischen 0 und 1 Uhr (Winterzeit) liegt der UTC-Tag sonst einen Tag zurück.
+ */
+export function berlinerDatum(wert) {
+  const datum = new Date(`${String(wert).replace(' ', 'T')}Z`)
+  if (Number.isNaN(datum.getTime())) return null
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(datum)
+}
+
+/** Datum des letzten Imports (JJJJ-MM-TT, Europe/Berlin) oder null, wenn noch nichts importiert ist */
 export async function stand() {
   const row = await queryOne('SELECT MAX(importiert_am) AS stand FROM lehrplaene')
-  return row?.stand ? String(row.stand).slice(0, 10) : null
+  return row?.stand ? berlinerDatum(row.stand) : null
 }
 
 export async function count() {

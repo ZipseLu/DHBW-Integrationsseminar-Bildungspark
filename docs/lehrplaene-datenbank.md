@@ -22,7 +22,11 @@ lehrplaene 1 ──< lernziele 1 ──< lernziel_niveaus (genau 4: T, A, F, B)
 - 14 Lehrpläne · 96 Lernziele (Lager 16, Metall 19, Gastro 61) · 384 Stufen-Einträge.
 - Ein neuer Import **ersetzt den kompletten Bestand** in einer Transaktion (`ON DELETE CASCADE`): Danach steht entweder der neue
   oder weiterhin der alte Stand. Die Lernziel-IDs bleiben gleich, solange die Quelldateien gleich bleiben.
-  Sobald andere Tabellen per Fremdschlüssel auf Lernziele zeigen, muss der Import auf „aktualisieren statt ersetzen“ umgestellt werden.
+- ⚠️ **Bevor eine andere Tabelle per Fremdschlüssel auf `lernziele` zeigt** (z. B. BE-10 „Lehrmaterial vorschlagen“, das
+  Arbeitsblätter mit Lernzielen verknüpft), muss `ersetzeAlle` von „löschen und neu aufbauen“ auf **Upsert** umgestellt werden
+  (`INSERT … ON DUPLICATE KEY UPDATE`, anschließend nur nicht mehr vorhandene Zeilen löschen). Sonst löscht `DELETE FROM lehrplaene`
+  die Verknüpfungen per `CASCADE` mit, oder ein `RESTRICT`-Fremdschlüssel lässt den Re-Import scheitern. Solange keine solche
+  Tabelle existiert, ist das Ersetzen unkritisch.
 
 ## Befüllen
 
@@ -34,6 +38,9 @@ lehrplaene 1 ──< lernziele 1 ──< lernziel_niveaus (genau 4: T, A, F, B)
 
 Für den **Staging-Server**: `data/lehrplaene.json` sicher auf den Server kopieren (nicht über GitHub) und einmal `npm run db:seed` ausführen.
 
+Ist die Datei alt oder kaputt (kein gültiges JSON, fehlende `lernziele`), bricht `npm run db:seed` **nicht** ab: `seedLehrplaene`
+loggt nur eine Warnung und der Rest (Arbeitsblätter, Konten, Teilnehmende, Zuordnungen) wird trotzdem angelegt.
+
 ## API – unverändert für das Frontend
 
 `GET /api/lehrplaene` liefert dieselbe Form wie bisher (`{ stand, anzahl, lernziele }`, Lernziel = `{ id, berufsfeld, tq, baustein,
@@ -44,6 +51,11 @@ ausbildungsbaustein, abschnitt, titel, niveaus, quelle }`) und zusätzlich `herk
 | `datenbank` | Lernziele stehen in der Datenbank (Normalfall) |
 | `datei` | Datenbank nicht erreichbar oder noch leer, aber `data/lehrplaene.json` vorhanden – z. B. KI-Demo ohne Docker; mit `hinweis` |
 | `null` | weder noch: leere Liste mit `hinweis`; das Frontend nutzt seine 12 Beispiel-Lernziele |
+
+`stand` ist das Datum des letzten Imports in **Europe/Berlin** (nicht UTC), damit ein Import zwischen 0 und 1 Uhr nicht den Vortag anzeigt.
+
+Ist die Datenbank nicht erreichbar, merkt sich die Route das **30 Sekunden** lang: In dieser Zeit kommt die Antwort sofort aus der
+JSON-Datei, statt bei jedem Seitenaufruf erneut einen Verbindungsversuch zu starten (bei `ETIMEDOUT` sonst bis zu 10 s pro Aufruf).
 
 ## Code
 

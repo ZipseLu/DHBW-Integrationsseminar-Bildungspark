@@ -26,31 +26,47 @@ export async function loadLehrplaene(file = LEHRPLAENE_FILE) {
     if (error.code === 'ENOENT') return null
     throw error
   }
-  const data = JSON.parse(raw)
-  if (!Array.isArray(data?.lernziele)) throw new Error('lehrplaene.json: Feld "lernziele" fehlt')
+  let data
+  try {
+    data = JSON.parse(raw)
+  } catch (error) {
+    throw new lehrplanRepo.LehrplanDatenError(`lehrplaene.json ist kein gültiges JSON: ${error.message}`)
+  }
+  if (!Array.isArray(data?.lernziele)) throw new lehrplanRepo.LehrplanDatenError('lehrplaene.json: Feld "lernziele" fehlt')
   return data
 }
 
-/** Lernziele aus der Datenbank; null, wenn sie nicht erreichbar oder noch leer ist */
-async function ausDatenbank(repository) {
-  try {
-    const lernziele = await repository.listLernziele()
-    if (lernziele.length === 0) return null
-    return { herkunft: 'datenbank', stand: await repository.stand(), anzahl: lernziele.length, lernziele }
-  } catch (error) {
-    if (dbError(error)) return null
-    throw error
-  }
-}
-
-export function createLehrplaeneRouter({ file = LEHRPLAENE_FILE, repository = lehrplanRepo } = {}) {
+export function createLehrplaeneRouter({
+  file = LEHRPLAENE_FILE,
+  repository = lehrplanRepo,
+  // Nach einem Verbindungsfehler 30 s lang nicht erneut versuchen: sonst kostet jeder
+  // Seitenaufruf bei einem nicht erreichbaren Host bis zum connectTimeout (Standard 10 s).
+  dbRetryMs = 30_000,
+} = {}) {
   const router = Router()
   // Die Datei nur einmal lesen; nach einem neuen Import Backend neu starten
   let dateiCache = null
+  let dbNichtErreichbarBis = 0
+
+  /** Lernziele aus der Datenbank; null, wenn sie nicht erreichbar oder noch leer ist */
+  async function ausDatenbank() {
+    if (Date.now() < dbNichtErreichbarBis) return null
+    try {
+      const lernziele = await repository.listLernziele()
+      if (lernziele.length === 0) return null
+      return { herkunft: 'datenbank', stand: await repository.stand(), anzahl: lernziele.length, lernziele }
+    } catch (error) {
+      if (dbError(error)) {
+        if (dbRetryMs > 0) dbNichtErreichbarBis = Date.now() + dbRetryMs
+        return null
+      }
+      throw error
+    }
+  }
 
   router.get('/', async (_req, res, next) => {
     try {
-      const datenbank = await ausDatenbank(repository)
+      const datenbank = await ausDatenbank()
       if (datenbank) return res.json(datenbank)
 
       dateiCache ??= await loadLehrplaene(file)

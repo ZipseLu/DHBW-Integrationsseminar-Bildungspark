@@ -128,5 +128,23 @@ describe.skipIf(!hasDb)('Lehrpläne in der Datenbank (MySQL)', () => {
       expect(await seedLehrplaene({ file: join(dir, 'fehlt.json') })).toEqual({ angelegt: 0, uebersprungen: true })
       expect(await count()).toBe(0)
     })
+
+    it('eine kaputte JSON-Datei bricht den Seed nicht ab, sondern warnt', async () => {
+      const kaputt = join(dir, 'kaputt.json')
+      writeFileSync(kaputt, '{ kein gueltiges json')
+      const meldungen = []
+      expect(await seedLehrplaene({ file: kaputt, log: (zeile) => meldungen.push(zeile) })).toEqual({ angelegt: 0, uebersprungen: true })
+      expect(meldungen.join('\n')).toContain('WARNUNG')
+      expect(await count()).toBe(0)
+    })
+
+    it('auch ungültige Lehrplandaten werden nur als Warnung gemeldet', async () => {
+      const falsch = join(dir, 'falsch.json')
+      writeFileSync(falsch, JSON.stringify({ lernziele: [{ ...LERNZIELE[0], titel: '' }] }))
+      const meldungen = []
+      expect(await seedLehrplaene({ file: falsch, log: (zeile) => meldungen.push(zeile) })).toEqual({ angelegt: 0, uebersprungen: true })
+      expect(meldungen.join('\n')).toContain('WARNUNG')
+      expect(await count()).toBe(0)
+    })
   })
 })

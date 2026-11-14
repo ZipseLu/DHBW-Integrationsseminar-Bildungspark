@@ -4,7 +4,8 @@ import request from 'supertest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createLehrplaeneRouter } from '../../src/routes/lehrplaene.js'
+import { createLehrplaeneRouter, loadLehrplaene } from '../../src/routes/lehrplaene.js'
+import { LehrplanDatenError, berlinerDatum } from '../../src/lehrplan/repository.js'
 import { LehrplanImportSchema, LernzielImportSchema } from '../../src/lehrplan/schema.js'
 
 /**
@@ -117,5 +118,62 @@ describe('GET /api/lehrplaene – Datenbank, dann Datei', () => {
   it('andere Datenbankfehler werden nicht verschluckt', async () => {
     const response = await request(appWith({ file: datei, repository: repository({ fehler: new Error('kaputt') }) })).get('/api/lehrplaene')
     expect(response.status).toBe(500)
+  })
+
+  it('versucht es nach einem DB-Ausfall 30 s lang nicht erneut', async () => {
+    let aufrufe = 0
+    const stub = {
+      async listLernziele() {
+        aufrufe += 1
+        throw dbFehler()
+      },
+      async stand() {
+        return null
+      },
+    }
+    const app = appWith({ file: datei, repository: stub })
+    await request(app).get('/api/lehrplaene')
+    await request(app).get('/api/lehrplaene')
+    expect(aufrufe).toBe(1)
+  })
+
+  it('mit dbRetryMs: 0 fragt jeder Aufruf erneut', async () => {
+    let aufrufe = 0
+    const stub = {
+      async listLernziele() {
+        aufrufe += 1
+        throw dbFehler()
+      },
+      async stand() {
+        return null
+      },
+    }
+    const app = appWith({ file: datei, repository: stub, dbRetryMs: 0 })
+    await request(app).get('/api/lehrplaene')
+    await request(app).get('/api/lehrplaene')
+    expect(aufrufe).toBe(2)
+  })
+
+  it('meldet eine kaputte JSON-Datei als LehrplanDatenError', async () => {
+    const kaputt = join(dir, 'kaputt.json')
+    writeFileSync(kaputt, '{ kein gueltiges json')
+    await expect(loadLehrplaene(kaputt)).rejects.toBeInstanceOf(LehrplanDatenError)
+  })
+})
+
+describe('berlinerDatum', () => {
+  it('rechnet UTC in Europe/Berlin um (Winter- und Sommerzeit)', () => {
+    expect(berlinerDatum('2026-11-03 23:30:00.000')).toBe('2026-11-04') // Winterzeit: +1 h
+    expect(berlinerDatum('2026-07-01 22:30:00.000')).toBe('2026-07-02') // Sommerzeit: +2 h
+    expect(berlinerDatum('2026-11-03 22:30:00.000')).toBe('2026-11-03')
+  })
+
+  it('akzeptiert DATETIME ohne Millisekunden', () => {
+    expect(berlinerDatum('2026-11-03 23:30:00')).toBe('2026-11-04')
+  })
+
+  it('gibt bei ungültigen Werten null zurück', () => {
+    expect(berlinerDatum('kaputt')).toBe(null)
+    expect(berlinerDatum(null)).toBe(null)
   })
 })
