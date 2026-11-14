@@ -1,5 +1,6 @@
 import { AUFGABEN_TYP_LABEL, PIKTOGRAMM_SYMBOL } from '@/data/aufgaben'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
+import { BRIEFKOPF_PNG } from '@/assets/briefkopf'
 import { fetchArbeitsblatt, type Arbeitsblatt, type Aufgabe } from '@/lib/api'
 
 /**
@@ -28,8 +29,8 @@ const COLOR_MUTED = CD.grau
 const COLOR_BORDER = CD.linie
 const COLOR_PAPER = '#FFFFFF'
 
-/** Letterhead as on the paper worksheets (text only – the logo graphic is not part of the public repository) */
-export const BRIEFKOPF_HTML = `<div class="briefkopf"><div class="marke"><b>BILDUNGSPARK</b> Heilbronn-Franken gGmbH</div><div class="claim">BILDUNG · ARBEIT · ZUKUNFT</div></div>`
+/** Letterhead as on the paper worksheets: the original graphic with name, claim and logo */
+export const BRIEFKOPF_HTML = `<img class="briefkopf" src="${BRIEFKOPF_PNG}" alt="Bildungspark Heilbronn-Franken gGmbH – Bildung · Arbeit · Zukunft">`
 
 const escape = (text: string) =>
   String(text).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string)
@@ -116,7 +117,6 @@ function loesungHtml(aufgabe: Aufgabe): string {
 /** Solution part on its own page, clearly marked as not for participants */
 function loesungsteilHtml(w: Arbeitsblatt): string {
   return `<div class="loesungsteil">
-${BRIEFKOPF_HTML}
 <div class="kopf">NUR FÜR DIE LEHRKRAFT – NICHT AN TEILNEHMENDE AUSGEBEN</div>
 <h1>Lösungen: ${escape(w.titel)}</h1>
 <p class="info">Stufe ${escape(w.stufe)} · Lösungen aus der KI-Erstellung, fachlich prüfen.</p>
@@ -145,16 +145,17 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
 <title>${escape(w.titel)}${optionen.mitLoesungen ? ' – mit Lösungen' : ''}</title>
 <style>
   /* Margins in their own rule: browsers without page margin boxes drop only the footer rule below, not the margins */
-  @page { size: A4; margin: 2.2cm 2.2cm 2.5cm; }
+  @page { size: A4; margin: 1.6cm 2.2cm 2.5cm; }
   @page {
     @bottom-left { content: "${fusszeile}"; font: 7pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${COLOR_MUTED}; }
     @bottom-right { content: counter(page) "/" counter(pages); font: 9pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${CD.text}; }
   }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
   body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: ${CD.text}; margin: 0; }
-  .briefkopf { color: ${COLOR_PRIMARY}; font-family: 'Arial Narrow', 'Barlow Semi Condensed', Calibri, sans-serif; margin: 0 0 18pt; }
-  .briefkopf .marke { font-size: 13pt; }
-  .briefkopf .claim { font-size: 7pt; font-weight: 700; letter-spacing: 0.04em; }
+  /* The letterhead sits in a table header: browsers repeat it on every printed page, like on the paper worksheets */
+  table.seite { width: 100%; border-collapse: collapse; }
+  table.seite > thead > tr > td, table.seite > tbody > tr > td { padding: 0; }
+  .briefkopf { display: block; width: 100%; height: auto; margin: 0 0 20pt; }
   .kopf { font-size: 8pt; font-weight: 700; color: ${COLOR_PRIMARY}; letter-spacing: 0.08em; }
   h1 { font-size: 14pt; margin: 0 0 4pt; line-height: 1.25; }
   .info { font-size: 9.5pt; color: ${COLOR_MUTED}; margin: 0 0 3pt; }
@@ -184,7 +185,7 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
 </style>
 </head>
 <body>
-${BRIEFKOPF_HTML}
+<table class="seite"><thead><tr><td>${BRIEFKOPF_HTML}</td></tr></thead><tbody><tr><td>
 <h1>Arbeitsblatt: ${escape(w.titel)}</h1>
 <p class="info">${escape(bausteinInfo)}</p>
 <p class="info"><span class="stufe">Stufe ${escape(w.stufe)}</span>&nbsp;&nbsp; ${escape(formatLabel)} · ${escape(w.sprache)}</p>
@@ -197,6 +198,7 @@ ${w.aufgaben.map(aufgabeHtml).join('\n')}
 ${woerterbuch}
 ${hinweis}
 ${optionen.mitLoesungen ? loesungsteilHtml(w) : ''}
+</td></tr></tbody></table>
 </body>
 </html>`
 }

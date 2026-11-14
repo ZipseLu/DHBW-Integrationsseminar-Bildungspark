@@ -14,6 +14,7 @@ import {
   convertInchesToTwip,
 } from 'docx'
 import { saveAs } from 'file-saver'
+import { briefkopfHeader } from '@/lib/briefkopfDocx'
 import { LEVEL_STYLES, niveausOf } from '@/data/constants'
 import type { Level, Worksheet } from '@/types'
 
@@ -39,16 +40,6 @@ export function buildWorksheetDocument(w: Worksheet): Document {
   const levels = niveausOf(w)
 
   const header = [
-    new Paragraph({
-      children: [
-        new TextRun({ text: 'BILDUNGSPARK', size: 26, color: COLOR_PRIMARY, bold: true, font: 'Arial Narrow' }),
-        new TextRun({ text: ' Heilbronn-Franken gGmbH', size: 26, color: COLOR_PRIMARY, font: 'Arial Narrow' }),
-      ],
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: 'BILDUNG · ARBEIT · ZUKUNFT', size: 14, color: COLOR_PRIMARY, bold: true, font: 'Arial Narrow' })],
-      spacing: { after: 240 },
-    }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       children: [new TextRun({ text: w.title, size: 36, bold: true, color: COLOR_TEXT, font: FONT })],
@@ -172,6 +163,8 @@ export function buildWorksheetDocument(w: Worksheet): Document {
     sections: [
       {
         properties: { page: { margin: { top: margin, bottom: margin, left: margin, right: margin } } },
+        // FE-21: letterhead graphic in the page header
+        headers: { default: briefkopfHeader() },
         children: [...header, table, ...footer],
       },
     ],

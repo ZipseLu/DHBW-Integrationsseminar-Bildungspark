@@ -5,13 +5,16 @@
  * Export in apps/frontend/src/lib/docx.ts – die Werte muessen dort und hier
  * uebereinstimmen (LEVEL_STYLES in apps/frontend/src/data/constants.ts).
  */
+import { readFileSync } from 'node:fs'
 import {
   AlignmentType,
   BorderStyle,
   Document,
   Footer,
+  Header,
   HeadingLevel,
   HeightRule,
+  ImageRun,
   Packer,
   PageNumber,
   Paragraph,
@@ -30,7 +33,6 @@ export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordproc
 
 const FONT = 'Calibri'
 // FE-21: corporate design of the Bildungspark worksheets (same values as CD in apps/frontend/src/lib/druck.ts)
-const FONT_BRIEFKOPF = 'Arial Narrow'
 const COLOR_PRIMARY = '00487A'
 const COLOR_TEXT = '1F1F1F'
 const COLOR_MUTED = '5F5F5F'
@@ -98,15 +100,27 @@ function farbKasten(fill, children) {
   ]
 }
 
-/** Letterhead "BILDUNGSPARK Heilbronn-Franken gGmbH / BILDUNG · ARBEIT · ZUKUNFT" (text only, no logo graphic) */
+/**
+ * Letterhead graphic of the paper worksheets (name, claim and logo, 1413 × 106 px).
+ * Same file as apps/frontend/src/assets/briefkopf.ts; it sits in the page header, so it is on every page.
+ */
+const BRIEFKOPF_PNG = readFileSync(new URL('./briefkopf.png', import.meta.url))
+const BRIEFKOPF_BREITE_PX = 600 // ≈ text width of an A4 page with 1 inch margins (96 dpi)
+
 function briefkopf() {
-  return [
-    para([
-      run('BILDUNGSPARK', { font: FONT_BRIEFKOPF, size: 26, bold: true, color: COLOR_PRIMARY }),
-      run(' Heilbronn-Franken gGmbH', { font: FONT_BRIEFKOPF, size: 26, color: COLOR_PRIMARY }),
-    ]),
-    para(run('BILDUNG · ARBEIT · ZUKUNFT', { font: FONT_BRIEFKOPF, size: 14, bold: true, color: COLOR_PRIMARY }), { spacing: { after: 360 } }),
-  ]
+  return new Header({
+    children: [
+      para(
+        new ImageRun({
+          type: 'png',
+          data: BRIEFKOPF_PNG,
+          transformation: { width: BRIEFKOPF_BREITE_PX, height: Math.round((BRIEFKOPF_BREITE_PX * 106) / 1413) },
+          altText: { title: 'Bildungspark', description: 'Bildungspark Heilbronn-Franken gGmbH – Bildung · Arbeit · Zukunft', name: 'Briefkopf' },
+        }),
+        { spacing: { after: 240 } },
+      ),
+    ],
+  })
 }
 
 /** Schreiblinien als Unterstriche – Rahmenlinien benachbarter Absaetze wuerde Word zu einem Kasten verschmelzen */
@@ -204,7 +218,6 @@ export function buildArbeitsblattDocument(w) {
     .join('  ·  ')
 
   const children = [
-    ...briefkopf(),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       children: [run(`Arbeitsblatt: ${w.titel}`, { size: 28, bold: true })],
@@ -277,6 +290,7 @@ export function buildArbeitsblattDocument(w) {
     sections: [
       {
         properties: { page: { margin: { top: margin, bottom: margin, left: margin, right: margin } } },
+        headers: { default: briefkopf() },
         footers: { default: footer },
         children,
       },

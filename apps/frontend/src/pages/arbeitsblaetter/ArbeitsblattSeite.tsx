@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { AUFGABEN_TYP_LABEL, PIKTOGRAMM_SYMBOL } from '@/data/aufgaben'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
 import { fetchArbeitsblatt, type Arbeitsblatt, type Aufgabe } from '@/lib/api'
+import { BRIEFKOPF_PNG } from '@/assets/briefkopf'
 import { CD, versetztePaare } from '@/lib/druck'
 import { fehlertext } from '@/lib/gespeicherteArbeitsblaetter'
 
@@ -98,13 +99,8 @@ export function ArbeitsblattSeite({ arbeitsblatt: w }: { arbeitsblatt: Arbeitsbl
           lineHeight: 1.5,
         }}
       >
-        {/* FE-21: letterhead as on the paper worksheets */}
-        <div style={{ color: CD.blau, fontFamily: '"Arial Narrow", "Barlow Semi Condensed", Calibri, sans-serif', marginBottom: 16 }}>
-          <div style={{ fontSize: 13 }}>
-            <b>BILDUNGSPARK</b> Heilbronn-Franken gGmbH
-          </div>
-          <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.04em' }}>BILDUNG · ARBEIT · ZUKUNFT</div>
-        </div>
+        {/* FE-21: letterhead graphic as on the paper worksheets */}
+        <img src={BRIEFKOPF_PNG} alt="Bildungspark Heilbronn-Franken gGmbH – Bildung · Arbeit · Zukunft" style={{ display: 'block', width: '100%', height: 'auto', marginBottom: 18 }} />
         <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 2px', lineHeight: 1.25 }}>Arbeitsblatt: {w.titel}</h3>
         <div style={{ fontSize: 10.5, color: muted }}>{bausteinInfo}</div>
         <div style={{ fontSize: 10.5, color: muted, margin: '4px 0 12px' }}>

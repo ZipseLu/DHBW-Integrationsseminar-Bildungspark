@@ -1,5 +1,6 @@
 import { BorderStyle, Document, HeadingLevel, Packer, Paragraph, ShadingType, Table, TableCell, TableRow, TextRun, WidthType, convertInchesToTwip } from 'docx'
 import { saveAs } from 'file-saver'
+import { briefkopfHeader } from '@/lib/briefkopfDocx'
 import { LEVELS, LEVEL_STYLES } from '@/data/constants'
 import { bausteinLabel, type LehrplanDokument } from '@/lib/lehrplaene'
 
@@ -24,14 +25,6 @@ function cell(text: string, options: { bold?: boolean; color?: string; fill?: st
  */
 export function buildLehrplanDocument(doc: LehrplanDokument): Document {
   const children: (Paragraph | Table)[] = [
-    // FE-21: letterhead of the Bildungspark worksheets
-    new Paragraph({
-      children: [
-        new TextRun({ text: 'BILDUNGSPARK', size: 26, bold: true, color: '00487A', font: 'Arial Narrow' }),
-        new TextRun({ text: ' Heilbronn-Franken gGmbH', size: 26, color: '00487A', font: 'Arial Narrow' }),
-      ],
-    }),
-    new Paragraph({ children: [new TextRun({ text: 'BILDUNG · ARBEIT · ZUKUNFT', size: 14, bold: true, color: '00487A', font: 'Arial Narrow' })], spacing: { after: 240 } }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 120, after: 60 },
@@ -80,7 +73,8 @@ export function buildLehrplanDocument(doc: LehrplanDokument): Document {
   return new Document({
     creator: 'Bildungspark Heilbronn-Franken – Arbeitsblattverwaltung',
     title: `Lehrplan ${doc.ausbildungsbaustein}`,
-    sections: [{ properties: { page: { margin: { top: margin, bottom: margin, left: margin, right: margin } } }, children }],
+    // FE-21: letterhead graphic in the page header
+    sections: [{ properties: { page: { margin: { top: margin, bottom: margin, left: margin, right: margin } } }, headers: { default: briefkopfHeader() }, children }],
   })
 }
 
