@@ -26,7 +26,8 @@ import type { AppSettings, NavItem, StaffUser } from '@/types'
  */
 export default function App() {
   const user = CURRENT_USER
-  const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
+  // The app always starts on the dashboard (landing page after login)
+  const [activeNav, setActiveNav] = useState<NavItem>('dashboard')
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   // FE-12: profiles from GET /api/teilnehmende (sample data if the backend is unavailable)
   const teilnehmende = useTeilnehmende(activeNav === 'dashboard' || activeNav === 'teilnehmer')
