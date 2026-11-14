@@ -9,6 +9,11 @@
  *                       token is rejected with 401. Requests WITHOUT a token pass
  *                       unchanged, so the frontend keeps working until it sends the
  *                       token (FE-08); BE-06 then makes the login mandatory.
+ *                       Headers with another scheme (e.g. "Basic …" from an nginx
+ *                       access protection in front of the API) count as "no token" –
+ *                       the browser would otherwise send Basic on every request and
+ *                       every API call would end with 401. Only a broken Bearer
+ *                       header is rejected.
  *   erfordereAnmeldung  401 without a valid login (GET /api/auth/me now, the write
  *                       endpoints with BE-06).
  */
@@ -25,7 +30,11 @@ export function authentifiziere(req, res, next) {
   if (!header) return next()
 
   const [schema, token, ...rest] = header.trim().split(/\s+/)
-  if (!/^bearer$/i.test(schema) || !token || rest.length > 0) {
+  // Another scheme (e.g. "Basic …") is treated like no token: a proxy in front of the
+  // API may add it, while the real bearer token comes later with FE-08. Only a broken
+  // Bearer header is rejected – otherwise every request would fail with 401.
+  if (!/^bearer$/i.test(schema)) return next()
+  if (!token || rest.length > 0) {
     return nichtAngemeldet(res, 'token_ungueltig', 'Erwartet wird der Header „Authorization: Bearer <Token>“')
   }
   try {

@@ -58,10 +58,14 @@ Im Frontend landet `error` in `ApiError.code` (Fehlerart) und `code` in `ApiErro
 | 400 | – (`error: validation_error`) | E-Mail oder Passwort fehlt, unbekannte Felder | Meldung anzeigen |
 | 401 | `anmeldung_fehlgeschlagen` | E-Mail oder Passwort falsch (bewusst nicht unterschieden) | Meldung in der Login-Maske |
 | 401 | `token_abgelaufen` | Token älter als `JWT_EXPIRES_IN` | neu anmelden |
-| 401 | `token_ungueltig` | Token kaputt, gefälscht oder falsches Header-Format | neu anmelden |
+| 401 | `token_ungueltig` | Bearer-Token kaputt oder gefälscht (ein anderes Schema wie `Basic` gilt wie „kein Token“) | neu anmelden |
 | 401 | `konto_unbekannt` | Konto wurde nach der Anmeldung gelöscht (nur `/api/auth/me`) | neu anmelden |
 | 401 | `anmeldung_erforderlich` | kein Token (heute nur `/api/auth/me`) | Login-Maske |
 | 403 | – (`error: forbidden`) | Rolle reicht nicht (z. B. Dozent auf `/api/benutzer`) | Menüpunkt ausblenden |
+
+Ein `Authorization`-Header mit einem anderen Schema – z. B. `Basic …` von einem vorgeschalteten nginx-Zugangsschutz
+auf Staging – wird wie „kein Token“ behandelt. Der Browser schickt solche Zugangsdaten sonst bei jedem Aufruf mit;
+nur ein fehlerhaftes `Bearer`-Token führt zu `401 token_ungueltig`.
 
 ## Token
 
