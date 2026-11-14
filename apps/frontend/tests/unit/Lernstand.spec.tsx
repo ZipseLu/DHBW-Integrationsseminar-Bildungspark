@@ -139,7 +139,9 @@ describe('Lernstand und Zuordnung (FE-11)', () => {
   it('weist ein gespeichertes Blatt des aktiven Berufsfelds zu (POST)', async () => {
     const fetchMock = backend([zuordnung('z1', LKW, 'erledigt')])
     render(<Seite />)
-    const karte = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
+    // Wait for the learning progress, so the dialog knows which worksheets are already assigned
+    await screen.findByText('1 von 1 erledigt · 100 %')
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
     fireEvent.click(within(karte).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
 
@@ -161,7 +163,8 @@ describe('Lernstand und Zuordnung (FE-11)', () => {
   it('zeigt Fehler beim Zuweisen im Dialog', async () => {
     backend([], { postFehler: json({ error: 'conflict', code: 'bereits_zugeordnet', message: 'schon zugeordnet' }, 409) })
     render(<Seite />)
-    const karte = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
+    await screen.findByText(/Noch keine Arbeitsblätter zugeordnet/)
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
     fireEvent.click(within(karte).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
     const dialog = screen.getByRole('dialog')
@@ -169,6 +172,20 @@ describe('Lernstand und Zuordnung (FE-11)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Dieses Arbeitsblatt ist der Person schon zugeordnet.')
+  })
+
+  it('speichert Zuweisungen auch, solange der Lernstand noch lädt', async () => {
+    const fetchMock = backend([])
+    render(<Seite />)
+    const karte = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+    fireEvent.click(within(karte).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
+    // Always the dialog with the saved worksheets, never the sample-data dialog
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(await within(dialog).findByRole('option', { name: /Etiketten kleben/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
+    expect(await screen.findByText('Arbeitsblatt „Etiketten kleben“ wurde IW3-4421 zugewiesen.')).toBeInTheDocument()
+    expect(aufrufe(fetchMock, 'POST')).toHaveLength(1)
   })
 
   it('zeigt einen Hinweis, wenn der Lernstand nicht geladen werden kann', async () => {
