@@ -264,7 +264,7 @@ function LehrplanPreview({
       </div>
 
       <div className="flex-1 overflow-auto p-6">
-        <div className="rounded-lg px-6 py-7 min-h-full flex flex-col gap-6" style={{ backgroundColor: '#FFFEF9', border: '1px solid var(--border)', color: '#1A1714' }}>
+        <div className="rounded-lg px-6 py-7 min-h-full flex flex-col gap-6" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', color: '#1F1F1F' }}>
           {doc.lernziele.map((ziel, index) => (
             <section key={`${index}-${ziel.titel}`} aria-label={`Lernziel ${index + 1}`}>
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -283,7 +283,7 @@ function LehrplanPreview({
               </div>
               <table className="w-full text-xs" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#EBE5D6' }}>
+                  <tr style={{ backgroundColor: '#E6EEF6' }}>
                     <th className="text-left px-2 py-1.5 font-mono" style={{ width: 48 }}>
                       Stufe
                     </th>
@@ -296,14 +296,14 @@ function LehrplanPreview({
                     const s = LEVEL_STYLES[level]
                     const row = ziel.niveaus[level]
                     return (
-                      <tr key={level} style={{ borderTop: '1px solid #D5CEBB' }}>
+                      <tr key={level} style={{ borderTop: '1px solid #C9D6E3' }}>
                         <td className="px-2 py-1.5 align-top">
                           <span className="font-mono font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }} title={s.label}>
                             {level}
                           </span>
                         </td>
                         <td className="px-2 py-1.5 align-top leading-snug">{row?.kompetenz || '–'}</td>
-                        <td className="px-2 py-1.5 align-top leading-snug italic" style={{ color: '#6B6354' }}>
+                        <td className="px-2 py-1.5 align-top leading-snug italic" style={{ color: '#4A5866' }}>
                           {row?.beispiel || '–'}
                         </td>
                       </tr>

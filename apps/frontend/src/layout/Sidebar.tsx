@@ -24,7 +24,11 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
           </div>
         ) : (
           <>
-            <div className="text-xs font-mono tracking-widest uppercase opacity-80 mb-1">Bildungspark</div>
+            {/* FE-21: lettering of the Bildungspark letterhead */}
+            <div className="font-display text-lg leading-tight" lang="de">
+              <span className="font-bold tracking-wide">BILDUNGSPARK</span> <span className="font-medium opacity-90">Heilbronn-Franken</span>
+            </div>
+            <div className="font-display text-[10px] font-semibold tracking-[0.08em] whitespace-nowrap opacity-80 mb-3">BILDUNG · ARBEIT · ZUKUNFT</div>
             <div className="font-display text-xl font-semibold leading-tight">Arbeitsblatt&shy;verwaltung</div>
           </>
         )}

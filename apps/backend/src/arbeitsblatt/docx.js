@@ -29,11 +29,16 @@ import { AUFGABEN_TYP_LABEL, FORMAT_LABEL, PIKTOGRAMME } from './schema.js'
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 const FONT = 'Calibri'
-const COLOR_PRIMARY = '1E3A5F'
-const COLOR_TEXT = '1A1714'
-const COLOR_MUTED = '6B6354'
-const COLOR_BORDER = 'D5CEBB'
-const COLOR_PAPER = 'FFFEF9'
+// FE-21: corporate design of the Bildungspark worksheets (same values as CD in apps/frontend/src/lib/druck.ts)
+const FONT_BRIEFKOPF = 'Arial Narrow'
+const COLOR_PRIMARY = '00487A'
+const COLOR_TEXT = '1F1F1F'
+const COLOR_MUTED = '5F5F5F'
+const COLOR_BORDER = '595959'
+const COLOR_PAPER = 'FFFFFF'
+const COLOR_AUFGABE = 'DCEAF7'
+const COLOR_WOERTERBUCH = 'C2F1C8'
+const COLOR_RAHMEN = 'BFBFBF'
 const COLOR_WARN_BG = 'FFF3CD'
 const COLOR_WARN_TEXT = '7A5C00'
 
@@ -46,7 +51,8 @@ export const LEVEL_COLORS = {
 }
 
 const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
-const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER }
+const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: COLOR_RAHMEN }
+const rahmen = { style: BorderStyle.SINGLE, size: 12, color: COLOR_TEXT }
 const run = (text, options = {}) => new TextRun({ text, font: FONT, size: 22, color: COLOR_TEXT, ...options })
 const para = (children, options = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], ...options })
 
@@ -66,7 +72,41 @@ function textParagraphs(text, options = {}) {
 }
 
 function sectionHeading(text) {
-  return para(run(text, { size: 18, bold: true, color: COLOR_PRIMARY, allCaps: true }), { spacing: { before: 240, after: 80 } })
+  return para(run(text, { bold: true }), { spacing: { before: 240, after: 80 }, keepNext: true })
+}
+
+/** Coloured box as on the paper worksheets: one table cell with background (tasks blue, dictionary green) */
+function farbKasten(fill, children) {
+  return [
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+              shading: { type: ShadingType.CLEAR, color: 'auto', fill },
+              margins: { top: 100, bottom: 60, left: 140, right: 140 },
+              children,
+            }),
+          ],
+        }),
+      ],
+    }),
+    para(run(''), { spacing: { after: 0 } }),
+  ]
+}
+
+/** Letterhead "BILDUNGSPARK Heilbronn-Franken gGmbH / BILDUNG · ARBEIT · ZUKUNFT" (text only, no logo graphic) */
+function briefkopf() {
+  return [
+    para([
+      run('BILDUNGSPARK', { font: FONT_BRIEFKOPF, size: 26, bold: true, color: COLOR_PRIMARY }),
+      run(' Heilbronn-Franken gGmbH', { font: FONT_BRIEFKOPF, size: 26, color: COLOR_PRIMARY }),
+    ]),
+    para(run('BILDUNG · ARBEIT · ZUKUNFT', { font: FONT_BRIEFKOPF, size: 14, bold: true, color: COLOR_PRIMARY }), { spacing: { after: 360 } }),
+  ]
 }
 
 /** Schreiblinien als Unterstriche – Rahmenlinien benachbarter Absaetze wuerde Word zu einem Kasten verschmelzen */
@@ -109,7 +149,7 @@ function drawingBox() {
         height: { value: convertMillimetersToTwip(55), rule: HeightRule.EXACT },
         children: [
           new TableCell({
-            borders: { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder },
+            borders: { top: rahmen, bottom: rahmen, left: rahmen, right: rahmen },
             shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'FFFFFF' },
             children: [para(run(''))],
           }),
@@ -119,14 +159,13 @@ function drawingBox() {
   })
 }
 
-function aufgabeBlock(aufgabe, colors) {
+function aufgabeBlock(aufgabe) {
   const label = AUFGABEN_TYP_LABEL[aufgabe.typ] ?? aufgabe.typ
   const symbol = aufgabe.piktogramm ? `${PIKTOGRAMME[aufgabe.piktogramm]?.symbol ?? ''}  ` : ''
 
   const blocks = [
-    para([run(`${symbol}Aufgabe ${aufgabe.nr}: ${label}`, { bold: true, size: 24, color: colors.text })], {
-      shading: { type: ShadingType.CLEAR, color: 'auto', fill: colors.fill },
-      spacing: { before: 280, after: 120 },
+    para([run(`${symbol}Aufgabe ${aufgabe.nr}: ${label}`, { bold: true })], {
+      spacing: { before: 60, after: 120 },
       keepNext: true,
     }),
     ...textParagraphs(aufgabe.anweisung, { keepNext: true }),
@@ -150,7 +189,9 @@ function aufgabeBlock(aufgabe, colors) {
     default:
       blocks.push(...writingLines(3))
   }
-  return blocks
+  // A table cell has to end with a paragraph
+  if (!(blocks.at(-1) instanceof Paragraph)) blocks.push(para(run('')))
+  return farbKasten(COLOR_AUFGABE, blocks)
 }
 
 /** Erzeugt das Word-Dokument eines KI-generierten Arbeitsblatts */
@@ -163,11 +204,11 @@ export function buildArbeitsblattDocument(w) {
     .join('  ·  ')
 
   const children = [
-    para(run('BILDUNGSPARK HEILBRONN-FRANKEN', { size: 16, color: COLOR_PRIMARY, bold: true })),
+    ...briefkopf(),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      children: [run(w.titel, { size: 36, bold: true })],
-      spacing: { before: 120, after: 60 },
+      children: [run(`Arbeitsblatt: ${w.titel}`, { size: 28, bold: true })],
+      spacing: { before: 0, after: 60 },
     }),
     para(run(bausteinInfo, { size: 20, color: COLOR_MUTED }), { spacing: { after: 80 } }),
     para(
@@ -185,14 +226,18 @@ export function buildArbeitsblattDocument(w) {
     sectionHeading('Darum geht es'),
     ...textParagraphs(w.einleitung),
 
-    ...w.aufgaben.flatMap((aufgabe) => aufgabeBlock(aufgabe, colors)),
+    ...w.aufgaben.flatMap((aufgabe) => aufgabeBlock(aufgabe)),
   ]
 
   if (w.woerterbuch?.length) {
-    children.push(sectionHeading('Kleines Wörter-Buch'))
-    for (const eintrag of w.woerterbuch) {
-      children.push(para([run(`${eintrag.wort}: `, { bold: true }), run(eintrag.erklaerung)], { spacing: { after: 80 }, indent: { left: convertInchesToTwip(0.2) } }))
-    }
+    children.push(
+      ...farbKasten(COLOR_WOERTERBUCH, [
+        para(run('Kleines Wörter-Buch', { bold: true }), { spacing: { after: 100 } }),
+        ...w.woerterbuch.map((eintrag) =>
+          para([run(`${eintrag.wort}: `, { bold: true }), run(eintrag.erklaerung)], { spacing: { after: 80 }, indent: { left: convertInchesToTwip(0.2) } }),
+        ),
+      ]),
+    )
   }
 
   if (w.hinweisAnleiter) {
@@ -206,16 +251,20 @@ export function buildArbeitsblattDocument(w) {
     )
   }
 
+  // Page number "1/5" at the bottom right as on the paper worksheets, the AI note small on the left
   const footer = new Footer({
     children: [
       new Paragraph({
-        alignment: AlignmentType.CENTER,
+        alignment: AlignmentType.RIGHT,
         children: [
-          run(`Stufe ${w.stufe}  ·  ${formatLabel}  ·  ${w.sprache}  ·  ${datum}  ·  KI-generiert – fachliche Freigabe ausstehend  ·  Seite `, { size: 14, color: COLOR_MUTED }),
-          new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 14, color: COLOR_MUTED }),
-          run(' von ', { size: 14, color: COLOR_MUTED }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: FONT, size: 14, color: COLOR_MUTED }),
+          new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 18, color: COLOR_TEXT }),
+          run('/', { size: 18 }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: FONT, size: 18, color: COLOR_TEXT }),
         ],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.LEFT,
+        children: [run(`Stufe ${w.stufe}  ·  ${formatLabel}  ·  ${w.sprache}  ·  ${datum}  ·  KI-generiert – fachliche Freigabe ausstehend`, { size: 14, color: COLOR_MUTED })],
       }),
     ],
   })

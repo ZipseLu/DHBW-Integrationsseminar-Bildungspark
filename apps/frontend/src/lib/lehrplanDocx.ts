@@ -24,7 +24,14 @@ function cell(text: string, options: { bold?: boolean; color?: string; fill?: st
  */
 export function buildLehrplanDocument(doc: LehrplanDokument): Document {
   const children: (Paragraph | Table)[] = [
-    new Paragraph({ children: [new TextRun({ text: 'BILDUNGSPARK HEILBRONN-FRANKEN', size: 16, bold: true, color: '1E3A5F', font: FONT })] }),
+    // FE-21: letterhead of the Bildungspark worksheets
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'BILDUNGSPARK', size: 26, bold: true, color: '00487A', font: 'Arial Narrow' }),
+        new TextRun({ text: ' Heilbronn-Franken gGmbH', size: 26, color: '00487A', font: 'Arial Narrow' }),
+      ],
+    }),
+    new Paragraph({ children: [new TextRun({ text: 'BILDUNG · ARBEIT · ZUKUNFT', size: 14, bold: true, color: '00487A', font: 'Arial Narrow' })], spacing: { after: 240 } }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 120, after: 60 },

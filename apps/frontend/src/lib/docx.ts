@@ -18,11 +18,12 @@ import { LEVEL_STYLES, niveausOf } from '@/data/constants'
 import type { Level, Worksheet } from '@/types'
 
 const FONT = 'Calibri'
-const COLOR_PRIMARY = '1E3A5F'
-const COLOR_TEXT = '1A1714'
-const COLOR_MUTED = '6B6354'
-const COLOR_BORDER = 'D5CEBB'
-const COLOR_PAPER = 'FFFEF9'
+// FE-21: Bildungspark corporate design (same values as CD in lib/druck.ts)
+const COLOR_PRIMARY = '00487A'
+const COLOR_TEXT = '1F1F1F'
+const COLOR_MUTED = '5F5F5F'
+const COLOR_BORDER = 'BFBFBF'
+const COLOR_PAPER = 'DCEAF7'
 
 /** '#D4EDDA' -> 'D4EDDA' (docx erwartet Hex ohne #) */
 const hex = (color: string) => color.replace('#', '')
@@ -39,7 +40,14 @@ export function buildWorksheetDocument(w: Worksheet): Document {
 
   const header = [
     new Paragraph({
-      children: [new TextRun({ text: 'BILDUNGSPARK HEILBRONN-FRANKEN', size: 16, color: COLOR_PRIMARY, bold: true, font: FONT })],
+      children: [
+        new TextRun({ text: 'BILDUNGSPARK', size: 26, color: COLOR_PRIMARY, bold: true, font: 'Arial Narrow' }),
+        new TextRun({ text: ' Heilbronn-Franken gGmbH', size: 26, color: COLOR_PRIMARY, font: 'Arial Narrow' }),
+      ],
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: 'BILDUNG · ARBEIT · ZUKUNFT', size: 14, color: COLOR_PRIMARY, bold: true, font: 'Arial Narrow' })],
+      spacing: { after: 240 },
     }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,

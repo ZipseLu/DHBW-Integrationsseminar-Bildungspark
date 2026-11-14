@@ -9,10 +9,27 @@ import { fetchArbeitsblatt, type Arbeitsblatt, type Aufgabe } from '@/lib/api'
  * export (apps/backend/src/arbeitsblatt/docx.js) and printed from a hidden iframe.
  */
 
-const COLOR_PRIMARY = '#1E3A5F'
-const COLOR_MUTED = '#6B6354'
-const COLOR_BORDER = '#D5CEBB'
-const COLOR_PAPER = '#FFFEF9'
+/**
+ * FE-21: corporate design of the Bildungspark worksheets ("Waren sicher ver-packen"):
+ * letterhead in Bildungspark blue, tasks in light blue boxes, the small dictionary in
+ * a green box, Calibri, page number "1/5" at the bottom right.
+ */
+export const CD = {
+  blau: '#00487A',
+  aufgabe: '#DCEAF7',
+  woerterbuch: '#C2F1C8',
+  text: '#1F1F1F',
+  grau: '#5F5F5F',
+  linie: '#595959',
+} as const
+
+const COLOR_PRIMARY = CD.blau
+const COLOR_MUTED = CD.grau
+const COLOR_BORDER = CD.linie
+const COLOR_PAPER = '#FFFFFF'
+
+/** Letterhead as on the paper worksheets (text only – the logo graphic is not part of the public repository) */
+export const BRIEFKOPF_HTML = `<div class="briefkopf"><div class="marke"><b>BILDUNGSPARK</b> Heilbronn-Franken gGmbH</div><div class="claim">BILDUNG · ARBEIT · ZUKUNFT</div></div>`
 
 const escape = (text: string) =>
   String(text).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string)
@@ -99,6 +116,7 @@ function loesungHtml(aufgabe: Aufgabe): string {
 /** Solution part on its own page, clearly marked as not for participants */
 function loesungsteilHtml(w: Arbeitsblatt): string {
   return `<div class="loesungsteil">
+${BRIEFKOPF_HTML}
 <div class="kopf">NUR FÜR DIE LEHRKRAFT – NICHT AN TEILNEHMENDE AUSGEBEN</div>
 <h1>Lösungen: ${escape(w.titel)}</h1>
 <p class="info">Stufe ${escape(w.stufe)} · Lösungen aus der KI-Erstellung, fachlich prüfen.</p>
@@ -116,7 +134,7 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
   const fusszeile = `Stufe ${w.stufe} · ${formatLabel} · ${w.sprache} · ${datumText} · KI-generiert – fachliche Freigabe ausstehend`.replace(/["\\]/g, '')
 
   const woerterbuch = w.woerterbuch?.length
-    ? `<h2>Kleines Wörter-Buch</h2>${w.woerterbuch.map((e) => `<p class="wort"><strong>${escape(e.wort)}:</strong> ${escape(e.erklaerung)}</p>`).join('')}`
+    ? `<section class="woerterbuch"><h2>Kleines Wörter-Buch</h2>${w.woerterbuch.map((e) => `<p class="wort"><strong>${escape(e.wort)}:</strong> ${escape(e.erklaerung)}</p>`).join('')}</section>`
     : ''
   const hinweis = w.hinweisAnleiter ? `<h2>Hinweis für die Lehrkraft</h2><p class="hinweis">${escape(w.hinweisAnleiter)}</p>` : ''
 
@@ -129,28 +147,34 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
   /* Margins in their own rule: browsers without page margin boxes drop only the footer rule below, not the margins */
   @page { size: A4; margin: 2.2cm 2.2cm 2.5cm; }
   @page {
-    @bottom-center { content: "${fusszeile} · Seite " counter(page) " von " counter(pages); font: 7pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${COLOR_MUTED}; }
+    @bottom-left { content: "${fusszeile}"; font: 7pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${COLOR_MUTED}; }
+    @bottom-right { content: counter(page) "/" counter(pages); font: 9pt Calibri, 'Segoe UI', Arial, sans-serif; color: ${CD.text}; }
   }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
-  body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.45; color: #1A1714; margin: 0; }
+  body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: ${CD.text}; margin: 0; }
+  .briefkopf { color: ${COLOR_PRIMARY}; font-family: 'Arial Narrow', 'Barlow Semi Condensed', Calibri, sans-serif; margin: 0 0 18pt; }
+  .briefkopf .marke { font-size: 13pt; }
+  .briefkopf .claim { font-size: 7pt; font-weight: 700; letter-spacing: 0.04em; }
   .kopf { font-size: 8pt; font-weight: 700; color: ${COLOR_PRIMARY}; letter-spacing: 0.08em; }
-  h1 { font-size: 18pt; margin: 6pt 0 3pt; line-height: 1.2; }
-  .info { font-size: 10pt; color: ${COLOR_MUTED}; margin: 0 0 4pt; }
+  h1 { font-size: 14pt; margin: 0 0 4pt; line-height: 1.25; }
+  .info { font-size: 9.5pt; color: ${COLOR_MUTED}; margin: 0 0 3pt; }
   .stufe { display: inline-block; font-weight: 700; padding: 1pt 6pt; background: ${farbe.bg}; color: ${farbe.text}; }
-  .name { font-size: 10pt; color: ${COLOR_MUTED}; margin: 12pt 0 14pt; }
-  h2 { font-size: 9pt; font-weight: 700; color: ${COLOR_PRIMARY}; text-transform: uppercase; letter-spacing: 0.06em; margin: 14pt 0 4pt; }
+  .name { font-size: 10pt; color: ${COLOR_MUTED}; margin: 10pt 0 12pt; }
+  h2 { font-size: 11pt; font-weight: 700; margin: 12pt 0 4pt; break-after: avoid; }
   p { margin: 0 0 6pt; }
   .achtung { background: #FFF3CD; color: #7A5C00; font-weight: 700; padding: 3pt 6pt; }
-  .aufgabe { break-inside: avoid; }
-  h3 { font-size: 12pt; margin: 14pt 0 6pt; padding: 3pt 6pt; background: ${farbe.bg}; color: ${farbe.text}; break-after: avoid; }
+  .aufgabe { break-inside: avoid; background: ${CD.aufgabe}; padding: 6pt 8pt 4pt; margin: 12pt 0; }
+  h3 { font-size: 11pt; font-weight: 700; margin: 0 0 6pt; break-after: avoid; }
   .option { margin: 0 0 5pt 12pt; }
   table.zuordnen { width: 100%; border-collapse: collapse; margin: 2pt 0 6pt; }
   table.zuordnen td { width: 50%; padding: 4pt 6pt; }
   table.zuordnen td.links { text-align: right; }
-  .malrahmen { height: 55mm; border: 1px solid ${COLOR_BORDER}; margin: 4pt 0 8pt; }
+  .malrahmen { height: 55mm; border: 1.5px solid ${CD.text}; background: #FFFFFF; margin: 4pt 0 8pt; }
   .linie { border-bottom: 1px solid ${COLOR_BORDER}; height: 22pt; }
+  .woerterbuch { break-inside: avoid; background: ${CD.woerterbuch}; padding: 6pt 8pt 4pt; margin: 14pt 0; }
+  .woerterbuch h2 { margin-top: 0; }
   .wort { margin: 0 0 4pt 12pt; }
-  .hinweis { font-size: 10pt; color: ${COLOR_MUTED}; font-style: italic; background: ${COLOR_PAPER}; border: 1px solid ${COLOR_BORDER}; padding: 6pt 8pt; }
+  .hinweis { font-size: 10pt; color: ${COLOR_MUTED}; font-style: italic; background: ${COLOR_PAPER}; border: 1px solid #BFBFBF; padding: 6pt 8pt; }
   .loesungsteil { break-before: page; }
   .loesungsteil .kopf { color: #7A2E00; }
   .loesung { break-inside: avoid; margin: 0 0 8pt; }
@@ -160,8 +184,8 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
 </style>
 </head>
 <body>
-<div class="kopf">BILDUNGSPARK HEILBRONN-FRANKEN</div>
-<h1>${escape(w.titel)}</h1>
+${BRIEFKOPF_HTML}
+<h1>Arbeitsblatt: ${escape(w.titel)}</h1>
 <p class="info">${escape(bausteinInfo)}</p>
 <p class="info"><span class="stufe">Stufe ${escape(w.stufe)}</span>&nbsp;&nbsp; ${escape(formatLabel)} · ${escape(w.sprache)}</p>
 <p class="name">Name: ____________________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Datum: ______________</p>

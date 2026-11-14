@@ -129,7 +129,7 @@ export function TransformPanel({ source, onClose }: Props) {
                           {sprache}
                         </span>
                       </div>
-                      <div className="px-3 py-2.5 flex items-center gap-3" style={{ backgroundColor: '#FFFEF9' }}>
+                      <div className="px-3 py-2.5 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF' }}>
                         {pikto ? (
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <span className="text-xl" aria-hidden="true">

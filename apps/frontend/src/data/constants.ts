@@ -40,7 +40,7 @@ export function niveausOf(worksheet: Worksheet): Level[] {
 }
 
 export const FORMAT_BADGE_COLORS: Record<Format, { bg: string; color: string }> = {
-  text: { bg: '#EBF0F8', color: '#1E3A5F' },
+  text: { bg: '#DCEAF7', color: '#00487A' },
   piktogramm: { bg: '#F3E8FF', color: '#7A2E9A' },
   mathefrei: { bg: '#FFF3CD', color: '#7A5C00' },
   'piktogramm-mathefrei': { bg: '#FAD9C8', color: '#7A2E00' },

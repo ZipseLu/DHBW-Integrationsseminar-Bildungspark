@@ -25,7 +25,7 @@ type Quelle = { art: 'laden' } | { art: 'backend' } | { art: 'beispiel'; grund: 
 
 const STATUS_LABEL = { entwurf: 'Entwurf', freigegeben: 'Freigegeben', archiviert: 'Archiviert' } as const
 const STATUS_FARBE = {
-  entwurf: { bg: '#EBF0F8', color: '#1E3A5F' },
+  entwurf: { bg: '#DCEAF7', color: '#00487A' },
   freigegeben: { bg: '#D4EDDA', color: '#1A5C32' },
   archiviert: { bg: '#FAD9C8', color: '#7A2E00' },
 } as const

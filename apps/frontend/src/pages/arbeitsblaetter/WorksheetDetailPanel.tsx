@@ -121,11 +121,11 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
         )}
       </div>
 
-      <div className="px-6 py-4 flex gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="px-6 py-4 flex flex-wrap gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
         <button
           type="button"
           onClick={onAdapt}
-          className="flex-1 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex-1 min-w-[8rem] px-4 py-2 rounded text-sm font-medium whitespace-nowrap hover:opacity-90 transition-opacity"
           style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
         >
           ✦ Anpassen
@@ -133,7 +133,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
         <button
           type="button"
           onClick={onDownload}
-          className="px-4 py-2 rounded text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+          className="px-4 py-2 rounded text-sm font-medium whitespace-nowrap hover:opacity-80 transition-opacity flex items-center gap-1.5"
           style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--card)' }}
         >
           <span aria-hidden="true">📄</span> Als Word speichern
@@ -145,7 +145,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
               setDruckFehler(null)
               if (w.backend) druckeGespeichertesArbeitsblatt(w.backend.id).catch((error: unknown) => setDruckFehler(`PDF nicht möglich: ${fehlertext(error)}`))
             }}
-            className="px-4 py-2 rounded text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            className="px-4 py-2 rounded text-sm font-medium whitespace-nowrap hover:opacity-80 transition-opacity flex items-center gap-1.5"
             style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--card)' }}
             title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
           >
@@ -160,7 +160,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
               if (w.backend)
                 druckeGespeichertesArbeitsblatt(w.backend.id, { mitLoesungen: true }).catch((error: unknown) => setDruckFehler(`PDF nicht möglich: ${fehlertext(error)}`))
             }}
-            className="px-4 py-2 rounded text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            className="px-4 py-2 rounded text-sm font-medium whitespace-nowrap hover:opacity-80 transition-opacity flex items-center gap-1.5"
             style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--card)' }}
             title="Arbeitsblatt mit Lösungsteil für die Lehrkraft am Ende"
           >
@@ -290,7 +290,7 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
   const levels = niveausOf(w)
 
   return (
-    <div className="flex flex-col items-center" style={{ backgroundColor: '#C8C0B4', padding: '20px 8px', minHeight: '100%', margin: '0 -24px' }}>
+    <div className="flex flex-col items-center" style={{ backgroundColor: '#C9D6E3', padding: '20px 8px', minHeight: '100%', margin: '0 -24px' }}>
       <div
         style={{
           width: '100%',
@@ -299,20 +299,20 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
           boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
           padding: '40px 44px 48px',
           fontFamily: 'Calibri, "Segoe UI", sans-serif',
-          color: '#1A1714',
+          color: '#1F1F1F',
           lineHeight: 1.5,
         }}
       >
-        <div style={{ ...smallCaps, fontSize: 9, color: '#1E3A5F', letterSpacing: '0.12em', marginBottom: 8 }}>Bildungspark Heilbronn-Franken</div>
-        <div style={{ height: 2, backgroundColor: '#1E3A5F', marginBottom: 14 }} />
+        <div style={{ ...smallCaps, fontSize: 9, color: '#00487A', letterSpacing: '0.12em', marginBottom: 8 }}>Bildungspark Heilbronn-Franken</div>
+        <div style={{ height: 2, backgroundColor: '#00487A', marginBottom: 14 }} />
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4, lineHeight: 1.25 }}>{w.title}</div>
-        <div style={{ fontSize: 11, color: '#6B6354', marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: '#4A5866', marginBottom: 20 }}>
           {w.berufsbild} · Baustein {w.baustein} · {w.ausbildungsbaustein}
         </div>
-        <div style={{ ...smallCaps, fontSize: 8.5, color: '#1E3A5F', marginBottom: 4 }}>Abschnitt</div>
+        <div style={{ ...smallCaps, fontSize: 8.5, color: '#00487A', marginBottom: 4 }}>Abschnitt</div>
         <div style={{ fontSize: 11, marginBottom: 24, lineHeight: 1.6 }}>{w.abschnitt.titel}</div>
 
-        <div style={{ ...smallCaps, fontSize: 8.5, color: '#1E3A5F', marginBottom: 8 }}>Binnendifferenzierung nach Niveaustufen</div>
+        <div style={{ ...smallCaps, fontSize: 8.5, color: '#00487A', marginBottom: 8 }}>Binnendifferenzierung nach Niveaustufen</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead>
             <tr>
@@ -333,8 +333,8 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
                 const s = LEVEL_STYLES[l]
                 const row = w.abschnitt.niveaus[l]
                 return (
-                  <td key={l} style={{ verticalAlign: 'top', padding: 8, backgroundColor: '#FFFEF9', borderBottom: '1px solid #D5CEBB' }}>
-                    <div style={{ ...smallCaps, fontSize: 7.5, color: '#6B6354', letterSpacing: '0.08em', marginBottom: 3 }}>Kompetenz</div>
+                  <td key={l} style={{ verticalAlign: 'top', padding: 8, backgroundColor: '#FFFFFF', borderBottom: '1px solid #C9D6E3' }}>
+                    <div style={{ ...smallCaps, fontSize: 7.5, color: '#4A5866', letterSpacing: '0.08em', marginBottom: 3 }}>Kompetenz</div>
                     <div style={{ fontSize: 10, marginBottom: 8, lineHeight: 1.45 }}>{row.kompetenz}</div>
                     {row.beispiel && (
                       <>
@@ -353,9 +353,9 @@ function WordPreview({ worksheet: w }: { worksheet: Worksheet }) {
           style={{
             marginTop: 40,
             paddingTop: 10,
-            borderTop: '1px solid #D5CEBB',
+            borderTop: '1px solid #C9D6E3',
             fontSize: 8.5,
-            color: '#6B6354',
+            color: '#4A5866',
             display: 'flex',
             justifyContent: 'space-between',
           }}
