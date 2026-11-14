@@ -76,8 +76,38 @@ ${inhalt}
 </section>`
 }
 
+/** Print options: `mitLoesungen` adds a solution part for the teacher at the end (FE-25) */
+export type DruckOptionen = { mitLoesungen?: boolean }
+
+/** Solution of one task: the AI's `loesung`; for matching tasks also the correct pairs */
+function loesungHtml(aufgabe: Aufgabe): string {
+  const typ = escape(AUFGABEN_TYP_LABEL[aufgabe.typ] ?? aufgabe.typ)
+  const teile: string[] = []
+  if (aufgabe.loesung?.trim()) teile.push(absaetze(aufgabe.loesung))
+  // The worksheet shows the right column shifted; the original options are the correct pairs
+  if (aufgabe.typ === 'zuordnen' && aufgabe.optionen?.length) {
+    const paare = aufgabe.optionen.map((option) => {
+      const [links, rechts = ''] = option.split('|').map((s) => s.trim())
+      return `<li>${escape(links)} → ${escape(rechts)}</li>`
+    })
+    teile.push(`<ul class="paare">${paare.join('')}</ul>`)
+  }
+  if (teile.length === 0) teile.push('<p class="ohne">Keine Lösung angegeben – bitte selbst prüfen.</p>')
+  return `<section class="loesung"><h4>Aufgabe ${aufgabe.nr}: ${typ}</h4>${teile.join('')}</section>`
+}
+
+/** Solution part on its own page, clearly marked as not for participants */
+function loesungsteilHtml(w: Arbeitsblatt): string {
+  return `<div class="loesungsteil">
+<div class="kopf">NUR FÜR DIE LEHRKRAFT – NICHT AN TEILNEHMENDE AUSGEBEN</div>
+<h1>Lösungen: ${escape(w.titel)}</h1>
+<p class="info">Stufe ${escape(w.stufe)} · Lösungen aus der KI-Erstellung, fachlich prüfen.</p>
+${w.aufgaben.map(loesungHtml).join('\n')}
+</div>`
+}
+
 /** Complete print page of a worksheet (exported for tests) */
-export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date()): string {
+export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optionen: DruckOptionen = {}): string {
   const farbe = LEVEL_STYLES[w.stufe] ?? LEVEL_STYLES.T
   const formatLabel = formatOption(w.format)?.label ?? w.format
   const bausteinInfo = [w.berufsfeld, w.baustein !== undefined ? `Baustein ${w.baustein}` : null, w.ausbildungsbaustein].filter(Boolean).join(' · ')
@@ -94,7 +124,7 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date()): stri
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>${escape(w.titel)}</title>
+<title>${escape(w.titel)}${optionen.mitLoesungen ? ' – mit Lösungen' : ''}</title>
 <style>
   /* Margins in their own rule: browsers without page margin boxes drop only the footer rule below, not the margins */
   @page { size: A4; margin: 2.2cm 2.2cm 2.5cm; }
@@ -121,6 +151,12 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date()): stri
   .linie { border-bottom: 1px solid ${COLOR_BORDER}; height: 22pt; }
   .wort { margin: 0 0 4pt 12pt; }
   .hinweis { font-size: 10pt; color: ${COLOR_MUTED}; font-style: italic; background: ${COLOR_PAPER}; border: 1px solid ${COLOR_BORDER}; padding: 6pt 8pt; }
+  .loesungsteil { break-before: page; }
+  .loesungsteil .kopf { color: #7A2E00; }
+  .loesung { break-inside: avoid; margin: 0 0 8pt; }
+  h4 { font-size: 11pt; margin: 10pt 0 3pt; color: ${COLOR_PRIMARY}; }
+  ul.paare { margin: 0 0 6pt; padding-left: 18pt; }
+  .ohne { color: ${COLOR_MUTED}; font-style: italic; }
 </style>
 </head>
 <body>
@@ -136,6 +172,7 @@ ${absaetze(w.einleitung)}
 ${w.aufgaben.map(aufgabeHtml).join('\n')}
 ${woerterbuch}
 ${hinweis}
+${optionen.mitLoesungen ? loesungsteilHtml(w) : ''}
 </body>
 </html>`
 }
@@ -144,7 +181,7 @@ ${hinweis}
  * Opens the print dialog for a worksheet. The user picks "Als PDF speichern";
  * the page title becomes the suggested file name.
  */
-export function druckeArbeitsblatt(w: Arbeitsblatt): void {
+export function druckeArbeitsblatt(w: Arbeitsblatt, optionen: DruckOptionen = {}): void {
   const frame = document.createElement('iframe')
   frame.setAttribute('aria-hidden', 'true')
   frame.setAttribute('tabindex', '-1')
@@ -159,7 +196,7 @@ export function druckeArbeitsblatt(w: Arbeitsblatt): void {
     throw new Error('Die Druckansicht konnte nicht geöffnet werden.')
   }
   dokument.open()
-  dokument.write(arbeitsblattDruckHtml(w))
+  dokument.write(arbeitsblattDruckHtml(w, new Date(), optionen))
   dokument.close()
 
   let entfernt = false
@@ -181,7 +218,7 @@ export function druckeArbeitsblatt(w: Arbeitsblatt): void {
 }
 
 /** PDF of a saved worksheet: loads its content (GET /api/arbeitsblaetter/:id) and opens the print dialog */
-export async function druckeGespeichertesArbeitsblatt(id: string): Promise<void> {
+export async function druckeGespeichertesArbeitsblatt(id: string, optionen: DruckOptionen = {}): Promise<void> {
   const blatt = await fetchArbeitsblatt(id)
-  druckeArbeitsblatt(blatt.inhalt)
+  druckeArbeitsblatt(blatt.inhalt, optionen)
 }

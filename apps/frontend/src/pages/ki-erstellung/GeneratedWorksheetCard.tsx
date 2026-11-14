@@ -96,10 +96,10 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
     }
   }
 
-  function handlePdf() {
+  function handlePdf(mitLoesungen = false) {
     setDownloadError(null)
     try {
-      druckeArbeitsblatt(worksheet)
+      druckeArbeitsblatt(worksheet, { mitLoesungen })
     } catch (error) {
       setDownloadError(error instanceof Error ? error.message : 'Die Druckansicht konnte nicht geöffnet werden.')
     }
@@ -227,12 +227,21 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
               </button>
               <button
                 type="button"
-                onClick={handlePdf}
+                onClick={() => handlePdf()}
                 title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
                 className="text-xs px-3 py-1.5 rounded font-medium"
                 style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
               >
                 🖨 PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePdf(true)}
+                title="Arbeitsblatt mit Lösungsteil für die Lehrkraft am Ende"
+                className="text-xs px-3 py-1.5 rounded font-medium"
+                style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
+              >
+                🖨 PDF mit Lösungen
               </button>
             </div>
             {speicherZustand.art === 'fehler' && (
