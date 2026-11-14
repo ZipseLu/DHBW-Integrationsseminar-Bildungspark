@@ -12,6 +12,8 @@
  *   - mathefrei: keine Zahlen > 3, keine Rechenzeichen, keine Rechenwoerter
  *   - piktogramm: Schluessel vorhanden, Anweisung <= 8 Woerter
  *   - Verbotsliste: verniedlichende oder diskriminierende Begriffe
+ *   - Answer options: reihenfolge/ankreuzen/zuordnen need at least 2 options,
+ *     zuordnen pairs need a "|" (QS-04: the model sometimes drops them)
  */
 import { AUFGABEN_ANZAHL } from './schema.js'
 
@@ -40,6 +42,31 @@ export const MATHE_WOERTER = [
   'prozent', 'summe', 'differenz', 'plus', 'minus', 'geteilt durch', 'mal nehmen', 'bruch',
   'hälfte', 'drittel', 'viertel', 'dezimal', 'kommazahl',
 ]
+
+/** Task types that are unsolvable without answer options, with the minimum count */
+export const OPTIONEN_MIN = { reihenfolge: 2, ankreuzen: 2, zuordnen: 2 }
+
+/**
+ * Hints for tasks whose answer options are missing or malformed.
+ * Also used by generate.js to decide whether to ask the model again.
+ *
+ * @param {object} worksheet  Arbeitsblatt (WorksheetSchema)
+ * @returns {string[]}
+ */
+export function fehlendeOptionen(worksheet) {
+  const hinweise = []
+  for (const a of worksheet.aufgaben ?? []) {
+    const min = OPTIONEN_MIN[a.typ]
+    if (!min) continue
+    const optionen = (a.optionen ?? []).filter((o) => o.trim())
+    if (optionen.length < min) {
+      hinweise.push(`Aufgabe ${a.nr}: Typ „${a.typ}“ braucht mindestens ${min} Antwortmöglichkeiten, vorhanden: ${optionen.length}.`)
+    } else if (a.typ === 'zuordnen' && optionen.some((o) => !o.includes('|'))) {
+      hinweise.push(`Aufgabe ${a.nr}: Zuordnen-Paare brauchen das Format „links | rechts“.`)
+    }
+  }
+  return hinweise
+}
 
 const wordBoundary = (words) =>
   new RegExp(`(?<![\\p{L}\\p{N}])(?:${words.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}])`, 'giu')
@@ -145,7 +172,10 @@ export function validateWorksheet(worksheet) {
     }
   }
 
-  // 5. Verbotsliste – alle Texte inklusive Titel und Anleiter-Hinweis
+  // 5. Answer options (an empty "Kreuze an." task cannot be solved)
+  hinweise.push(...fehlendeOptionen(worksheet))
+
+  // 6. Verbotsliste – alle Texte inklusive Titel und Anleiter-Hinweis
   const alleTexte = [
     { ort: 'Titel', text: worksheet.titel ?? '' },
     ...lesetexte,
