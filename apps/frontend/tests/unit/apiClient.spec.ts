@@ -24,6 +24,14 @@ import {
   updateArbeitsblatt,
   type Arbeitsblatt,
   type ArbeitsblattMeta,
+  deleteUpload,
+  downloadUploadDatei,
+  fetchUpload,
+  fetchUploads,
+  saveEingefuegtenText,
+  updateUpload,
+  uploadArbeitsblatt,
+  uploadDateiUrl,
 } from '@/lib/api'
 
 /**
@@ -329,5 +337,81 @@ describe('Anmeldung (/api/auth, BE-01)', () => {
     expect(authHeader()).toBeNull()
     expect(getAuthToken()).toBeNull()
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('Uploads (/api/uploads)', () => {
+  const UPLOAD = {
+    id: ID,
+    dateiname: 'Übung Gabelstapler.docx',
+    dateityp: 'docx',
+    groesse: 1234,
+    hatDatei: true,
+    textQuelle: 'datei',
+    textLaenge: 5,
+    textVorschau: 'Hallo',
+    berufsfeld: null,
+    thema: 'Gabelstapler',
+    hochgeladenVon: 'C. Hager',
+    hochgeladenAm: '2026-11-04T08:00:00.000Z',
+    geaendertAm: '2026-11-04T08:00:00.000Z',
+    text: 'Hallo',
+  }
+
+  it('uploadArbeitsblatt schickt die Datei roh mit kodiertem Dateinamen', async () => {
+    antworte(json({ upload: UPLOAD, hinweise: [] }, 201))
+    const datei = new File(['docx-bytes'], 'Übung Gabelstapler.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    const antwort = await uploadArbeitsblatt(datei, { thema: 'Gabelstapler', berufsfeld: '' })
+
+    expect(antwort.upload.id).toBe(ID)
+    const { url, init } = aufruf()
+    expect(url).toBe('/api/uploads?thema=Gabelstapler')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(datei)
+    const headers = new Headers(init.headers)
+    expect(headers.get('X-Dateiname')).toBe('%C3%9Cbung%20Gabelstapler.docx')
+    expect(headers.get('Content-Type')).toBe(datei.type)
+  })
+
+  it('uploadArbeitsblatt nutzt application/octet-stream ohne Dateityp und meldet 415', async () => {
+    antworte(json({ error: 'unsupported_media_type', code: 'dateityp_nicht_erlaubt', message: 'Dateityp „.exe“ wird nicht unterstützt.' }, 415))
+    const fehler = await uploadArbeitsblatt(new File(['MZ'], 'x.exe')).catch((e: unknown) => e)
+    expect(new Headers(aufruf().init.headers).get('Content-Type')).toBe('application/octet-stream')
+    expect(fehler).toMatchObject({ status: 415, code: 'unsupported_media_type' })
+  })
+
+  it('saveEingefuegtenText schickt nur gefüllte Felder als JSON', async () => {
+    antworte(json({ upload: { ...UPLOAD, dateityp: 'txt', hatDatei: false }, hinweise: [] }, 201))
+    await saveEingefuegtenText('Lies den Text.', { titel: 'Hygiene', berufsfeld: '' })
+    expect(aufruf().url).toBe('/api/uploads')
+    expect(JSON.parse(String(aufruf().init.body))).toEqual({ text: 'Lies den Text.', titel: 'Hygiene' })
+  })
+
+  it('fetchUploads, fetchUpload, updateUpload und deleteUpload nutzen die richtigen Routen', async () => {
+    antworte(json({ eintraege: [UPLOAD], gesamt: 1 }))
+    antworte(json({ upload: UPLOAD }))
+    antworte(json({ upload: { ...UPLOAD, text: 'Neu', textQuelle: 'bearbeitet' } }))
+    antworte(new Response(null, { status: 204 }))
+
+    expect(await fetchUploads({ q: 'Gabel' })).toHaveLength(1)
+    expect((await fetchUpload(ID)).text).toBe('Hallo')
+    expect((await updateUpload(ID, { text: 'Neu' })).textQuelle).toBe('bearbeitet')
+    await deleteUpload(ID)
+
+    expect(aufruf(0).url).toBe('/api/uploads?q=Gabel')
+    expect(aufruf(1).url).toBe(`/api/uploads/${ID}`)
+    expect(aufruf(2).init.method).toBe('PATCH')
+    expect(JSON.parse(String(aufruf(2).init.body))).toEqual({ text: 'Neu' })
+    expect(aufruf(3).init.method).toBe('DELETE')
+  })
+
+  it('uploadDateiUrl und downloadUploadDatei für die Originaldatei', async () => {
+    expect(uploadDateiUrl(ID)).toBe(`/api/uploads/${ID}/datei`)
+    expect(uploadDateiUrl(ID, { anzeigen: true })).toBe(`/api/uploads/${ID}/datei?anzeigen=true`)
+
+    antworte(new Response('pdf', { status: 200 }))
+    expect(await downloadUploadDatei({ id: ID, dateiname: 'scan.pdf' })).toBe('scan.pdf')
+    expect(aufruf().url).toBe(`/api/uploads/${ID}/datei`)
+    expect(vi.mocked(saveAs)).toHaveBeenCalledTimes(1)
   })
 })

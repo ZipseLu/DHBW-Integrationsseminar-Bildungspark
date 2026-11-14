@@ -432,3 +432,103 @@ export async function fetchAktuellesKonto(): Promise<Konto> {
 export function logout(): void {
   setAuthToken(null)
 }
+
+// --- Uploaded worksheets: /api/uploads (Trello "Upload von Arbeitsblättern") ---
+// Contract: apps/backend/src/routes/uploads.js, docs/uploads-api.md
+
+export type UploadDateityp = 'pdf' | 'docx' | 'doc' | 'txt' | 'md' | 'png' | 'jpg'
+
+/** List entry – without the full text (GET /api/uploads) */
+export type Upload = {
+  id: string
+  dateiname: string
+  dateityp: UploadDateityp
+  /** Bytes of the file (or of the pasted text) */
+  groesse: number
+  /** false for pasted text – then there is nothing to download */
+  hatDatei: boolean
+  /** Where the text comes from; null = no text yet (PDF, image) */
+  textQuelle: 'datei' | 'eingefuegt' | 'bearbeitet' | null
+  textLaenge: number
+  /** First 200 characters of the text */
+  textVorschau: string | null
+  berufsfeld: string | null
+  thema: string | null
+  hochgeladenVon: string | null
+  hochgeladenAm: string
+  geaendertAm: string
+}
+
+/** One upload with its full text (GET /api/uploads/:id, POST, PATCH) */
+export type UploadMitText = Upload & { text: string | null }
+
+export type UploadAntwort = { upload: UploadMitText; hinweise: string[] }
+
+export type UploadInfo = { berufsfeld?: string; thema?: string; hochgeladenVon?: string }
+
+const uploadQuery = (info: UploadInfo) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(info)) if (value) params.set(key, value)
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+/**
+ * POST /api/uploads – sends the file as raw body (no multipart), the name in X-Dateiname.
+ * `hinweise` explains e.g. that no text could be read from a PDF.
+ */
+export async function uploadArbeitsblatt(datei: File, info: UploadInfo = {}): Promise<UploadAntwort> {
+  const response = await apiFetch(`/api/uploads${uploadQuery(info)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': datei.type || 'application/octet-stream', 'X-Dateiname': encodeURIComponent(datei.name) },
+    body: datei,
+  })
+  return (await response.json()) as UploadAntwort
+}
+
+/** POST /api/uploads with JSON – stores pasted text (copy & paste instead of a file) */
+export async function saveEingefuegtenText(text: string, info: UploadInfo & { titel?: string } = {}): Promise<UploadAntwort> {
+  const response = await postJson('/api/uploads', { text, ...Object.fromEntries(Object.entries(info).filter(([, v]) => v)) })
+  return (await response.json()) as UploadAntwort
+}
+
+/** GET /api/uploads – newest first; `q` searches name, topic and text */
+export async function fetchUploads(filter: { q?: string; berufsfeld?: string } = {}): Promise<Upload[]> {
+  const response = await apiFetch(`/api/uploads${uploadQuery(filter)}`)
+  return ((await response.json()) as { eintraege: Upload[] }).eintraege
+}
+
+/** GET /api/uploads/:id – with the full text, e.g. as input for the KI */
+export async function fetchUpload(id: string): Promise<UploadMitText> {
+  const response = await apiFetch(`/api/uploads/${encodeURIComponent(id)}`)
+  return ((await response.json()) as { upload: UploadMitText }).upload
+}
+
+/** PATCH /api/uploads/:id – correct or add the text, change Berufsfeld or topic */
+export async function updateUpload(id: string, patch: { text?: string | null; berufsfeld?: string | null; thema?: string | null }): Promise<UploadMitText> {
+  const response = await apiFetch(`/api/uploads/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  return ((await response.json()) as { upload: UploadMitText }).upload
+}
+
+/** DELETE /api/uploads/:id */
+export async function deleteUpload(id: string): Promise<void> {
+  await apiFetch(`/api/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** URL of the original file – `anzeigen` opens PDFs and images in the browser instead of downloading */
+export function uploadDateiUrl(id: string, { anzeigen = false } = {}): string {
+  return `${BASE_URL}/api/uploads/${encodeURIComponent(id)}/datei${anzeigen ? '?anzeigen=true' : ''}`
+}
+
+/** GET /api/uploads/:id/datei – downloads the original file */
+export async function downloadUploadDatei(upload: Pick<Upload, 'id' | 'dateiname'>): Promise<string> {
+  const response = await apiFetch(`/api/uploads/${encodeURIComponent(upload.id)}/datei`)
+  const blob = await response.blob()
+  const fileName = fileNameFromDisposition(response.headers.get('Content-Disposition'), upload.dateiname)
+  saveAs(blob, fileName)
+  return fileName
+}

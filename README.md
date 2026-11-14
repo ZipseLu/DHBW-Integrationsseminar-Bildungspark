@@ -176,6 +176,11 @@ Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) 
 schickt das Token als `Authorization: Bearer …` mit (`lib/api.ts`). Ohne Token bleiben die Routen bis BE-06 offen –
 Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
 
+**Upload von Arbeitsblättern:** `POST /api/uploads` speichert vorhandene Arbeitsblätter (PDF, Word, Text, Bild bis
+20 MB; die Datei als roher Body, Name im Header `X-Dateiname`) oder eingefügten Text; aus Word- und Textdateien wird
+der Text gelesen. `GET /api/uploads`, `GET/PATCH/DELETE /api/uploads/:id`, `GET /api/uploads/:id/datei` –
+Details: **[docs/uploads-api.md](docs/uploads-api.md)**.
+
 Ablauf, Glossar, Demo-Start (mit und ohne Docker), 5-Minuten-Demo-Skript, bewusste Lücken und
 Anleitung zum Ändern des Prompts: **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
 Der Prompt selbst liegt lesbar in `apps/backend/src/arbeitsblatt/prompts/arbeitsblatt-system.md`.
@@ -377,7 +382,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 | `GEMINI_API_KEY` | leer | Ohne Key läuft KI im Mock-Modus |
 | `GEMINI_MODEL` | `gemini-3.5-flash` | `gemini-2.5-flash` ist seit Oktober 2026 für neue Keys nicht mehr verfügbar |
 | `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | Wird einmalig versucht, wenn das Modell mit 503 (überlastet) antwortet |
-| `AI_TIMEOUT_MS` | `60000` | Zeitlimit je Generierungsauftrag |
+| `AI_TIMEOUT_MS` | `180000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
 
 ### Secrets
@@ -542,6 +547,7 @@ docker compose down -v && docker compose up --build
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git
 - [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
 - [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API (`/api/teilnehmende`, BE-02) und Benutzerverwaltung-API (`/api/benutzer`, BE-03) fertig**, Frontend-Anbindung (FE-09, FE-12) und Einstellungen (BE-09) offen
+- [ ] Vorhandene Arbeitsblätter hochladen und anpassen – **Backend fertig (`/api/uploads`, Migration 003, 12.11.)**, Frontend-Anbindung (FE-05) offen
 - [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
