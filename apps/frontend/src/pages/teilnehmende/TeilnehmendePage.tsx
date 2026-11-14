@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
-import { buildStations, nextParticipantId, type StationDraft } from '@/lib/participants'
+import { buildStations, normalisiereKennung, pruefeKennung, type StationDraft } from '@/lib/participants'
 import { useLernstand } from '@/lib/lernstand'
 import type { TeilnehmendeState } from '@/lib/teilnehmende'
 import type { Lernstand } from '@/lib/api'
@@ -47,7 +47,10 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
       // The backend keeps the pseudonymous ID fixed, so it is not editable here
       participant = { ...original, level: berufsbilder[0]?.level ?? original.level, berufsbilder }
     } else if (edit.mode === 'new') {
-      const newId = (id || nextParticipantId(participants)).toUpperCase()
+      // FE-28: the IW3 number is required; there is no generated fallback ID any more
+      const kennungFehler = pruefeKennung(id)
+      if (kennungFehler) return kennungFehler
+      const newId = normalisiereKennung(id)
       if (participants.some((p) => p.id === newId)) return `Die Kennung ${newId} gibt es bereits.`
       const berufsbilder = buildStations(drafts, [], today)
       participant = { id: newId, level: berufsbilder[0]?.level ?? 'T', progress: 0, lastActive: today, berufsbilder }

@@ -39,12 +39,21 @@ export function buildStations(drafts: readonly StationDraft[], existing: readonl
   })
 }
 
-/** Naechste freie Kennung "TN-001", "TN-002", … wenn keine eigene angegeben wurde */
-export function nextParticipantId(participants: readonly Participant[]): string {
-  let n = participants.length + 1
-  const taken = new Set(participants.map((p) => p.id))
-  while (taken.has(`TN-${String(n).padStart(3, '0')}`)) n++
-  return `TN-${String(n).padStart(3, '0')}`
+/**
+ * Pseudonymous ID such as "IW3-4421" (FE-28) – same rule as the backend
+ * (apps/backend/src/teilnehmende/schema.js, KENNUNG_RE). Lower case is accepted
+ * and converted to upper case.
+ */
+export const KENNUNG_RE = /^[A-Z][A-Z0-9]{1,4}-\d{1,6}$/
+
+export const normalisiereKennung = (value: string) => value.trim().toUpperCase()
+
+/** Error message for the ID field, or null if the ID is valid */
+export function pruefeKennung(value: string): string | null {
+  const kennung = normalisiereKennung(value)
+  if (!kennung) return 'Bitte die IW3-Nummer der Person eintragen, z. B. IW3-4421.'
+  if (!KENNUNG_RE.test(kennung)) return 'Die Kennung muss wie IW3-4421 aufgebaut sein (Buchstaben/Ziffern, Bindestrich, Nummer) – keine Namen.'
+  return null
 }
 
 export function moveItem<T>(list: readonly T[], index: number, direction: -1 | 1): T[] {
