@@ -132,13 +132,30 @@ describe('Middleware', () => {
     expect(response.headers['www-authenticate']).toBe('Bearer')
   })
 
-  it('weist falsch aufgebaute Header mit 401 ab', async () => {
+  it('weist einen kaputten Bearer-Header mit 401 ab', async () => {
     const { token } = erstelleToken(KONTO)
-    for (const header of [`Token ${token}`, 'Bearer', `Bearer ${token} extra`, 'Basic dXNlcjpwdw==']) {
+    for (const header of ['Bearer', `Bearer ${token} extra`, `Bearer ${token} Basic dXNlcjpwdw==`]) {
       const response = await request(app).get('/offen').set('Authorization', header)
       expect(response.status).toBe(401)
       expect(response.body.code).toBe('token_ungueltig')
     }
+  })
+
+  it('behandelt fremde Authorization-Schemata wie kein Token', async () => {
+    const { token } = erstelleToken(KONTO)
+    // "Basic …" kommt z. B. von der nginx-Zugangsabsicherung auf Staging; es darf die
+    // API bis BE-06 nicht blockieren. Ein fremdes Schema authentifiziert niemanden.
+    for (const header of ['Basic dXNlcjpwdw==', `Token ${token}`]) {
+      const response = await request(app).get('/offen').set('Authorization', header)
+      expect(response.status).toBe(200)
+      expect(response.body.benutzer).toBeNull()
+    }
+  })
+
+  it('verlangt trotz Basic-Header ein Token für geschützte Routen', async () => {
+    const response = await request(app).get('/geschuetzt').set('Authorization', 'Basic dXNlcjpwdw==')
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('anmeldung_erforderlich')
   })
 
   it('erfordereAnmeldung verlangt ein Token', async () => {
@@ -169,6 +186,12 @@ describe('Anmeldung in der App (ohne Datenbank)', () => {
 
   it('GET /api/auth/me ohne Token: 401', async () => {
     const response = await request(app).get('/api/auth/me')
+    expect(response.status).toBe(401)
+    expect(response.body.code).toBe('anmeldung_erforderlich')
+  })
+
+  it('ein Basic-Header der Staging-Absicherung wird wie kein Token behandelt', async () => {
+    const response = await request(app).get('/api/auth/me').set('Authorization', 'Basic dXNlcjpwdw==')
     expect(response.status).toBe(401)
     expect(response.body.code).toBe('anmeldung_erforderlich')
   })
