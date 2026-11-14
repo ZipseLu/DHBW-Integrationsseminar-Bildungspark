@@ -32,20 +32,20 @@ test.describe('Hauptprozess: Arbeitsblatt erstellen, speichern, in der Liste fin
     // 1) Create one variant (default: Lagerlogistik, first learning goal, level A, standard text)
     await nav.getByRole('button', { name: /KI-Erstellung/ }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('KI-Erstellung')
-    await page.getByLabel(/THEMA \/ TITEL/).fill('E2E-Test Hauptprozess')
-    await page.getByRole('button', { name: '✦ 1 Variante generieren' }).click()
+    await page.getByPlaceholder('z.B. Sicherheitsregeln beim Gabelstapler').fill('E2E-Test Hauptprozess')
+    await page.getByRole('button', { name: /Variante generieren/ }).click()
 
     const ergebnis = page.getByRole('region', { name: 'Erstellte Varianten' })
-    await expect(ergebnis.getByText('✓ 1 Variante erstellt')).toBeVisible({ timeout: 90_000 })
+    await expect(ergebnis.getByText('1 Variante erstellt')).toBeVisible({ timeout: 90_000 })
 
     // 2) Save it and remember what the backend stored
     const gespeichert = page.waitForResponse((r) => r.url().endsWith('/api/arbeitsblaetter') && r.request().method() === 'POST')
-    await ergebnis.getByRole('button', { name: '💾 Speichern' }).click()
+    await ergebnis.getByRole('button', { name: 'Speichern' }).click()
     const antwort = await gespeichert
     expect(antwort.status()).toBe(201)
     const { arbeitsblatt } = await antwort.json()
     gespeicherteId = arbeitsblatt.id
-    await expect(ergebnis.getByRole('button', { name: '✓ Gespeichert' })).toBeDisabled()
+    await expect(ergebnis.getByRole('button', { name: 'Gespeichert' })).toBeDisabled()
     expect(arbeitsblatt).toMatchObject({ status: 'entwurf', version: 1, kiGeneriert: true })
 
     // 3) Find it in the list, loaded from the backend

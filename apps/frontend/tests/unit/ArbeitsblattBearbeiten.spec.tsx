@@ -64,6 +64,7 @@ function backend({ patchFehler = false }: { patchFehler?: boolean } = {}) {
   const patches: Record<string, unknown>[] = []
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url)
+    if (u.startsWith('/api/uploads')) return json({ eintraege: [], gesamt: 0 })
     if (u.endsWith('/verlauf')) {
       return json({ eintraege: [{ version: state.version, aktion: 'bearbeitet', autor: 'T. Neumann', notiz: 'Einleitung gekürzt', kiMeta: null, erstelltAm: state.geaendertAm }] })
     }
@@ -87,7 +88,7 @@ function backend({ patchFehler = false }: { patchFehler?: boolean } = {}) {
 }
 
 function renderPage(user: StaffUser = CURRENT_USER) {
-  render(<ArbeitsblaetterPage user={user} savedDocs={[]} onSavedDocsChange={() => {}} favoriteIds={[]} onFavoriteIdsChange={() => {}} />)
+  render(<ArbeitsblaetterPage user={user} onKiAnpassen={() => {}} favoriteIds={[]} onFavoriteIdsChange={() => {}} />)
 }
 
 async function oeffneBearbeiten() {

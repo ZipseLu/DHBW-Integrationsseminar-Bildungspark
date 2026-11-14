@@ -73,6 +73,25 @@ export const config = {
       deployment: process.env.AZURE_OPENAI_DEPLOYMENT ?? '',
     },
   },
+
+  webSearch: {
+    // 'scrape' ruft die DuckDuckGo-HTML-Suche auf (kein API-Key noetig),
+    // 'mock' liefert simulierte Platzhalter.
+    provider: process.env.WEB_SEARCH_PROVIDER ?? 'scrape',
+    // Maximal zurueckgegebene Treffer pro Anfrage
+    maxResults: int(process.env.WEB_SEARCH_MAX_RESULTS, 10),
+    // Zeitlimit eines einzelnen Anbieters in Millisekunden
+    timeoutMs: int(process.env.WEB_SEARCH_TIMEOUT_MS, 15_000),
+    // Gesamtzeitlimit ueber alle Anbieter hinweg (DuckDuckGo, Yahoo, Bing).
+    // Verhindert, dass eine Anfrage bei mehreren Timeouts minutenlang haengt.
+    totalTimeoutMs: int(process.env.WEB_SEARCH_TOTAL_TIMEOUT_MS, 20_000),
+    // Einfaches In-Memory-Rate-Limit pro Client-IP (BE-06), damit die Route
+    // auf Staging nicht als offener Such-Proxy missbraucht werden kann.
+    rateLimit: {
+      max: int(process.env.WEB_SEARCH_RATE_LIMIT_MAX, 30),
+      windowMs: int(process.env.WEB_SEARCH_RATE_LIMIT_WINDOW_MS, 60_000),
+    },
+  },
 }
 
 if (config.env === 'production' && !process.env.JWT_SECRET) {
