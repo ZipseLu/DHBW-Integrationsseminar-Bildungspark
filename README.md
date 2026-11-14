@@ -164,6 +164,11 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 
 | `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 005), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
 
+**Dashboard (BE-07):** `GET /api/dashboard` liefert Arbeitsblattzahlen je Status, Kennzahlen zu nicht archivierten
+Arbeitsblättern, die Anzahl Teilnehmender mit aktiver Lernstation und bis zu fünf zuletzt geänderte Arbeitsblätter
+mit ihrer letzten Aktion. Archivierte Arbeitsblätter sind in `proStatus.archiviert` und
+`gesamtInklusiveArchiviert` enthalten, nicht in `arbeitsblaetter.gesamt`.
+
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
 anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
 Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
@@ -309,6 +314,8 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │   ├── app.js            Express-App (exportiert – Supertest lädt sie)
 │   │   │   ├── config.js         Env-Konfiguration ohne Secrets
 │   │   │   ├── db.js             MySQL-Pool (mysql2/promise)
+│   │   │   ├── dashboard/
+│   │   │   │   └── repository.js Kennzahlen und letzte Aktivitäten (BE-07)
 │   │   │   ├── ai/
 │   │   │   │   ├── provider.js   Provider-Abstraktion (Gemini ↔ Azure)
 │   │   │   │   ├── gemini.js     Gemini-Adapter (@google/genai, JSON-Schema-Ausgabe)
@@ -333,6 +340,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │       ├── teilnehmende.js  /api/teilnehmende (Profile + Lernweg, BE-02)
 │   │   │       ├── benutzer.js      /api/benutzer (Mitarbeiterkonten, BE-03)
 │   │   │       ├── auth.js          /api/auth/login, /api/auth/me (Anmeldung, BE-01; Token-Prüfung in src/auth/)
+│   │   │       ├── dashboard.js     GET /api/dashboard (BE-07)
 │   │   │       └── zuordnungen.js   /api/teilnehmende/…/zuordnungen, …/lernstand (BE-04; Regeln in src/zuordnungen/)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)

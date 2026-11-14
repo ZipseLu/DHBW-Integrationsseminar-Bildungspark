@@ -23,6 +23,7 @@ import { createZuordnungenRouter } from './routes/zuordnungen.js'
 import { authentifiziere } from './auth/anmeldung.js'
 import { createUploadsRouter } from './routes/uploads.js'
 import { webSearchRouter } from './routes/web-search.js'
+import { createDashboardRouter } from './routes/dashboard.js'
 
 export function createApp() {
   const app = express()
@@ -72,6 +73,8 @@ export function createApp() {
   app.use('/api/benutzer', createBenutzerRouter())
   // Uploaded worksheets (table uploads) – raw file body up to 20 MB, parsed inside the router
   app.use('/api/uploads', createUploadsRouter())
+  // Kennzahlen und letzte Aktivitäten für FE-06 (BE-07)
+  app.use('/api/dashboard', createDashboardRouter())
 
   // Websuche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock)
   app.use('/api/web-search', webSearchRouter)
