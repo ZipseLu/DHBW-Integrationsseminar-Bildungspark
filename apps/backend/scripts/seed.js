@@ -3,6 +3,9 @@
  * `npm run db:seed -- --reset` vorher alle Arbeitsblätter löschen
  * `npm run db:seed -- --lernziele=10`  Anzahl Lernziele (je vier Stufen)
  *
+ * Übernimmt zuerst die Lehrpläne aus data/lehrplaene.json in die Datenbank (Migration 005),
+ * falls dort noch keine stehen und die Datei existiert (`npm run import:lehrplaene`).
+ *
  * Legt außerdem die fünf Beispiel-Teilnehmenden (BE-02), die vier Beispiel-Mitarbeiterkonten
  * (BE-03, Startpasswort aus SEED_PASSWORT, sonst zufällig und einmalig im Log) aus dem Frontend und
  * Beispiel-Zuordnungen von Arbeitsblättern zu Teilnehmenden (BE-04) an.
@@ -11,6 +14,7 @@
 import { describeConfig } from '../src/config.js'
 import { closePool } from '../src/db.js'
 import { runMigrations } from '../src/db/migrate.js'
+import { seedLehrplaene } from '../src/lehrplan/seed.js'
 import { seedArbeitsblaetter } from '../src/arbeitsblaetter/seed.js'
 import { seedTeilnehmende } from '../src/teilnehmende/seed.js'
 import { seedBenutzer } from '../src/benutzer/seed.js'
@@ -27,6 +31,7 @@ if (!Number.isInteger(lernziele) || lernziele < 1) {
 try {
   console.log(`[seed] Datenbank: ${describeConfig().db}`)
   await runMigrations({ log: console.log })
+  await seedLehrplaene({ log: console.log })
   await seedArbeitsblaetter({ reset, lernziele, log: console.log })
   await seedTeilnehmende({ reset, log: console.log })
   await seedBenutzer({ reset, log: console.log })
