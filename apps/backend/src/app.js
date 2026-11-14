@@ -21,6 +21,8 @@ import { createBenutzerRouter } from './routes/benutzer.js'
 import { createAuthRouter } from './routes/auth.js'
 import { createZuordnungenRouter } from './routes/zuordnungen.js'
 import { authentifiziere } from './auth/anmeldung.js'
+import { createUploadsRouter } from './routes/uploads.js'
+import { webSearchRouter } from './routes/web-search.js'
 
 export function createApp() {
   const app = express()
@@ -68,6 +70,11 @@ export function createApp() {
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
   // Staff accounts (table users, BE-03) – admins only as soon as a token is sent (BE-01)
   app.use('/api/benutzer', createBenutzerRouter())
+  // Uploaded worksheets (table uploads) – raw file body up to 20 MB, parsed inside the router
+  app.use('/api/uploads', createUploadsRouter())
+
+  // Websuche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock)
+  app.use('/api/web-search', webSearchRouter)
 
   // 404 fuer alles Unbekannte
   app.use((req, res) => {

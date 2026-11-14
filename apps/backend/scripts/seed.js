@@ -7,7 +7,7 @@
  * falls dort noch keine stehen und die Datei existiert (`npm run import:lehrplaene`).
  *
  * Legt außerdem die fünf Beispiel-Teilnehmenden (BE-02), die vier Beispiel-Mitarbeiterkonten
- * (BE-03, Startpasswort aus SEED_PASSWORT, sonst „bildungspark-demo“) aus dem Frontend und
+ * (BE-03, Startpasswort aus SEED_PASSWORT, sonst zufällig und einmalig im Log) aus dem Frontend und
  * Beispiel-Zuordnungen von Arbeitsblättern zu Teilnehmenden (BE-04) an.
  * `--reset` löscht Arbeitsblätter, Teilnehmende und Konten – und damit auch alle Zuordnungen.
  */

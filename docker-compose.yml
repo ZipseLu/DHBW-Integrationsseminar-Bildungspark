@@ -93,16 +93,23 @@ services:
       DB_PASSWORD: "${MYSQL_PASSWORD:-bildungspark-dev}"
       DB_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
       # CORS: im Dev erlauben wir mehrere Ports
-      CORS_ORIGINS: "${PUBLIC_FRONTEND_URL:-http://localhost:5173},http://localhost:8080,http://localhost:8443"
+      CORS_ORIGINS: "${PUBLIC_FRONTEND_URL:-http://localhost:5173},http://frontend:5173,http://localhost:8080,http://localhost:8443"
       # --- KI-Provider ---
       AI_PROVIDER: "${AI_PROVIDER:-gemini}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.5-flash}"
       GEMINI_FALLBACK_MODEL: "${GEMINI_FALLBACK_MODEL:-gemini-3.5-flash-lite}"
-      AI_TIMEOUT_MS: "${AI_TIMEOUT_MS:-60000}"
+      AI_TIMEOUT_MS: "${AI_TIMEOUT_MS:-180000}"
       AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
       AZURE_OPENAI_API_KEY: "${AZURE_OPENAI_API_KEY:-}"
       AZURE_OPENAI_DEPLOYMENT: "${AZURE_OPENAI_DEPLOYMENT:-}"
+      # --- Web-Suche nach Arbeitsblättern (DuckDuckGo-Scraping ohne Key, oder Mock) ---
+      WEB_SEARCH_PROVIDER: "${WEB_SEARCH_PROVIDER:-scrape}"
+      WEB_SEARCH_MAX_RESULTS: "${WEB_SEARCH_MAX_RESULTS:-10}"
+      WEB_SEARCH_TIMEOUT_MS: "${WEB_SEARCH_TIMEOUT_MS:-15000}"
+      WEB_SEARCH_TOTAL_TIMEOUT_MS: "${WEB_SEARCH_TOTAL_TIMEOUT_MS:-20000}"
+      WEB_SEARCH_RATE_LIMIT_MAX: "${WEB_SEARCH_RATE_LIMIT_MAX:-30}"
+      WEB_SEARCH_RATE_LIMIT_WINDOW_MS: "${WEB_SEARCH_RATE_LIMIT_WINDOW_MS:-60000}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
@@ -126,6 +133,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # DB-Backup - taeglicher mysqldump (OPS-04), siehe docs/datenbank-backup.md
+  # Dumps liegen im Host-Ordner ./backups (nicht eingecheckt).
+  # ---------------------------------------------------------------------------
+  db-backup:
+    image: mysql:8.4
+    container_name: bp-db-backup
+    restart: unless-stopped
+    entrypoint: ["sh", "/scripts/backup-loop.sh"]
+    environment:
+      DB_HOST: db
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root-dev}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-bildungspark}"
+      BACKUP_HOUR: "${BACKUP_HOUR:-2}"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+      BACKUP_ON_START: "${BACKUP_ON_START:-false}"
+      TZ: "Europe/Berlin"
+    volumes:
+      - ./docker/backup:/scripts:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bp-net
 
   # ---------------------------------------------------------------------------
   # Frontend – React + TypeScript + Vite (Dev-Server mit Hot Reload)

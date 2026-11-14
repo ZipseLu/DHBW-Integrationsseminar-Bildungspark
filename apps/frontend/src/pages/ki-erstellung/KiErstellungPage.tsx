@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { erwartungenAusVorlage } from '@/lib/vorlage'
 import { stufeTextVar } from '@/lib/settings'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
@@ -48,8 +49,10 @@ type GenerationError = { message: string; variant: string; current: number; tota
  */
 /** vorauswahl: Lernziel, das auf der Seite Lehrpläne mit "Arbeitsblatt daraus erstellen" gewählt wurde */
 export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorauswahl | null } = {}) {
-  const [thema, setThema] = useState('')
-  const [erwartungen, setErwartungen] = useState('')
+  // FE-05: an uploaded worksheet arrives as topic and as "Erwartungen" (the template text)
+  const vorlage = vorauswahl?.vorlage ? erwartungenAusVorlage(vorauswahl.vorlage.name, vorauswahl.vorlage.text) : null
+  const [thema, setThema] = useState(vorauswahl?.thema ?? '')
+  const [erwartungen, setErwartungen] = useState(vorlage?.erwartungen ?? '')
   const [berufsbild, setBerufsbild] = useState(vorauswahl?.berufsfeld ?? BERUFSBILDER[0])
   const [lernzielKey, setLernzielKey] = useState<string | null>(null)
   const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
@@ -84,7 +87,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
   const lernziele = katalog.filter((l) => l.berufsfeld === berufsbild)
   // Ohne eigene Auswahl: Vorauswahl aus den Lehrplaenen (gleiches Lernziel, sonst gleicher Baustein)
   const vorausgewaehlt =
-    vorauswahl && vorauswahl.berufsfeld === berufsbild
+    vorauswahl && vorauswahl.berufsfeld === berufsbild && vorauswahl.baustein !== undefined
       ? (lernziele.find((l) => l.baustein === vorauswahl.baustein && l.titel === vorauswahl.titel) ?? lernziele.find((l) => l.baustein === vorauswahl.baustein))
       : undefined
   const lernziel = lernziele.find((l) => l.key === lernzielKey) ?? vorausgewaehlt ?? lernziele[0] ?? null
@@ -139,6 +142,13 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           </span>
           <h2 className="font-display text-xl font-semibold">Neues Arbeitsblatt mit KI erstellen</h2>
         </div>
+
+        {vorauswahl?.vorlage && (
+          <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#EBF0F8', color: '#1A3A5C' }} role="note">
+            📄 Vorlage „{vorauswahl.vorlage.name}“ übernommen: Der Text steht unter „Erwartungen an das Arbeitsblatt“
+            {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}. Bitte noch das passende Lernziel wählen.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-4">
@@ -302,8 +312,12 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           )}
 
           {progress && (
-            <div className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }} role="status">
-              Variante {progress.current} von {progress.total} … {progress.label}
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }} role="status">
+                Variante {progress.current} von {progress.total} … {progress.label}
+              </div>
+              {/* key: the timer starts again for every variant */}
+              <Wartezeit key={progress.current} />
             </div>
           )}
         </form>
@@ -317,6 +331,42 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
 }
 
 type PreviewTarget = { level: Level; format: Format }
+
+/** FE-24: one variant takes 20 s to 2 min (QS-04); after this many seconds the hint changes */
+export const LANGE_WARTEZEIT_SEK = 60
+
+/** "0:07", "1:05" */
+export function formatWartezeit(sekunden: number): string {
+  return `${Math.floor(sekunden / 60)}:${String(sekunden % 60).padStart(2, '0')}`
+}
+
+export function warteHinweis(sekunden: number): string {
+  return sekunden >= LANGE_WARTEZEIT_SEK
+    ? 'Die KI braucht gerade länger als üblich – bitte warten und die Seite nicht neu laden.'
+    : 'Eine Variante dauert meist 20 Sekunden bis 2 Minuten.'
+}
+
+/**
+ * Elapsed time of the current variant, so nobody clicks again or leaves the page.
+ * The ticking seconds are hidden from screen readers (they would be announced every second);
+ * the hint text is enough for them.
+ */
+function Wartezeit() {
+  const [sekunden, setSekunden] = useState(0)
+  useEffect(() => {
+    const start = Date.now()
+    const timer = setInterval(() => setSekunden(Math.floor((Date.now() - start) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return (
+    <div className="text-xs flex items-center gap-2" style={{ color: 'var(--muted-foreground)' }} data-testid="wartezeit">
+      <span className="font-mono tabular-nums" aria-hidden="true">
+        ⏱ {formatWartezeit(sekunden)}
+      </span>
+      <span>{warteHinweis(sekunden)}</span>
+    </div>
+  )
+}
 
 type GeneratedVariantsProps = {
   generated: Generated

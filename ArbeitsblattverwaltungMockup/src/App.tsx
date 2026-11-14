@@ -17,7 +17,7 @@ type StaffUser = {
   initials: string
   role: StaffRole
   email: string
-  password: string
+  password?: string // nur fuer in der Demo neu angelegte Konten, im Speicher
   createdAt: string
 }
 
@@ -386,11 +386,12 @@ const ROLE_LABELS: Record<StaffRole, string> = {
   assistent: 'Assistent/in',
 }
 
+// Demo-Konten ohne Passwort im Code: Anmeldung mit beliebigem nicht-leerem Passwort.
 const initialStaffUsers: StaffUser[] = [
-  { id: 'u1', name: 'Celine Hager', initials: 'CH', role: 'admin', email: 'c.hager@bildungspark.de', password: 'admin123', createdAt: '2024-01-10' },
-  { id: 'u2', name: 'A. Mustajbegovic', initials: 'AM', role: 'dozent', email: 'a.mustajbegovic@bildungspark.de', password: 'dozent123', createdAt: '2024-03-05' },
-  { id: 'u3', name: 'T. Neumann', initials: 'TN', role: 'dozent', email: 't.neumann@bildungspark.de', password: 'dozent123', createdAt: '2024-05-18' },
-  { id: 'u4', name: 'S. Oturucu', initials: 'SO', role: 'assistent', email: 's.oturucu@bildungspark.de', password: 'assist123', createdAt: '2025-02-01' },
+  { id: 'u1', name: 'Celine Hager', initials: 'CH', role: 'admin', email: 'c.hager@bildungspark.de', createdAt: '2024-01-10' },
+  { id: 'u2', name: 'A. Mustajbegovic', initials: 'AM', role: 'dozent', email: 'a.mustajbegovic@bildungspark.de', createdAt: '2024-03-05' },
+  { id: 'u3', name: 'T. Neumann', initials: 'TN', role: 'dozent', email: 't.neumann@bildungspark.de', createdAt: '2024-05-18' },
+  { id: 'u4', name: 'S. Oturucu', initials: 'SO', role: 'assistent', email: 's.oturucu@bildungspark.de', createdAt: '2025-02-01' },
 ]
 
 const berufsbilder = ['Alle Berufsbilder', 'Lagerlogistik', 'Küche & Gastronomie', 'Reinigung & Gebäudepflege', 'Metallverarbeitung']
@@ -615,7 +616,7 @@ export default function App() {
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    const user = staffUsers.find(u => u.email === loginEmail.trim() && u.password === loginPassword)
+    const user = staffUsers.find(u => u.email === loginEmail.trim() && loginPassword !== '' && (u.password === undefined || u.password === loginPassword))
     if (user) {
       setCurrentUser(user)
       setLoginError('')
@@ -703,7 +704,7 @@ export default function App() {
     e.preventDefault()
     if (!currentUser) return
     setPwError('')
-    if (pwCurrent !== currentUser.password) { setPwError('Das aktuelle Passwort ist falsch.'); return }
+    if (currentUser.password !== undefined && pwCurrent !== currentUser.password) { setPwError('Das aktuelle Passwort ist falsch.'); return }
     if (pwNew.length < 8) { setPwError('Das neue Passwort muss mindestens 8 Zeichen lang sein.'); return }
     if (pwNew !== pwConfirm) { setPwError('Die neuen Passwörter stimmen nicht überein.'); return }
     setStaffUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, password: pwNew } : u))

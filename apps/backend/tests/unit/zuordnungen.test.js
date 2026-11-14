@@ -20,7 +20,7 @@ const station = (berufsfeld, status, stufe = 'A', format = 'text') => ({ berufsf
 
 let laufendeNr = 0
 /** Assignment like the repository returns it; `tag` = day in November for the timestamps */
-function zuordnung(berufsfeld, status, tag, titel = `Blatt ${tag}`) {
+function zuordnung(berufsfeld, status, tag, titel = `Blatt ${tag}`, blattStatus = 'freigegeben') {
   laufendeNr += 1
   const id = `00000000-0000-4000-8000-${String(laufendeNr).padStart(12, '0')}`
   return {
@@ -30,7 +30,7 @@ function zuordnung(berufsfeld, status, tag, titel = `Blatt ${tag}`) {
     zugeordnetAm: `2026-11-${String(tag).padStart(2, '0')}T08:00:00.000Z`,
     erledigtAm: status === 'erledigt' ? `2026-11-${String(tag + 1).padStart(2, '0')}T15:00:00.000Z` : null,
     zugeordnetVon: 'C. Hager',
-    arbeitsblatt: { id, titel, berufsfeld, baustein: 1, ausbildungsbaustein: null, lernziel: 'x', stufe: 'A', format: 'text', sprache: 'Leichte Sprache', status: 'freigegeben' },
+    arbeitsblatt: { id, titel, berufsfeld, baustein: 1, ausbildungsbaustein: null, lernziel: 'x', stufe: 'A', format: 'text', sprache: 'Leichte Sprache', status: blattStatus },
   }
 }
 
@@ -75,6 +75,26 @@ describe('berechneLernstand', () => {
     const lager = berechneLernstand(TEILNEHMER, [neu, alt]).berufsfelder.find((feld) => feld.berufsfeld === LAGER)
     expect(lager.alsNaechstes.arbeitsblatt.titel).toBe('alt')
     expect(lager.offen.map((z) => z.arbeitsblatt.titel)).toEqual(['alt', 'neu'])
+  })
+
+  it('schlägt archivierte Blätter nicht als Nächstes vor, führt sie aber weiter als offen', () => {
+    const lernstand = berechneLernstand(TEILNEHMER, [
+      zuordnung(LAGER, 'offen', 1, 'archiviert', 'archiviert'),
+      zuordnung(LAGER, 'offen', 2, 'offen'),
+    ])
+    const lager = lernstand.berufsfelder.find((feld) => feld.berufsfeld === LAGER)
+    expect(lager.offen.map((z) => z.arbeitsblatt.titel)).toEqual(['archiviert', 'offen'])
+    expect(lager.anzahl.offen).toBe(2)
+    expect(lager.alsNaechstes.arbeitsblatt.titel).toBe('offen')
+    expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('offen')
+  })
+
+  it('überspringt eine Station, in der nur archivierte Blätter offen sind', () => {
+    const lernstand = berechneLernstand(TEILNEHMER, [
+      zuordnung(LAGER, 'offen', 1, 'archiviert', 'archiviert'),
+      zuordnung(METALL, 'offen', 2, 'metall'),
+    ])
+    expect(lernstand.alsNaechstes.arbeitsblatt.titel).toBe('metall')
   })
 
   it('erledigte Blätter: zuletzt erledigtes zuerst', () => {

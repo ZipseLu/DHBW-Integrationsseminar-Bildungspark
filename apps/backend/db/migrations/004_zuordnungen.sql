@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 003 – Zuordnung Arbeitsblatt ↔ Teilnehmende (03.11.2026, BE-04)
+-- Migration 004 – Zuordnung Arbeitsblatt ↔ Teilnehmende (03.11.2026, BE-04)
 --
 -- Dozierende ordnen Teilnehmenden gespeicherte Arbeitsblätter zu und haken sie
 -- ab, wenn sie bearbeitet sind. Daraus berechnet das Backend den Lernstand je

@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const IS_TEST = import.meta.env.MODE === 'test'
 
 export const SIMULATION_DELAY_MS = {
-  uploadAnalyse: 2000,
   varianten: 1800,
   kiErstellung: 2200,
   websuche: 1600,
