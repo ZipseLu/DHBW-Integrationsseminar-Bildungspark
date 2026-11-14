@@ -380,6 +380,23 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 | `AI_TIMEOUT_MS` | `60000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
 
+### Secrets
+
+Regel: **Keine Passwörter, Keys oder Tokens im Code, in Commits, Chats oder Screenshots.**
+Echte Werte stehen nur in der lokalen `.env` (in `.gitignore`) oder in GitHub Secrets.
+
+| Secret | Wo | Hinweis |
+|---|---|---|
+| `GEMINI_API_KEY` | lokale `.env` | Jede Person erzeugt ihren eigenen Key (Google AI Studio). Bei Leak: Key widerrufen, neu erzeugen. |
+| `JWT_SECRET` | lokale `.env`, in Produktion Pflicht | Bei `NODE_ENV=production` bricht das Backend ohne Wert ab. Erzeugen: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | lokale `.env` | Die Dev-Defaults (`root-dev`, `bildungspark-dev`) nur auf dem eigenen Rechner nutzen, nie auf erreichbaren Servern. |
+| `SEED_PASSWORT` | lokale `.env` (optional) | Ohne Wert erzeugt `npm run db:seed` ein Zufallspasswort und zeigt es einmalig im Log. |
+| `AZURE_OPENAI_API_KEY`, `SERPAPI_API_KEY` | lokale `.env` | Bisher ungenutzt bzw. spätere Phase. |
+
+Es gibt aktuell keinen Server. Sobald eine Dev-Stage in GitHub Actions läuft, werden die Werte unter
+*Settings → Secrets and variables → Actions* angelegt (Admin-Recht nötig) und im Workflow über
+`${{ secrets.NAME }}` gelesen. Die DB-Passwörter in `ci.yml` gehören zu Wegwerf-Containern.
+
 > **Ohne `GEMINI_API_KEY` läuft die KI im Mock-Modus.** Das ist Absicht:
 > So laufen Frontend, Supertest und Playwright ohne API-Key und ohne Kosten.
 > Das Backend liest ohne Docker zuerst `apps/backend/.env` (optional), dann die Root-`.env`;
@@ -423,6 +440,46 @@ docker compose down
 docker volume rm bildungspark_mysql_data
 docker compose up --build
 ```
+
+### Nach neuen npm-Paketen: `Cannot find package ...`
+
+Ein `docker compose up --build` baut zwar das Image neu, **ersetzt aber kein
+vorhandenes benanntes `node_modules`-Volume**. Das Volume verdeckt dann die
+frisch installierten Pakete aus dem Image. Typisches Symptom:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'axios'
+  imported from /app/src/web-search/service.js
+```
+
+Dann das betroffene Volume einmalig neu aufbauen (die Datenbank bleibt erhalten):
+
+```bash
+docker compose rm -sf backend
+docker volume rm bildungspark_backend_node_modules
+docker compose up -d --build backend
+```
+
+Für das Frontend analog mit `frontend` und
+`bildungspark_frontend_react_node_modules`.
+
+### Backend läuft nach Code-Änderungen noch mit altem Stand
+
+Unter Docker Desktop für Windows meldet `node --watch` Änderungen an
+Bind-Mounts nicht zuverlässig. Das Backend antwortet dann weiter mit dem Code
+vom letzten Start – bei der Websuche z. B. mit einer alten Fehlermeldung,
+obwohl die Suche im Quellcode längst funktioniert.
+
+Nach Änderungen am Backend-Code deshalb neu starten und den Log prüfen:
+
+```bash
+docker compose restart backend
+docker compose logs -f backend
+```
+
+Erwartet ist bei erfolgreicher Suche eine Zeile wie
+`[web-search] Fallback über yahooSearch: 7 Treffer`. Das Frontend (Vite) nutzt
+dagegen Polling und lädt automatisch neu.
 
 ### Nach einem Stack-Wechsel: alte Volumes entfernen
 
