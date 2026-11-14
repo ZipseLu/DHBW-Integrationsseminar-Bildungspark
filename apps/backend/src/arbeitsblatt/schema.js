@@ -165,21 +165,26 @@ export const WorksheetSchema = LlmWorksheetSchema.extend({
 // Schema der Anfrage (Request-Body von POST /api/ai/arbeitsblatt)
 // ---------------------------------------------------------------------------
 
-const NiveauSchema = z.object({
+const NiveauSchema = z.strictObject({
   kompetenz: text(600),
   // Einzelne Beispielzellen sind in den Lehrplaenen leer – deshalb erlaubt.
   beispiel: z.string().trim().max(600).default(''),
 })
 
-export const LernzielSchema = z.object({
+export const LernzielSchema = z.strictObject({
   berufsfeld: text(120),
   baustein: z.coerce.number().int().min(0).max(99),
   ausbildungsbaustein: text(200),
   titel: text(500),
-  niveaus: z.object({ T: NiveauSchema, A: NiveauSchema, F: NiveauSchema, B: NiveauSchema }),
+  niveaus: z.strictObject({ T: NiveauSchema, A: NiveauSchema, F: NiveauSchema, B: NiveauSchema }),
+  // Import-Metadaten des Frontends. Sie werden akzeptiert, aber nicht in den Prompt übernommen.
+  id: z.number().int().optional(),
+  abschnitt: z.number().int().nullable().optional(),
+  tq: z.string().nullable().optional(),
+  quelle: z.string().optional(),
 })
 
-export const GenerateRequestSchema = z.object({
+export const GenerateRequestSchema = z.strictObject({
   lernziel: LernzielSchema,
   stufe: z.enum(STUFEN),
   format: z.enum(FORMATE),

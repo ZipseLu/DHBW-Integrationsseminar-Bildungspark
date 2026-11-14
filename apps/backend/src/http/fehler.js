@@ -56,7 +56,7 @@ export const wrap = (bereich) => (handler) => async (req, res, next) => {
     if (error instanceof NichtGefundenError) return res.status(404).json({ error: 'not_found', code: error.code, message: error.message })
     const mapped = dbError(error)
     if (mapped) {
-      console.error(`[${bereich}] ${error.code}: ${error.message}`)
+      console.error(`[${bereich}] ${error.code}`)
       return res.status(mapped.status).json(mapped.body)
     }
     next(error)
