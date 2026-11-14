@@ -1,5 +1,5 @@
 /**
- * Datenzugriff für die Lehrpläne (Migration 004: lehrplaene, lernziele, lernziel_niveaus).
+ * Datenzugriff für die Lehrpläne (Migration 005: lehrplaene, lernziele, lernziel_niveaus).
  *
  * Nach außen dieselbe Form wie die frühere JSON-Datei (GET /api/lehrplaene, Frontend-Typ
  * LehrplanLernziel): { id, berufsfeld, tq, baustein, ausbildungsbaustein, abschnitt,

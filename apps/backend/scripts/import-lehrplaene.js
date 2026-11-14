@@ -11,7 +11,7 @@
  * das Repository ist oeffentlich. Jedes Teammitglied erzeugt die Datei lokal.
  *
  * Ist die Datenbank erreichbar, ersetzt das Skript ausserdem die Lehrplaene dort
- * (Migration 004: lehrplaene, lernziele, lernziel_niveaus). GET /api/lehrplaene
+ * (Migration 005: lehrplaene, lernziele, lernziel_niveaus). GET /api/lehrplaene
  * liest zuerst die Datenbank, sonst die Datei; ohne beides nutzt das Frontend die
  * 12 Beispiel-Lernziele aus apps/frontend/src/data/worksheets.ts.
  */

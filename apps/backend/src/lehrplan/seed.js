@@ -1,6 +1,6 @@
 /**
  * Lehrpläne für `npm run db:seed`: übernimmt apps/backend/data/lehrplaene.json in die
- * Datenbank (Migration 004), wenn dort noch keine Lernziele stehen.
+ * Datenbank (Migration 005), wenn dort noch keine Lernziele stehen.
  *
  * Die Datei erzeugt `npm run import:lehrplaene` aus den DOCX des Bildungsparks; sie ist
  * nicht im Repository (Kundendaten, Repo öffentlich). Auf einem Server reicht es, die

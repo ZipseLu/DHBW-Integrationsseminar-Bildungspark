@@ -3,7 +3,7 @@
  * `npm run db:seed -- --reset` vorher alle Arbeitsblätter löschen
  * `npm run db:seed -- --lernziele=10`  Anzahl Lernziele (je vier Stufen)
  *
- * Übernimmt zuerst die Lehrpläne aus data/lehrplaene.json in die Datenbank (Migration 004),
+ * Übernimmt zuerst die Lehrpläne aus data/lehrplaene.json in die Datenbank (Migration 005),
  * falls dort noch keine stehen und die Datei existiert (`npm run import:lehrplaene`).
  *
  * Legt außerdem die fünf Beispiel-Teilnehmenden (BE-02), die vier Beispiel-Mitarbeiterkonten

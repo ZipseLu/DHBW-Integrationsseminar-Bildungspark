@@ -3,11 +3,11 @@
 Stand: 03.11.2026 · Trello: „Weitere Tabellen in DB erstellen“ (Lehrpläne; Teilnehmende kamen mit BE-02, Mitarbeitende mit BE-03)
 
 Bisher lagen die 96 Lernziele der 14 Lehrplan-Dokumente nur in `apps/backend/data/lehrplaene.json` – erzeugt aus den DOCX des
-Bildungsparks und bewusst nicht im Repository (Kundendaten, Repo öffentlich). Seit Migration 004 stehen sie in MySQL.
+Bildungsparks und bewusst nicht im Repository (Kundendaten, Repo öffentlich). Seit Migration 005 stehen sie in MySQL.
 So sind sie auf dem Staging-Server dauerhaft vorhanden, landen im Datenbank-Backup (OPS-04) und können später per
 Fremdschlüssel mit Arbeitsblättern verbunden werden (z. B. für BE-10 „Lehrmaterial vorschlagen“).
 
-## Datenmodell (Migration `004_lehrplaene.sql`)
+## Datenmodell (Migration `005_lehrplaene.sql`)
 
 | Tabelle | Inhalt | Schlüssel |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ JSON-Datei, statt bei jedem Seitenaufruf erneut einen Verbindungsversuch zu star
 
 | Datei | Zweck |
 | --- | --- |
-| `apps/backend/db/migrations/004_lehrplaene.sql` | Tabellen |
+| `apps/backend/db/migrations/005_lehrplaene.sql` | Tabellen |
 | `apps/backend/src/lehrplan/repository.js` | `listLernziele()`, `stand()`, `count()`, `ersetzeAlle(lernziele)` |
 | `apps/backend/src/lehrplan/schema.js` | prüft Importdaten vor dem Schreiben (Pflichtfelder, Längen, doppelte IDs) |
 | `apps/backend/src/lehrplan/seed.js` | Datei → Datenbank für `npm run db:seed` |

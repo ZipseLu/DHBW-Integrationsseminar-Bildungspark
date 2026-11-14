@@ -10,7 +10,7 @@ import { count, deleteAll, ersetzeAlle, LehrplanDatenError, listLernziele, stand
 import { seedLehrplaene } from '../../src/lehrplan/seed.js'
 
 /**
- * Lehrpläne in der Datenbank (Migration 004) gegen eine echte MySQL – nur mit gesetztem
+ * Lehrpläne in der Datenbank (Migration 005) gegen eine echte MySQL – nur mit gesetztem
  * DB_HOST und nur gegen eine *_test-Datenbank; sonst übersprungen.
  */
 const hasDb = Boolean(process.env.DB_HOST)
@@ -53,9 +53,9 @@ describe.skipIf(!hasDb)('Lehrpläne in der Datenbank (MySQL)', () => {
     await closePool()
   })
 
-  it('Migration 004 ist angewendet', async () => {
+  it('Migration 005 ist angewendet', async () => {
     const rows = await query('SELECT name FROM schema_migrations ORDER BY name')
-    expect(rows.map((r) => r.name)).toContain('004_lehrplaene.sql')
+    expect(rows.map((r) => r.name)).toContain('005_lehrplaene.sql')
   })
 
   it('speichert Lehrpläne, Lernziele und Stufen und liefert sie in derselben Form zurück', async () => {

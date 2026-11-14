@@ -1,5 +1,5 @@
 /**
- * Schema der Lehrplandaten, die in die Datenbank übernommen werden (Migration 004).
+ * Schema der Lehrplandaten, die in die Datenbank übernommen werden (Migration 005).
  *
  * Gleiche Form wie ein Eintrag in data/lehrplaene.json (scripts/import-lehrplaene.js):
  *   { id, berufsfeld, tq, baustein, ausbildungsbaustein, abschnitt, titel, niveaus: { T, A, F, B }, quelle }

@@ -1,7 +1,7 @@
 /**
  * GET /api/lehrplaene – die Lernziele der Lehrpläne.
  *
- * Quelle ist die Datenbank (Migration 004: lehrplaene, lernziele, lernziel_niveaus),
+ * Quelle ist die Datenbank (Migration 005: lehrplaene, lernziele, lernziel_niveaus),
  * befüllt mit `npm run import:lehrplaene` oder `npm run db:seed`. Ist die Datenbank
  * nicht erreichbar oder noch leer, liest die Route wie bisher apps/backend/data/lehrplaene.json –
  * so läuft die KI-Erstellung auch ohne Docker mit allen Lernzielen. Fehlt beides, kommt

@@ -9,7 +9,7 @@ import { LehrplanDatenError, berlinerDatum } from '../../src/lehrplan/repository
 import { LehrplanImportSchema, LernzielImportSchema } from '../../src/lehrplan/schema.js'
 
 /**
- * Lehrpläne in der Datenbank (Migration 004) ohne echte Datenbank: Schema der Importdaten
+ * Lehrpläne in der Datenbank (Migration 005) ohne echte Datenbank: Schema der Importdaten
  * und die Reihenfolge Datenbank -> Datei -> leer in GET /api/lehrplaene (Repository als Stub).
  * Gegen MySQL: tests/integration/lehrplaene-db.test.js
  */

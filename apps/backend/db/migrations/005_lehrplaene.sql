@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 004 – Lehrpläne in der Datenbank (03.11.2026, Karte „Weitere Tabellen in DB erstellen“)
+-- Migration 005 – Lehrpläne in der Datenbank (03.11.2026, Karte „Weitere Tabellen in DB erstellen“)
 --
 -- Bisher lagen die Lehrpläne nur in apps/backend/data/lehrplaene.json (gitignored,
 -- erzeugt aus den DOCX des Bildungsparks). Jetzt in drei Tabellen:

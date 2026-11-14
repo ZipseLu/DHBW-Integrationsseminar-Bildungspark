@@ -162,7 +162,7 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 | `POST /api/ai/arbeitsblatt` | `{ lernziel, stufe, format, sprache, thema?, erwartungen? }` → `{ worksheet, meta }` |
 | `POST /api/ai/arbeitsblatt/docx` | `{ worksheet }` → Word-Datei |
 
-| `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 004), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
+| `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 005), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
 
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
 anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
@@ -322,7 +322,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │   │   └── docx.js       Word-Export
 │   │   │   ├── lehrplan/
 │   │   │   │   ├── parser.js     DOCX-Parser der Lehrpläne (für scripts/import-lehrplaene.js)
-│   │   │   │   ├── repository.js Lehrpläne in MySQL lesen/ersetzen (Migration 004)
+│   │   │   │   ├── repository.js Lehrpläne in MySQL lesen/ersetzen (Migration 005)
 │   │   │   │   ├── schema.js     Prüfung der Importdaten
 │   │   │   │   └── seed.js       data/lehrplaene.json -> Datenbank (npm run db:seed)
 │   │   │   └── routes/
@@ -555,7 +555,7 @@ docker compose down -v && docker compose up --build
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
 - [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
-- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git; seit 03.11. auch in der Datenbank (Migration 004, `docs/lehrplaene-datenbank.md`)
+- [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git; seit 03.11. auch in der Datenbank (Migration 005, `docs/lehrplaene-datenbank.md`)
 - [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
 - [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API (`/api/teilnehmende`, BE-02) und Benutzerverwaltung-API (`/api/benutzer`, BE-03) fertig**, Frontend-Anbindung (FE-09, FE-12) und Einstellungen (BE-09) offen
 - [ ] Lernstand anzeigen und Arbeitsblätter zuordnen – **Backend fertig (`/api/teilnehmende/:kennung/zuordnungen`, `/lernstand`, BE-04, 03.11.)**, Frontend-Anbindung (FE-11) offen
