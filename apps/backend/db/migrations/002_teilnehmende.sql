@@ -2,7 +2,7 @@
 -- Migration 002 – Teilnehmende und ihr Lernweg (30.10.2026, BE-02)
 --
 -- Fachliches Modell (siehe docs/persistenz-teilnehmende.md):
---   teilnehmende             anonymisiertes Profil, Schlüssel = pseudonyme Kennung
+--   teilnehmende             pseudonymisiertes Profil, Schlüssel = pseudonyme Kennung
 --                            (IW3-Nummer, z. B. "IW3-4421"). § 60 SGB IX: KEINE Namen,
 --                            KEINE Diagnosen, KEINE Freitextfelder.
 --   teilnehmende_stationen   Lernweg: die Berufsfelder in ihrer Reihenfolge, je mit
