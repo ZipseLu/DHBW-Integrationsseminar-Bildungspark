@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { erwartungenAusVorlage } from '@/lib/vorlage'
 import { stufeTextVar } from '@/lib/settings'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
@@ -449,12 +449,13 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
   const anzahlGespeichert = results.filter((_, index) => speicher[index]?.art === 'gespeichert').length
   const alleGespeichert = results.length > 0 && anzahlGespeichert === results.length
 
-  // FE-27: tell the app how much would be lost when leaving the page
+  // FE-27: tell the app how much would be lost when leaving the page. Layout effects run
+  // in the same commit as the change, so a click right after saving already sees the new state.
   const ungespeichert = results.length - anzahlGespeichert
-  useEffect(() => {
+  useLayoutEffect(() => {
     onStand?.({ ungespeichert, laeuft: !finished })
   }, [onStand, ungespeichert, finished])
-  useEffect(() => () => onStand?.({ ungespeichert: 0, laeuft: false }), [onStand])
+  useLayoutEffect(() => () => onStand?.({ ungespeichert: 0, laeuft: false }), [onStand])
 
   let status: string
   if (!finished) status = `Variante ${progress.current} von ${progress.total} wird erstellt…`
