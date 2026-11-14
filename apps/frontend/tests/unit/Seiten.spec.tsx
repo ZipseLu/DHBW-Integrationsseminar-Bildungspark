@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import { PARTICIPANTS } from '@/data/participants'
@@ -29,10 +29,11 @@ function openPage(label: string) {
 }
 
 describe('Dashboard', () => {
-  it('zeigt Kennzahlen und die Personas einer Niveaustufe', () => {
+  it('zeigt Kennzahlen und die Personas einer Niveaustufe', async () => {
     openPage('Dashboard')
     expect(screen.getByText('Aktive Teilnehmende')).toBeInTheDocument()
-    expect(screen.getByText(String(PARTICIPANTS.length))).toBeInTheDocument()
+    // The fetch mock has no participant list, so the sample data are used (FE-12)
+    expect(await screen.findByText(String(PARTICIPANTS.length))).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Arbeitsplatz/ }))
     expect(screen.getByText('Persona E')).toBeInTheDocument()
@@ -47,39 +48,41 @@ describe('Dashboard', () => {
 })
 
 describe('Teilnehmende', () => {
-  it('listet alle anonymisierten Profile', () => {
+  // Without a participant list from the backend the sample data are shown and changes stay local (FE-12)
+  it('listet alle anonymisierten Profile', async () => {
     openPage('Teilnehmende')
-    expect(screen.getAllByRole('article')).toHaveLength(PARTICIPANTS.length)
+    expect(await screen.findAllByRole('article')).toHaveLength(PARTICIPANTS.length)
   })
 
-  it('legt eine neue Person an und lehnt doppelte Kennungen ab', () => {
+  it('legt eine neue Person an und lehnt doppelte Kennungen ab', async () => {
     openPage('Teilnehmende')
+    await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     let dialog = screen.getByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'IW3-9999' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
-    expect(screen.getByRole('article', { name: 'Teilnehmer IW3-9999' })).toBeInTheDocument()
+    expect(await screen.findByRole('article', { name: 'Teilnehmer IW3-9999' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     dialog = screen.getByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'IW3-9999' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('Die Kennung IW3-9999 gibt es bereits.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Die Kennung IW3-9999 gibt es bereits.')
   })
 
-  it('loescht erst nach Bestaetigung', () => {
+  it('loescht erst nach Bestaetigung', async () => {
     openPage('Teilnehmende')
-    const card = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    const card = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(within(card).getByRole('button', { name: 'Details' }))
     fireEvent.click(within(card).getByRole('button', { name: '✕ Löschen' }))
     expect(screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })).toBeInTheDocument()
     fireEvent.click(within(card).getByRole('button', { name: 'Ja, löschen' }))
-    expect(screen.queryByRole('article', { name: 'Teilnehmer IW3-4421' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('article', { name: 'Teilnehmer IW3-4421' })).not.toBeInTheDocument())
   })
 
-  it('weist ein Arbeitsblatt des aktiven Berufsfelds zu', () => {
+  it('weist ein Arbeitsblatt des aktiven Berufsfelds zu', async () => {
     openPage('Teilnehmende')
-    const card = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    const card = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(within(card).getByRole('button', { name: 'Details' }))
     fireEvent.click(within(card).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
 
