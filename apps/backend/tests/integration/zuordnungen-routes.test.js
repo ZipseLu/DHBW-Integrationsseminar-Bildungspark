@@ -65,7 +65,7 @@ describe.skipIf(!hasDb)('Zuordnungen und Lernstand (MySQL)', () => {
 
   it('Migration 003 ist angewendet', async () => {
     const rows = await query('SELECT name FROM schema_migrations ORDER BY name')
-    expect(rows.map((r) => r.name)).toContain('003_zuordnungen.sql')
+    expect(rows.map((r) => r.name)).toContain('004_zuordnungen.sql')
   })
 
   describe('POST /:kennung/zuordnungen', () => {

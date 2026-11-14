@@ -115,6 +115,30 @@ describe('validateWorksheet', () => {
     })
   })
 
+  // QS-04: Gemini dropped the options of picture-format tasks ("Kreuze an." with nothing to tick)
+  describe('Antwortmöglichkeiten', () => {
+    it.each(['ankreuzen', 'reihenfolge', 'zuordnen'])('meldet Typ %s ohne Optionen', (typ) => {
+      const { ok, hinweise } = validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { typ }), aufgabe(2), aufgabe(3)] }))
+      expect(ok).toBe(false)
+      expect(hinweise).toEqual([`Aufgabe 1: Typ „${typ}“ braucht mindestens 2 Antwortmöglichkeiten, vorhanden: 0.`])
+    })
+
+    it('zaehlt leere Optionen nicht mit', () => {
+      const { hinweise } = validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { typ: 'ankreuzen', optionen: ['Ja', '  '] }), aufgabe(2), aufgabe(3)] }))
+      expect(hinweise).toEqual(['Aufgabe 1: Typ „ankreuzen“ braucht mindestens 2 Antwortmöglichkeiten, vorhanden: 1.'])
+    })
+
+    it('verlangt bei Zuordnen das Format "links | rechts"', () => {
+      const { hinweise } = validateWorksheet(worksheet({ aufgaben: [aufgabe(1, { typ: 'zuordnen', optionen: ['LKW | Bringt Ware', 'Anleiter hilft'] }), aufgabe(2), aufgabe(3)] }))
+      expect(hinweise).toEqual(['Aufgabe 1: Zuordnen-Paare brauchen das Format „links | rechts“.'])
+    })
+
+    it('verlangt keine Optionen bei offen, malen und praxis', () => {
+      const aufgaben = [aufgabe(1), aufgabe(2, { typ: 'malen' }), aufgabe(3, { typ: 'praxis', anweisung: 'Frage deinen Anleiter: Passt das?' })]
+      expect(validateWorksheet(worksheet({ aufgaben })).hinweise).toEqual([])
+    })
+  })
+
   describe('Verbotsliste', () => {
     it.each([
       ['Einleitung', { einleitung: 'Die Behinderten tragen die Kisten.' }],

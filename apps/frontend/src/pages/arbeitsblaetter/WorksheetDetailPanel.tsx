@@ -4,8 +4,10 @@ import { HISTORY_ACTION_STYLES, LEVEL_STYLES, niveausOf } from '@/data/constants
 import { WORKSHEET_HISTORY } from '@/data/worksheets'
 import { fetchArbeitsblattVerlauf, updateArbeitsblatt, type ArbeitsblattStatus, type GespeichertesArbeitsblatt } from '@/lib/api'
 import { LIMITS, darfStatusAendern, formatZeitpunkt, statusAktionen, type StatusAktion } from '@/lib/arbeitsblattBearbeiten'
+import { druckeGespeichertesArbeitsblatt } from '@/lib/druck'
 import { fehlertext, historyAusVerlauf } from '@/lib/gespeicherteArbeitsblaetter'
 import type { HistoryEntry, StaffUser, Worksheet } from '@/types'
+import { GespeicherteVorschau } from './ArbeitsblattSeite'
 import { StatusBadge } from './WorksheetCard'
 import { WorksheetEditor } from './WorksheetEditor'
 
@@ -32,6 +34,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
   const [editorGeoeffnet, setEditorGeoeffnet] = useState(tab === 'bearbeiten')
   const [ungespeichert, setUngespeichert] = useState(false)
   const [schliessenFragen, setSchliessenFragen] = useState(false)
+  const [druckFehler, setDruckFehler] = useState<string | null>(null)
 
   useEffect(() => {
     if (tab === 'bearbeiten') setEditorGeoeffnet(true)
@@ -103,7 +106,8 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
       </div>
 
       <div className="flex-1 overflow-auto px-6 py-5" role="tabpanel">
-        {tab === 'vorschau' && <WordPreview worksheet={w} />}
+        {/* FE-22: saved worksheets show their real content; sample data keep the curriculum view */}
+        {tab === 'vorschau' && (w.backend ? <GespeicherteVorschau backendId={w.backend.id} version={w.backend.version} /> : <WordPreview worksheet={w} />)}
         {tab === 'verlauf' && <HistoryTimeline worksheet={w} />}
         {w.backend && editorGeoeffnet && (
           <div hidden={tab !== 'bearbeiten'}>
@@ -134,7 +138,26 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
         >
           <span aria-hidden="true">📄</span> Als Word speichern
         </button>
+        {w.backend && (
+          <button
+            type="button"
+            onClick={() => {
+              setDruckFehler(null)
+              if (w.backend) druckeGespeichertesArbeitsblatt(w.backend.id).catch((error: unknown) => setDruckFehler(`PDF nicht möglich: ${fehlertext(error)}`))
+            }}
+            className="px-4 py-2 rounded text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--card)' }}
+            title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
+          >
+            <span aria-hidden="true">🖨</span> PDF
+          </button>
+        )}
       </div>
+      {druckFehler && (
+        <div role="alert" className="px-6 pb-3 text-xs" style={{ color: '#7A2E00' }}>
+          {druckFehler}
+        </div>
+      )}
     </SlideOver>
   )
 }

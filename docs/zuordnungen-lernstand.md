@@ -6,7 +6,7 @@ Dozierende ordnen Teilnehmenden **gespeicherte Arbeitsblätter** (`/api/arbeitsb
 Daraus berechnet das Backend den **Lernstand**: was je Berufsfeld erledigt und offen ist und welches Blatt als Nächstes dran ist
 (feste Vorgabe des Bildungsparks: „Stand anzeigen“).
 
-## Datenmodell (Migration `003_zuordnungen.sql`)
+## Datenmodell (Migration `004_zuordnungen.sql`)
 
 | Spalte | Inhalt |
 | --- | --- |
