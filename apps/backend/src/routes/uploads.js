@@ -45,7 +45,7 @@ const wrap = (handler) => async (req, res, next) => {
   } catch (error) {
     const mapped = dbError(error)
     if (mapped) {
-      console.error(`[uploads] ${error.code}: ${error.message}`)
+      console.error(`[uploads] ${error.code}`)
       return res.status(mapped.status).json(mapped.body)
     }
     next(error)

@@ -165,8 +165,8 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 | `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 005), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
 
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
-anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
-Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
+pseudonymisierte Profile (Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
+Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)** und **[Datenschutz/Löschung (BE-08)](docs/datenschutz-loeschkonzept-logging.md)**.
 
 **Benutzerverwaltung (BE-03):** `GET/POST /api/benutzer`, `GET/PATCH/DELETE /api/benutzer/:id` verwalten die
 Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) – Details:

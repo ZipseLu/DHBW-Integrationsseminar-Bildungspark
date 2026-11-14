@@ -146,11 +146,14 @@ describe.skipIf(!hasDb)('Benutzerverwaltung (MySQL)', () => {
 
   describe('Seed', () => {
     it('legt die Beispielkonten einmal an', async () => {
-      expect(await seedBenutzer({ passwort: 'test-passwort' })).toEqual({ angelegt: BEISPIEL_KONTEN.length, uebersprungen: false })
+      const logs = []
+      const geheimnis = 'BE08-SEED-PASSWORT-NICHT-LOGGEN'
+      expect(await seedBenutzer({ passwort: geheimnis, log: (message) => logs.push(message) })).toEqual({ angelegt: BEISPIEL_KONTEN.length, uebersprungen: false })
+      expect(logs.join('\n')).not.toContain(geheimnis)
       expect(await seedBenutzer({ passwort: 'test-passwort' })).toEqual({ angelegt: 0, uebersprungen: true })
       const admin = await findForLogin('c.hager@bildungspark.example')
       expect(admin.rolle).toBe('admin')
-      expect(await pruefePasswort('test-passwort', admin.passwortHash)).toBe(true)
+      expect(await pruefePasswort(geheimnis, admin.passwortHash)).toBe(true)
     })
   })
 })

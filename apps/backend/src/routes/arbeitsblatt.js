@@ -34,7 +34,7 @@ arbeitsblattRouter.post('/', async (req, res, next) => {
     res.json(result)
   } catch (error) {
     if (error instanceof ArbeitsblattError) {
-      console.error(`[arbeitsblatt] ${error.code}: ${error.message}`, error.details ?? '')
+      console.error(`[arbeitsblatt] ${error.code}`)
       return res.status(error.status).json({ error: error.code, message: error.message, details: error.details })
     }
     next(error)

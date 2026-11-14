@@ -49,7 +49,7 @@ webSearchRouter.get(
       res.json({ query: parsed.data.q, results, count: results.length })
     } catch (error) {
       if (error?.status && error?.code) {
-        console.error(`[web-search] ${error.code}: ${error.message}`)
+        console.error(`[web-search] ${error.code}`)
         return res.status(error.status).json({
           error: error.code,
           message: error.message,

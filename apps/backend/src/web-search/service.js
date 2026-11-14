@@ -506,7 +506,7 @@ export async function searchWeb(query, fileType) {
     } catch (error) {
       // Validierungsfehler immer durchreichen, Suchfehler beim naechsten Anbieter versuchen.
       if (error instanceof WebSearchError && error.status === 400) throw error
-      console.warn(`[web-search] ${engine.name} nicht verfügbar: ${error?.message || error}`)
+      console.warn(`[web-search] ${engine.name} nicht verfügbar (${error?.code ?? 'unbekannter_fehler'})`)
     }
   }
 
