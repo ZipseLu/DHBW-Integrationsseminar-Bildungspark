@@ -27,15 +27,24 @@ function absaetze(text: string): string {
     .join('')
 }
 
-/** Matching pairs: right column shifted by one, so no pair stands side by side (as in docx.js) */
-function zuordnenTabelle(optionen: string[]): string {
+/**
+ * Rows of a matching task "links | rechts": the right column is shifted by one,
+ * so no pair stands side by side (as in docx.js). Shared with the preview (FE-22).
+ */
+export function versetztePaare(optionen: readonly string[]): [string, string][] {
   const paare = optionen.map((option) => {
     const [links, rechts = ''] = option.split('|').map((s) => s.trim())
     return { links, rechts }
   })
   const rechts = paare.map((p) => p.rechts)
   const versetzt = rechts.length > 1 ? [...rechts.slice(1), rechts[0]] : rechts
-  const zeilen = paare.map((p, i) => `<tr><td class="links">${escape(p.links)}</td><td>☐&nbsp;&nbsp;${escape(versetzt[i] ?? '')}</td></tr>`).join('')
+  return paare.map((p, i) => [p.links, versetzt[i] ?? ''])
+}
+
+function zuordnenTabelle(optionen: string[]): string {
+  const zeilen = versetztePaare(optionen)
+    .map(([links, rechts]) => `<tr><td class="links">${escape(links)}</td><td>☐&nbsp;&nbsp;${escape(rechts)}</td></tr>`)
+    .join('')
   return `<table class="zuordnen">${zeilen}</table>`
 }
 
