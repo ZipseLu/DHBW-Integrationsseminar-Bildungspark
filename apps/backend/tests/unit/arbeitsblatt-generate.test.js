@@ -132,6 +132,55 @@ describe('generateArbeitsblatt – mit Provider', () => {
     expect(provider).toHaveBeenCalledTimes(2)
   })
 
+  describe('fehlende Antwortmöglichkeiten (QS-04)', () => {
+    // Same worksheet, but the "ankreuzen" task lost its options
+    const ohneOptionen = JSON.stringify({
+      ...WORKSHEET_T_TEXT,
+      aufgaben: WORKSHEET_T_TEXT.aufgaben.map((a) => (a.typ === 'ankreuzen' ? { ...a, optionen: undefined, loesung: undefined } : a)),
+    })
+
+    it('fragt einmal nach und nimmt das vollständige Blatt', async () => {
+      const provider = fakeProvider(ohneOptionen, valid)
+      const { worksheet, meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      const prompt = provider.mock.calls[1][0].prompt
+      expect(prompt).toContain('Korrekturhinweis')
+      expect(prompt).toContain('Aufgabe 1: Typ „ankreuzen“ braucht mindestens 2 Antwortmöglichkeiten')
+      expect(meta.attempts).toBe(2)
+      expect(meta.validation.ok).toBe(true)
+      expect(worksheet.aufgaben[0].optionen).toHaveLength(2)
+    })
+
+    it('liefert das erste Blatt mit Hinweis, wenn die Wiederholung kein gültiges JSON bringt', async () => {
+      const provider = fakeProvider(ohneOptionen, 'kaputt')
+      const { worksheet, meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      expect(worksheet.aufgaben[0].optionen).toBeUndefined()
+      expect(meta.attempts).toBe(1)
+      expect(meta.validation.hinweise).toContain('Aufgabe 1: Typ „ankreuzen“ braucht mindestens 2 Antwortmöglichkeiten, vorhanden: 0.')
+    })
+
+    it('liefert das erste Blatt, wenn die Wiederholung am Anbieter scheitert (z. B. Zeitlimit)', async () => {
+      const timeout = Object.assign(new Error('This operation was aborted'), { name: 'TimeoutError' })
+      const provider = fakeProvider(ohneOptionen, Promise.reject(timeout))
+      const { meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      expect(meta.validation.ok).toBe(false)
+    })
+
+    it('fragt nur einmal nach und zeigt sonst die Hinweise', async () => {
+      const provider = fakeProvider(ohneOptionen, ohneOptionen)
+      const { meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      expect(meta.attempts).toBe(2)
+      expect(meta.validation.ok).toBe(false)
+    })
+  })
+
   it('uebersetzt Provider-Fehler (Rate-Limit) ohne Wiederholung', async () => {
     const provider = vi.fn().mockRejectedValue(Object.assign(new Error('429 Too Many Requests'), { status: 429 }))
     const error = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true }).catch((e) => e)
