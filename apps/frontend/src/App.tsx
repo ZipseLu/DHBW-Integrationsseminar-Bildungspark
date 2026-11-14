@@ -8,7 +8,6 @@ import { applyTheme, loadSettings, saveSettings } from '@/lib/settings'
 import { useTeilnehmende } from '@/lib/teilnehmende'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 import { BenutzerverwaltungPage } from '@/pages/benutzerverwaltung/BenutzerverwaltungPage'
-import { BerichtePage } from '@/pages/berichte/BerichtePage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { EinstellungenPage } from '@/pages/einstellungen/EinstellungenPage'
 import { KiErstellungPage } from '@/pages/ki-erstellung/KiErstellungPage'
@@ -99,7 +98,6 @@ export default function App() {
           {activeNav === 'teilnehmer' && (
             <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
           )}
-          {activeNav === 'berichte' && <BerichtePage />}
           {activeNav === 'benutzerverwaltung' && user.role === 'admin' && (
             <BenutzerverwaltungPage currentUser={user} users={staffUsers} onChange={setStaffUsers} />
           )}

@@ -12,7 +12,6 @@ export type NavItem =
   | 'arbeitsblaetter'
   | 'ki-erstellung'
   | 'teilnehmer'
-  | 'berichte'
   | 'benutzerverwaltung'
   | 'einstellungen'
 

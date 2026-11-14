@@ -4,7 +4,7 @@ Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
 > **Status (28.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
 > Das Frontend enthält alle Seiten des Figma-Mockups (Version 41): **Dashboard**, **Lehrpläne**, **Arbeitsblätter**, **KI-Erstellung**,
-> **Teilnehmende**, **Berichte** (Platzhalter), **Benutzerverwaltung** und **Einstellungen**.
+> **Teilnehmende**, **Benutzerverwaltung** und **Einstellungen**.
 > KI-Erstellung und Lehrpläne nutzen das Backend (ohne Backend: Beispiel-Lernziele), die übrigen Seiten Beispieldaten im Browser.
 > **Neu: Die KI-Erstellung erzeugt echte Arbeitsblätter über das Backend** (Lernziel aus dem Lehrplan →
 > Gemini → Validator → Anzeige → Word-Export; ohne API-Key im Mock-Modus) – siehe
@@ -354,7 +354,6 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │       │       ├── dashboard/        Kennzahlen, Niveaustufen, Personas, zuletzt bearbeitet
 │       │       ├── lehrplaene/       Curriculum-Bibliothek, Online-Vorschau, Word-Export, → KI-Erstellung
 │       │       ├── teilnehmende/     Anonyme Profile, Lernweg, Anlegen/Bearbeiten, Zuweisen
-│       │       ├── berichte/         Platzhalter (späterer Sprint)
 │       │       ├── benutzerverwaltung/ Mitarbeiter-Zugänge (nur Admin)
 │       │       └── einstellungen/    Darstellung, Sprache, KI, Sitzung, Mein Konto
 │       └── tests/unit/       Vitest + React Testing Library (jsdom)
@@ -556,11 +555,11 @@ docker compose down -v && docker compose up --build
 - [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
 - [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git; seit 03.11. auch in der Datenbank (Migration 005, `docs/lehrplaene-datenbank.md`)
-- [x] Seiten Dashboard, Teilnehmende, Berichte, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
+- [x] Seiten Dashboard, Teilnehmende, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
 - [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API (`/api/teilnehmende`, BE-02) und Benutzerverwaltung-API (`/api/benutzer`, BE-03) fertig**, Frontend-Anbindung (FE-09, FE-12) und Einstellungen (BE-09) offen
 - [ ] Lernstand anzeigen und Arbeitsblätter zuordnen – **Backend fertig (`/api/teilnehmende/:kennung/zuordnungen`, `/lernstand`, BE-04, 03.11.)**, Frontend-Anbindung (FE-11) offen
 - [ ] Vorhandene Arbeitsblätter hochladen und anpassen – **Backend fertig (`/api/uploads`, Migration 003, 12.11.)**, Frontend-Anbindung (FE-05) offen
-- [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
+- [x] Seite „Berichte“ entfernt (war nur ein Platzhalter; Lernstand steht auf Dashboard und Teilnehmende)
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
 - [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
 - [x] Backend-Skripte `db:migrate` und `db:seed` (28.10.); ein `db:reset` ist `docker compose down -v` bzw. `npm run db:seed -- --reset`

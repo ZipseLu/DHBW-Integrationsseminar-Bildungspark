@@ -93,7 +93,6 @@ export const NAV_ITEMS: readonly NavEntry[] = [
   { id: 'arbeitsblaetter', label: 'Arbeitsblätter', title: 'Arbeitsblätter', icon: '▦' },
   { id: 'ki-erstellung', label: 'KI-Erstellung', title: 'KI-Erstellung', icon: '✦' },
   { id: 'teilnehmer', label: 'Teilnehmende', title: 'Teilnehmende', icon: '◎' },
-  { id: 'berichte', label: 'Berichte', title: 'Berichte', icon: '◱' },
   { id: 'benutzerverwaltung', label: 'Benutzerverwaltung', title: 'Benutzerverwaltung', icon: '⊙', adminOnly: true },
   { id: 'einstellungen', label: 'Einstellungen', title: 'Einstellungen', icon: '⚙' },
 ]

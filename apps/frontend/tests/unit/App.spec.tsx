@@ -83,7 +83,6 @@ describe('Navigation', () => {
     ['Dashboard', 'Übersicht'],
     ['Lehrpläne', 'Lehrpläne'],
     ['Teilnehmende', 'Teilnehmende'],
-    ['Berichte', 'Berichte'],
     ['Benutzerverwaltung', 'Benutzerverwaltung'],
     ['Einstellungen', 'Einstellungen'],
   ])('Seite "%s" ist vorhanden und hat Inhalt', (label, title) => {
@@ -91,6 +90,11 @@ describe('Navigation', () => {
     navigate(label)
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
     expect(document.querySelector('main')).not.toBeEmptyDOMElement()
+  })
+
+  it('hat keine Seite „Berichte“ mehr (aus dem Umfang genommen)', () => {
+    renderApp()
+    expect(screen.queryByRole('button', { name: /Berichte/ })).not.toBeInTheDocument()
   })
 
   it('"+ Arbeitsblatt erstellen" fuehrt zur KI-Erstellung', () => {
