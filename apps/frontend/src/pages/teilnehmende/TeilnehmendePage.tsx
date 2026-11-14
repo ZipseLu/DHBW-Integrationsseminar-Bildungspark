@@ -171,7 +171,8 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
         />
       )}
 
-      {assignFor && lernstand.quelle.art === 'bereit' && (
+      {/* With profiles from the backend the assignment is always saved – also while the learning progress is still loading */}
+      {assignFor && lernstand.quelle.art !== 'aus' && (
         <ZuordnenModal
           participant={assignFor}
           zugeordnet={zugeordneteIds(lernstand.je[assignFor.id])}
@@ -186,7 +187,7 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
         />
       )}
 
-      {assignFor && lernstand.quelle.art !== 'bereit' && (
+      {assignFor && lernstand.quelle.art === 'aus' && (
         <AssignWorksheetModal
           participant={assignFor}
           onClose={() => setAssignFor(null)}
