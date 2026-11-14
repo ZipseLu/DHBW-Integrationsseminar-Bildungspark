@@ -18,6 +18,10 @@ export default defineConfig({
       AZURE_OPENAI_API_KEY: '',
       AZURE_OPENAI_ENDPOINT: '',
       AI_PROVIDER: 'gemini',
+      // Anmeldung (BE-01) immer mit den Standardwerten testen (Entwicklungs-Schlüssel, 8 h),
+      // egal was in einer lokalen .env steht – '' gilt in config.js als „nicht gesetzt“.
+      JWT_SECRET: '',
+      JWT_EXPIRES_IN: '',
       // Datenbank nur, wenn DB_* im echten Prozess-Env steht (CI, Compose, Kommandozeile).
       // Diese Datei laeuft im Elternprozess ohne dotenv – ein DB_HOST oder MYSQL_*, das nur
       // in der Root-.env steht, wird hier zu '' und kann keinen Testlauf (der Arbeitsblaetter

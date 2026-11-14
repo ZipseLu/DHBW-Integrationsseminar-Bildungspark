@@ -27,6 +27,12 @@ const int = (value, fallback) => {
 /** Erster nicht-leerer Wert aus mehreren Umgebungsvariablen */
 const first = (...names) => names.map((name) => process.env[name]).find((value) => value !== undefined && value !== '')
 
+/** Nur für die Entwicklung – in Produktion startet das Backend damit nicht (src/auth/token.js) */
+export const DEV_JWT_SECRET = 'dev-secret-bitte-aendern'
+
+/** JWT_EXPIRES_IN: reine Zahl = Sekunden (jsonwebtoken läse "3600" sonst als Millisekunden), sonst z. B. '8h' */
+export const jwtLaufzeit = (value) => (typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value) : value)
+
 export const config = {
   env: process.env.NODE_ENV ?? 'development',
   isTest: process.env.NODE_ENV === 'test',
@@ -50,8 +56,10 @@ export const config = {
       .filter(Boolean),
   },
 
-  // Nur in Entwicklung/Test gibt es einen Fallback; in Produktion ist JWT_SECRET Pflicht (s. unten).
-  jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-bitte-aendern',
+  // Anmeldung (BE-01): Schlüssel für die Signatur der Tokens und deren Gültigkeit
+  // (Format von jsonwebtoken, z. B. '8h' = ein Arbeitstag, '30m')
+  jwtSecret: first('JWT_SECRET') ?? DEV_JWT_SECRET,
+  jwtExpiresIn: jwtLaufzeit(first('JWT_EXPIRES_IN')) ?? '8h',
 
   ai: {
     // 'gemini' | 'azure' – hier zentral umschalten, wenn die Azure-Phase startet.

@@ -112,6 +112,7 @@ services:
       WEB_SEARCH_RATE_LIMIT_WINDOW_MS: "${WEB_SEARCH_RATE_LIMIT_WINDOW_MS:-60000}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
       TZ: "Europe/Berlin"
     volumes:
       - ./apps/backend:/app
