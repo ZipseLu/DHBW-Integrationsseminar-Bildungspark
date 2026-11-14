@@ -312,8 +312,12 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           )}
 
           {progress && (
-            <div className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }} role="status">
-              Variante {progress.current} von {progress.total} … {progress.label}
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }} role="status">
+                Variante {progress.current} von {progress.total} … {progress.label}
+              </div>
+              {/* key: the timer starts again for every variant */}
+              <Wartezeit key={progress.current} />
             </div>
           )}
         </form>
@@ -327,6 +331,42 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
 }
 
 type PreviewTarget = { level: Level; format: Format }
+
+/** FE-24: one variant takes 20 s to 2 min (QS-04); after this many seconds the hint changes */
+export const LANGE_WARTEZEIT_SEK = 60
+
+/** "0:07", "1:05" */
+export function formatWartezeit(sekunden: number): string {
+  return `${Math.floor(sekunden / 60)}:${String(sekunden % 60).padStart(2, '0')}`
+}
+
+export function warteHinweis(sekunden: number): string {
+  return sekunden >= LANGE_WARTEZEIT_SEK
+    ? 'Die KI braucht gerade länger als üblich – bitte warten und die Seite nicht neu laden.'
+    : 'Eine Variante dauert meist 20 Sekunden bis 2 Minuten.'
+}
+
+/**
+ * Elapsed time of the current variant, so nobody clicks again or leaves the page.
+ * The ticking seconds are hidden from screen readers (they would be announced every second);
+ * the hint text is enough for them.
+ */
+function Wartezeit() {
+  const [sekunden, setSekunden] = useState(0)
+  useEffect(() => {
+    const start = Date.now()
+    const timer = setInterval(() => setSekunden(Math.floor((Date.now() - start) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return (
+    <div className="text-xs flex items-center gap-2" style={{ color: 'var(--muted-foreground)' }} data-testid="wartezeit">
+      <span className="font-mono tabular-nums" aria-hidden="true">
+        ⏱ {formatWartezeit(sekunden)}
+      </span>
+      <span>{warteHinweis(sekunden)}</span>
+    </div>
+  )
+}
 
 type GeneratedVariantsProps = {
   generated: Generated
