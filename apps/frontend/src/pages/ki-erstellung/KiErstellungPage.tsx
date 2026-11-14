@@ -22,6 +22,7 @@ import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
 import { GeneratedWorksheetCard, type SpeicherZustand } from './GeneratedWorksheetCard'
 import { WebSearchSection } from './WebSearchSection'
+import type { KiStand } from '@/components/VerlassenDialog'
 
 const labelClass = 'block text-xs font-mono font-medium mb-1.5'
 const inputStyle = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
@@ -48,7 +49,13 @@ type GenerationError = { message: string; variant: string; current: number; tota
  * nur wenige Anfragen pro Minute erlaubt.
  */
 /** vorauswahl: Lernziel, das auf der Seite Lehrpläne mit "Arbeitsblatt daraus erstellen" gewählt wurde */
-export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorauswahl | null } = {}) {
+type KiErstellungProps = {
+  vorauswahl?: KiVorauswahl | null
+  /** FE-27: reports unsaved variants, so the app can ask before the page is left */
+  onStand?: (stand: KiStand) => void
+}
+
+export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungProps = {}) {
   // FE-05: an uploaded worksheet arrives as topic and as "Erwartungen" (the template text)
   const vorlage = vorauswahl?.vorlage ? erwartungenAusVorlage(vorauswahl.vorlage.name, vorauswahl.vorlage.text) : null
   const [thema, setThema] = useState(vorauswahl?.thema ?? '')
@@ -324,7 +331,15 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
       </section>
 
       {generated && (
-        <GeneratedVariants key={generated.nr} generated={generated} results={results} progress={progress} error={error} erstelltVon={CURRENT_USER.name} />
+        <GeneratedVariants
+          key={generated.nr}
+          generated={generated}
+          results={results}
+          progress={progress}
+          error={error}
+          erstelltVon={CURRENT_USER.name}
+          onStand={onStand}
+        />
       )}
     </div>
   )
@@ -375,11 +390,12 @@ type GeneratedVariantsProps = {
   error: GenerationError | null
   /** Name der angemeldeten Person – steht als Ersteller im Verlauf */
   erstelltVon: string
+  onStand?: (stand: KiStand) => void
 }
 
 const fehlerText = (caught: unknown) => (caught instanceof ApiError ? caught.message : 'Unbekannter Fehler beim Speichern.')
 
-function GeneratedVariants({ generated, results, progress, error, erstelltVon }: GeneratedVariantsProps) {
+function GeneratedVariants({ generated, results, progress, error, erstelltVon, onStand }: GeneratedVariantsProps) {
   const finished = progress === null
   const anyMocked = results.some((r) => r.meta.mocked)
   const stufen = [...new Set(results.map((r) => r.worksheet.stufe))]
@@ -432,6 +448,13 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon }:
 
   const anzahlGespeichert = results.filter((_, index) => speicher[index]?.art === 'gespeichert').length
   const alleGespeichert = results.length > 0 && anzahlGespeichert === results.length
+
+  // FE-27: tell the app how much would be lost when leaving the page
+  const ungespeichert = results.length - anzahlGespeichert
+  useEffect(() => {
+    onStand?.({ ungespeichert, laeuft: !finished })
+  }, [onStand, ungespeichert, finished])
+  useEffect(() => () => onStand?.({ ungespeichert: 0, laeuft: false }), [onStand])
 
   let status: string
   if (!finished) status = `Variante ${progress.current} von ${progress.total} wird erstellt…`

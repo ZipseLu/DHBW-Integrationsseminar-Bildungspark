@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { KEIN_KI_STAND, VerlassenDialog, hatUngesichertes, type KiStand } from '@/components/VerlassenDialog'
 import { NAV_ITEMS } from '@/data/constants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
 import { Header } from '@/layout/Header'
@@ -46,10 +47,36 @@ export default function App() {
     if (main) main.scrollTop = 0
   }
 
-  function navigate(item: NavItem) {
+  // FE-27: unsaved variants of the KI-Erstellung; leaving the page asks first
+  const [kiStand, setKiStand] = useState<KiStand>(KEIN_KI_STAND)
+  const [wartendesZiel, setWartendesZiel] = useState<NavItem | null>(null)
+  const meldeKiStand = useCallback((stand: KiStand) => setKiStand(stand), [])
+
+  function wechsle(item: NavItem) {
     setKiVorauswahl(null)
     zeigeSeite(item)
   }
+
+  function navigate(item: NavItem) {
+    // Staying on the plain KI page keeps the variants; everything else would discard them
+    const bleibtErhalten = item === 'ki-erstellung' && kiVorauswahl === null
+    if (activeNav === 'ki-erstellung' && !bleibtErhalten && hatUngesichertes(kiStand)) {
+      setWartendesZiel(item)
+      return
+    }
+    wechsle(item)
+  }
+
+  // Closing or reloading the tab: the browser shows its own warning
+  useEffect(() => {
+    if (activeNav !== 'ki-erstellung' || !hatUngesichertes(kiStand)) return
+    const warnen = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnen)
+    return () => window.removeEventListener('beforeunload', warnen)
+  }, [activeNav, kiStand])
 
   function createFromLehrplan(vorauswahl: KiVorauswahl) {
     setKiVorauswahl(vorauswahl)
@@ -94,7 +121,7 @@ export default function App() {
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} />
+            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} onStand={meldeKiStand} />
           )}
           {activeNav === 'teilnehmer' && (
             <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
@@ -105,6 +132,18 @@ export default function App() {
           {activeNav === 'einstellungen' && <EinstellungenPage currentUser={user} settings={settings} onSave={handleSaveSettings} />}
         </main>
       </div>
+      {wartendesZiel && (
+        <VerlassenDialog
+          stand={kiStand}
+          onBleiben={() => setWartendesZiel(null)}
+          onVerlassen={() => {
+            const ziel = wartendesZiel
+            setWartendesZiel(null)
+            setKiStand(KEIN_KI_STAND)
+            wechsle(ziel)
+          }}
+        />
+      )}
     </div>
   )
 }
