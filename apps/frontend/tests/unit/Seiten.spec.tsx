@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS, applyTheme, loadSettings, saveSettings } from '@/lib/
 import { shortName } from '@/pages/teilnehmende/ParticipantCard'
 
 /**
- * Tests fuer Dashboard, Teilnehmende, Berichte, Benutzerverwaltung und Einstellungen.
+ * Tests fuer Dashboard, Teilnehmende, Benutzerverwaltung und Einstellungen.
  */
 
 beforeEach(() => {
@@ -93,13 +93,6 @@ describe('Teilnehmende', () => {
     fireEvent.click(zuweisen)
 
     expect(screen.getByRole('status')).toHaveTextContent('Arbeitsblatt „Begleitpapiere prüfen“ wurde IW3-4421 zugewiesen.')
-  })
-})
-
-describe('Berichte', () => {
-  it('zeigt den Platzhalter aus dem Mockup', () => {
-    openPage('Berichte')
-    expect(screen.getByRole('heading', { name: 'Berichte & Auswertungen' })).toBeInTheDocument()
   })
 })
 
