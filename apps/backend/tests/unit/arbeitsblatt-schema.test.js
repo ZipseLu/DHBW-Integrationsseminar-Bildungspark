@@ -96,4 +96,15 @@ describe('JSON-Schema fuer Gemini', () => {
     expect(WORKSHEET_JSON_SCHEMA.properties.stufe.enum).toEqual(['T', 'A', 'F', 'B'])
     expect(WORKSHEET_JSON_SCHEMA.propertyOrdering[0]).toBe('titel')
   })
+
+  // QS-04: options must be enforced by the schema, a prompt rule alone was not enough
+  it('erzwingt Optionen bei Reihenfolge, Ankreuzen und Zuordnen', () => {
+    const [mitOptionen, ohneOptionen] = WORKSHEET_JSON_SCHEMA.properties.aufgaben.items.anyOf
+    expect(mitOptionen.properties.typ.enum).toEqual(['reihenfolge', 'ankreuzen', 'zuordnen'])
+    expect(mitOptionen.required).toContain('optionen')
+    expect(mitOptionen.properties.optionen.minItems).toBe(2)
+    expect(ohneOptionen.properties.typ.enum).toEqual(['offen', 'malen', 'praxis'])
+    expect(ohneOptionen.properties).not.toHaveProperty('optionen')
+    expect(ohneOptionen.propertyOrdering).not.toContain('optionen')
+  })
 })

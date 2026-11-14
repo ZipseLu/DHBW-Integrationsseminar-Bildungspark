@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { NAV_ITEMS } from '@/data/constants'
-import { PARTICIPANTS } from '@/data/participants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
 import { Header } from '@/layout/Header'
 import { Sidebar } from '@/layout/Sidebar'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { applyTheme, loadSettings, saveSettings } from '@/lib/settings'
+import { useTeilnehmende } from '@/lib/teilnehmende'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 import { BenutzerverwaltungPage } from '@/pages/benutzerverwaltung/BenutzerverwaltungPage'
 import { BerichtePage } from '@/pages/berichte/BerichtePage'
@@ -14,7 +14,7 @@ import { EinstellungenPage } from '@/pages/einstellungen/EinstellungenPage'
 import { KiErstellungPage } from '@/pages/ki-erstellung/KiErstellungPage'
 import { LehrplaenePage } from '@/pages/lehrplaene/LehrplaenePage'
 import { TeilnehmendePage } from '@/pages/teilnehmende/TeilnehmendePage'
-import type { AppSettings, NavItem, Participant, SavedDocument, StaffUser } from '@/types'
+import type { AppSettings, NavItem, StaffUser } from '@/types'
 
 /**
  * Prototyp-Frontend der Arbeitsblattverwaltung.
@@ -23,15 +23,14 @@ import type { AppSettings, NavItem, Participant, SavedDocument, StaffUser } from
  * dem Backend, alle anderen Seiten arbeiten mit lokalen Beispieldaten.
  * Es gibt noch keine Anmeldung.
  *
- * Seitenuebergreifende Daten (Teilnehmende, Mitarbeiterkonten, gespeicherte
- * Dokumente, Einstellungen) liegen hier, damit sie beim Seitenwechsel erhalten bleiben.
+ * Seitenuebergreifende Daten (Teilnehmende, Mitarbeiterkonten, Einstellungen) liegen hier, damit sie beim Seitenwechsel erhalten bleiben.
  */
 export default function App() {
   const user = CURRENT_USER
   const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
-  const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([])
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
-  const [participants, setParticipants] = useState<Participant[]>(PARTICIPANTS)
+  // FE-12: profiles from GET /api/teilnehmende (sample data if the backend is unavailable)
+  const teilnehmende = useTeilnehmende(activeNav === 'dashboard' || activeNav === 'teilnehmer')
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([...STAFF_USERS])
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
   // Lernziel, das von der Seite Lehrpläne an die KI-Erstellung uebergeben wird
@@ -84,22 +83,21 @@ export default function App() {
         <Header title={title} onCreate={() => navigate('ki-erstellung')} />
 
         <main id="inhalt" tabIndex={-1} className="flex-1 p-8 overflow-auto focus:outline-none" data-page={activeNav}>
-          {activeNav === 'dashboard' && <DashboardPage participants={participants} onNavigate={navigate} />}
+          {activeNav === 'dashboard' && <DashboardPage participants={teilnehmende.participants} onNavigate={navigate} />}
           {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} />}
           {activeNav === 'arbeitsblaetter' && (
             <ArbeitsblaetterPage
               user={user}
-              savedDocs={savedDocs}
-              onSavedDocsChange={setSavedDocs}
+              onKiAnpassen={createFromLehrplan}
               favoriteIds={favoriteIds}
               onFavoriteIdsChange={setFavoriteIds}
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel}` : 'neu'} vorauswahl={kiVorauswahl} />
+            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} />
           )}
           {activeNav === 'teilnehmer' && (
-            <TeilnehmendePage participants={participants} onChange={setParticipants} defaultBerufsbild={settings.defaultBerufsbild} />
+            <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
           )}
           {activeNav === 'berichte' && <BerichtePage />}
           {activeNav === 'benutzerverwaltung' && user.role === 'admin' && (

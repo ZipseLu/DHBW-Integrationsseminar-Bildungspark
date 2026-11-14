@@ -220,8 +220,44 @@ function toGeminiSchema(node) {
   return out
 }
 
-export const WORKSHEET_JSON_SCHEMA = toGeminiSchema(
-  z.toJSONSchema(LlmWorksheetSchema, { target: 'draft-2020-12', unrepresentable: 'any', io: 'input' }),
+/** Task types that are unsolvable without answer options (see validator.js) */
+export const TYPEN_MIT_OPTIONEN = ['reihenfolge', 'ankreuzen', 'zuordnen']
+
+/**
+ * QS-04: Gemini kept dropping `optionen` in picture formats, even after a
+ * correction prompt. Since Gemini decodes along the JSON schema, we split each
+ * task into two variants: types that need options get `optionen` as a required
+ * field with at least 2 entries; the other types have no `optionen` at all.
+ * Only the schema sent to Gemini changes – stored worksheets keep the zod schema.
+ */
+function mitPflichtOptionen(schema) {
+  const aufgabe = schema.properties.aufgaben.items
+  const { optionen, ...ohneOptionen } = aufgabe.properties
+  const mitOptionen = {
+    ...aufgabe,
+    properties: {
+      ...aufgabe.properties,
+      typ: { ...aufgabe.properties.typ, enum: TYPEN_MIT_OPTIONEN },
+      optionen: { ...optionen, minItems: 2 },
+    },
+    required: [...aufgabe.required, 'optionen'],
+  }
+  const ohne = {
+    ...aufgabe,
+    properties: {
+      ...ohneOptionen,
+      typ: { ...aufgabe.properties.typ, enum: AUFGABEN_TYPEN.filter((typ) => !TYPEN_MIT_OPTIONEN.includes(typ)) },
+    },
+    propertyOrdering: aufgabe.propertyOrdering.filter((key) => key !== 'optionen'),
+  }
+  return {
+    ...schema,
+    properties: { ...schema.properties, aufgaben: { ...schema.properties.aufgaben, items: { anyOf: [mitOptionen, ohne] } } },
+  }
+}
+
+export const WORKSHEET_JSON_SCHEMA = mitPflichtOptionen(
+  toGeminiSchema(z.toJSONSchema(LlmWorksheetSchema, { target: 'draft-2020-12', unrepresentable: 'any', io: 'input' })),
 )
 
 // ---------------------------------------------------------------------------

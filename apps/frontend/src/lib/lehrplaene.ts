@@ -92,7 +92,15 @@ export function bausteinLabel(doc: LehrplanDokument): string {
 }
 
 /** Was die KI-Erstellung beim Wechsel aus den Lehrplänen vorauswählt */
-export type KiVorauswahl = { berufsfeld: string; baustein: number; titel: string }
+export type KiVorauswahl = {
+  berufsfeld: string
+  /** Learning goal from the Lehrpläne page; absent when coming from an upload (FE-05) */
+  baustein?: number
+  titel?: string
+  /** FE-05: topic and text of an uploaded worksheet that the KI should adapt */
+  thema?: string
+  vorlage?: { name: string; text: string }
+}
 
 export function vorauswahlFor(doc: LehrplanDokument, ziel: LernzielInput = doc.lernziele[0]): KiVorauswahl {
   return { berufsfeld: doc.berufsfeld, baustein: doc.baustein, titel: ziel?.titel ?? '' }

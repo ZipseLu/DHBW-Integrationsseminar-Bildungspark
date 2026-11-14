@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { erwartungenAusVorlage } from '@/lib/vorlage'
 import { stufeTextVar } from '@/lib/settings'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
@@ -48,8 +49,10 @@ type GenerationError = { message: string; variant: string; current: number; tota
  */
 /** vorauswahl: Lernziel, das auf der Seite Lehrpläne mit "Arbeitsblatt daraus erstellen" gewählt wurde */
 export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorauswahl | null } = {}) {
-  const [thema, setThema] = useState('')
-  const [erwartungen, setErwartungen] = useState('')
+  // FE-05: an uploaded worksheet arrives as topic and as "Erwartungen" (the template text)
+  const vorlage = vorauswahl?.vorlage ? erwartungenAusVorlage(vorauswahl.vorlage.name, vorauswahl.vorlage.text) : null
+  const [thema, setThema] = useState(vorauswahl?.thema ?? '')
+  const [erwartungen, setErwartungen] = useState(vorlage?.erwartungen ?? '')
   const [berufsbild, setBerufsbild] = useState(vorauswahl?.berufsfeld ?? BERUFSBILDER[0])
   const [lernzielKey, setLernzielKey] = useState<string | null>(null)
   const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
@@ -84,7 +87,7 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
   const lernziele = katalog.filter((l) => l.berufsfeld === berufsbild)
   // Ohne eigene Auswahl: Vorauswahl aus den Lehrplaenen (gleiches Lernziel, sonst gleicher Baustein)
   const vorausgewaehlt =
-    vorauswahl && vorauswahl.berufsfeld === berufsbild
+    vorauswahl && vorauswahl.berufsfeld === berufsbild && vorauswahl.baustein !== undefined
       ? (lernziele.find((l) => l.baustein === vorauswahl.baustein && l.titel === vorauswahl.titel) ?? lernziele.find((l) => l.baustein === vorauswahl.baustein))
       : undefined
   const lernziel = lernziele.find((l) => l.key === lernzielKey) ?? vorausgewaehlt ?? lernziele[0] ?? null
@@ -139,6 +142,13 @@ export function KiErstellungPage({ vorauswahl = null }: { vorauswahl?: KiVorausw
           </span>
           <h2 className="font-display text-xl font-semibold">Neues Arbeitsblatt mit KI erstellen</h2>
         </div>
+
+        {vorauswahl?.vorlage && (
+          <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#EBF0F8', color: '#1A3A5C' }} role="note">
+            📄 Vorlage „{vorauswahl.vorlage.name}“ übernommen: Der Text steht unter „Erwartungen an das Arbeitsblatt“
+            {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}. Bitte noch das passende Lernziel wählen.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-4">
