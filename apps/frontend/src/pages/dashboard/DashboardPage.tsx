@@ -4,7 +4,7 @@ import { StatCard } from '@/components/Widgets'
 import { FORMAT_BADGE_COLORS, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { dashboardAusBeispielen, dashboardAusGespeicherten, type DashboardDaten } from '@/lib/dashboardDaten'
-import { fehlertext, ladeGespeicherteArbeitsblaetter } from '@/lib/gespeicherteArbeitsblaetter'
+import { fehlertext, loadSavedWorksheets } from '@/lib/gespeicherteArbeitsblaetter'
 import type { Level, NavItem, Participant } from '@/types'
 
 /** Kurzbeschreibung des Bedarfs je Barrierefreiheits-Format (Persona-Karten) */
@@ -40,7 +40,7 @@ export function DashboardPage({ participants, onNavigate }: Props) {
   useEffect(() => {
     let aktiv = true
     setQuelle({ art: 'laden' })
-    ladeGespeicherteArbeitsblaetter()
+    loadSavedWorksheets()
       .then((blaetter) => {
         if (!aktiv) return
         setDaten(dashboardAusGespeicherten(blaetter))

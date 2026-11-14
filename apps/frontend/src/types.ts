@@ -64,17 +64,6 @@ export type GespeichertInfo = {
   geaendertAm?: string
 }
 
-export type SavedDocument = {
-  id: string
-  name: string
-  size: string
-  pages: number
-  savedAt: string
-  savedBy: string
-  berufsbild: string
-  thema: string
-}
-
 export type HistoryAction = 'erstellt' | 'bearbeitet' | 'KI-angepasst' | 'freigegeben' | 'archiviert'
 
 export type HistoryEntry = {
@@ -92,6 +81,8 @@ export type WebResult = {
   url: string
   snippet: string
   source: string
+  fileType?: string
+  mocked?: boolean
 }
 
 /** Status eines Berufsfelds im Lernweg einer/eines Teilnehmenden */

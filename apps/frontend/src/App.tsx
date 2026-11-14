@@ -14,7 +14,7 @@ import { EinstellungenPage } from '@/pages/einstellungen/EinstellungenPage'
 import { KiErstellungPage } from '@/pages/ki-erstellung/KiErstellungPage'
 import { LehrplaenePage } from '@/pages/lehrplaene/LehrplaenePage'
 import { TeilnehmendePage } from '@/pages/teilnehmende/TeilnehmendePage'
-import type { AppSettings, NavItem, SavedDocument, StaffUser } from '@/types'
+import type { AppSettings, NavItem, StaffUser } from '@/types'
 
 /**
  * Prototyp-Frontend der Arbeitsblattverwaltung.
@@ -23,13 +23,11 @@ import type { AppSettings, NavItem, SavedDocument, StaffUser } from '@/types'
  * dem Backend, alle anderen Seiten arbeiten mit lokalen Beispieldaten.
  * Es gibt noch keine Anmeldung.
  *
- * Seitenuebergreifende Daten (Teilnehmende, Mitarbeiterkonten, gespeicherte
- * Dokumente, Einstellungen) liegen hier, damit sie beim Seitenwechsel erhalten bleiben.
+ * Seitenuebergreifende Daten (Teilnehmende, Mitarbeiterkonten, Einstellungen) liegen hier, damit sie beim Seitenwechsel erhalten bleiben.
  */
 export default function App() {
   const user = CURRENT_USER
   const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
-  const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([])
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   // FE-12: profiles from GET /api/teilnehmende (sample data if the backend is unavailable)
   const teilnehmende = useTeilnehmende(activeNav === 'dashboard' || activeNav === 'teilnehmer')
@@ -90,14 +88,13 @@ export default function App() {
           {activeNav === 'arbeitsblaetter' && (
             <ArbeitsblaetterPage
               user={user}
-              savedDocs={savedDocs}
-              onSavedDocsChange={setSavedDocs}
+              onKiAnpassen={createFromLehrplan}
               favoriteIds={favoriteIds}
               onFavoriteIdsChange={setFavoriteIds}
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel}` : 'neu'} vorauswahl={kiVorauswahl} />
+            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} />
           )}
           {activeNav === 'teilnehmer' && (
             <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
