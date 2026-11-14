@@ -34,9 +34,13 @@ type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>
 
 /** fetch mock: GET list answers with `liste`, everything else goes to `weitere` */
 function backend(liste: Teilnehmer[], weitere: Handler = () => json({}, 500)) {
-  const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
-    (init?.method ?? 'GET') === 'GET' && url === '/api/teilnehmende' ? json({ eintraege: liste, gesamt: liste.length }) : weitere(url, init),
-  )
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    const get = (init?.method ?? 'GET') === 'GET'
+    if (get && url === '/api/teilnehmende') return json({ eintraege: liste, gesamt: liste.length })
+    // FE-11: learning progress of all profiles – nothing assigned in these tests
+    if (get && url === '/api/teilnehmende/lernstand') return json({ eintraege: [], gesamt: 0 })
+    return weitere(url, init)
+  })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -155,6 +159,8 @@ describe('Teilnehmende aus dem Backend (FE-12)', () => {
       .fn()
       .mockResolvedValueOnce(json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
       .mockResolvedValueOnce(json({ eintraege: [teilnehmer()], gesamt: 1 }))
+      // FE-11: with profiles from the backend the learning progress is loaded as well
+      .mockResolvedValueOnce(json({ eintraege: [], gesamt: 0 }))
     vi.stubGlobal('fetch', fetchMock)
     render(<Seite />)
 
@@ -164,8 +170,9 @@ describe('Teilnehmende aus dem Backend (FE-12)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }))
     expect(await screen.findByRole('article', { name: 'Teilnehmer IW3-1000' })).toBeInTheDocument()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    expect(String(fetchMock.mock.calls[2][0])).toBe('/api/teilnehmende/lernstand')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
 
