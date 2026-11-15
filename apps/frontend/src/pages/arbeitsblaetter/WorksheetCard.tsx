@@ -3,10 +3,8 @@ import type { Worksheet } from '@/types'
 
 type Props = {
   worksheet: Worksheet
-  expanded: boolean
   isFavorite: boolean
   onToggleFavorite: () => void
-  onToggleExpand: () => void
   onPreview: () => void
   onHistory: () => void
   /** Only offered for worksheets saved in the backend (FE-10) */
@@ -21,10 +19,8 @@ const secondaryButton = { backgroundColor: 'var(--muted)', color: 'var(--foregro
 
 export function WorksheetCard({
   worksheet: w,
-  expanded,
   isFavorite,
   onToggleFavorite,
-  onToggleExpand,
   onPreview,
   onHistory,
   onEdit,
@@ -40,7 +36,7 @@ export function WorksheetCard({
     <article
       className="rounded-lg overflow-hidden"
       aria-label={w.title}
-      style={{ backgroundColor: 'var(--card)', border: expanded ? '1.5px solid var(--primary)' : '1px solid var(--border)' }}
+      style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-shrink-0 flex flex-col items-center justify-center rounded px-2 py-1 text-center" style={{ backgroundColor: 'var(--muted)', minWidth: 44 }}>
@@ -118,19 +114,6 @@ export function WorksheetCard({
           >
             {isFavorite ? '★' : '☆'}
           </button>
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            aria-expanded={expanded}
-            className="text-xs px-2.5 py-1.5 rounded font-medium transition-all"
-            style={{
-              backgroundColor: expanded ? 'var(--primary)' : 'var(--muted)',
-              color: expanded ? 'var(--primary-foreground)' : 'var(--foreground)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {expanded ? '▲ Aufbau' : '▼ Aufbau'}
-          </button>
           <button type="button" onClick={onPreview} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
             👁 Vorschau
           </button>
@@ -173,47 +156,6 @@ export function WorksheetCard({
         </div>
       </div>
 
-      {expanded && (
-        <div style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--background)' }}>
-          <div className="px-4 py-3">
-            <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
-              ABSCHNITT
-            </div>
-            <div className="text-sm font-medium mb-4">{w.abschnitt.titel}</div>
-            <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
-              BINNENDIFFERENZIERUNG NACH NIVEAUSTUFEN
-            </div>
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${levels.length}, 1fr)` }}>
-              {levels.map((l) => {
-                const s = LEVEL_STYLES[l]
-                const row = w.abschnitt.niveaus[l]
-                return (
-                  <div key={l} className="rounded-lg overflow-hidden" style={{ border: `1.5px solid ${s.text}` }}>
-                    <div className="px-3 py-2 flex items-center gap-2" style={{ backgroundColor: s.bg }}>
-                      <span className="text-sm font-mono font-bold" style={{ color: s.text }}>
-                        {l}
-                      </span>
-                      <span className="text-xs font-medium" style={{ color: s.text }}>
-                        {s.label}
-                      </span>
-                    </div>
-                    <div className="px-3 py-2.5" style={{ backgroundColor: '#FFFFFF' }}>
-                      <div className="text-xs mb-2 leading-snug" style={{ color: 'var(--foreground)' }}>
-                        {row.kompetenz}
-                      </div>
-                      {row.beispiel && (
-                        <div className="text-xs px-2 py-1.5 rounded leading-snug italic" style={{ backgroundColor: s.bg, color: s.text }}>
-                          Beispiel: {row.beispiel}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </article>
   )
 }

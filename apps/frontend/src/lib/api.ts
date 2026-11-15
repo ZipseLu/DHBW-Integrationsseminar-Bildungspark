@@ -133,6 +133,16 @@ export function setAbmeldeHandler(handler: (() => void) | null): void {
 }
 
 /** fetch mit einheitlicher Fehlerbehandlung: Netzwerkfehler und Nicht-2xx werden zu ApiError */
+/**
+ * FE-29: the backend adds hints for developers to some messages, e.g. "Die Datenbank ist nicht
+ * verfügbar. MySQL nicht erreichbar – `docker compose up -d db` starten …". Teachers only see the
+ * first part; text after "MySQL nicht erreichbar" / "Tabellen fehlen" and commands in backticks are cut.
+ */
+export function fuerLehrkraefte(message: string): string {
+  const ohneHinweis = message.split(/\s+(?:MySQL nicht erreichbar|Tabellen fehlen)\b/)[0]
+  return ohneHinweis.replace(/`[^`]*`/g, '').replace(/\s{2,}/g, ' ').trim()
+}
+
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = getAuthToken()
   let request = init
@@ -146,7 +156,8 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   try {
     response = await fetch(`${BASE_URL}${path}`, request)
   } catch {
-    throw new ApiError('Das Backend ist nicht erreichbar. Läuft `npm run dev` in apps/backend?', 0, 'network_error')
+    // FE-29: no developer commands in messages for teachers (they are in the README)
+    throw new ApiError('Der Server ist nicht erreichbar. Bitte später erneut versuchen oder die IT informieren.', 0, 'network_error')
   }
 
   if (response.ok) return response
@@ -162,7 +173,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   } catch {
     // keine JSON-Antwort (z. B. HTML-Fehlerseite des Proxys)
   }
-  const message = body.message ?? `Fehler ${response.status} vom Backend`
+  const message = fuerLehrkraefte(body.message ?? `Fehler ${response.status} vom Backend`)
   throw new ApiError(message, response.status, body.error ?? 'http_error', body.details, body.code)
 }
 

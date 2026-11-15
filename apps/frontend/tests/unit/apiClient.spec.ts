@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver'
 import {
   ApiError,
   apiFetch,
+  fuerLehrkraefte,
   deleteArbeitsblatt,
   deleteZuordnung,
   downloadArbeitsblattDocx,
@@ -120,7 +121,16 @@ describe('apiFetch – Fehlerbehandlung', () => {
     const fehler = await apiFetch('/api/health').catch((e: unknown) => e)
     expect(fehler).toBeInstanceOf(ApiError)
     expect(fehler).toMatchObject({ status: 0, code: 'network_error' })
-    expect((fehler as ApiError).message).toContain('Backend ist nicht erreichbar')
+    expect((fehler as ApiError).message).toContain('Server ist nicht erreichbar')
+    expect((fehler as ApiError).message).not.toContain('npm')
+  })
+
+  it('zeigt Lehrkräften keine Entwickler-Hinweise aus Fehlermeldungen (FE-29)', () => {
+    expect(fuerLehrkraefte('Die Datenbank ist nicht verfügbar. MySQL nicht erreichbar – `docker compose up -d db` starten und DB_HOST/DB_PORT in der .env prüfen.')).toBe(
+      'Die Datenbank ist nicht verfügbar.',
+    )
+    expect(fuerLehrkraefte('Die Datenbank ist nicht verfügbar. Tabellen fehlen – in apps/backend `npm run db:migrate` ausführen.')).toBe('Die Datenbank ist nicht verfügbar.')
+    expect(fuerLehrkraefte('Dieses Arbeitsblatt gibt es nicht.')).toBe('Dieses Arbeitsblatt gibt es nicht.')
   })
 
   it('übernimmt Meldung, Code und Details aus der Fehlerantwort des Backends', async () => {
