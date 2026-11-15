@@ -18,6 +18,11 @@ export default defineConfig({
       AZURE_OPENAI_API_KEY: '',
       AZURE_OPENAI_ENDPOINT: '',
       AI_PROVIDER: 'gemini',
+      // Modellnamen auf die Code-Defaults (src/config.js) festnageln: Tests pruefen sie,
+      // eine lokale .env mit z. B. GEMINI_MODEL=gemini-3.5-flash-lite wuerde sie sonst kippen.
+      // Leere Werte helfen hier nicht, weil config.js mit ?? arbeitet ('' gilt als gesetzt).
+      GEMINI_MODEL: 'gemini-3.5-flash',
+      GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash-lite',
       // Anmeldung (BE-01) immer mit den Standardwerten testen (Entwicklungs-Schlüssel, 8 h),
       // egal was in einer lokalen .env steht – '' gilt in config.js als „nicht gesetzt“.
       JWT_SECRET: '',
