@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ErrorNote, SectionCard, SettingRow, SuccessNote, Toggle, fieldLabelClass, inputStyle } from '@/components/Widgets'
+import { SectionCard, SettingRow, Toggle, fieldLabelClass, inputStyle } from '@/components/Widgets'
 import { BERUFSBILDER, ROLE_LABELS } from '@/data/constants'
 import { ACCENT_COLORS, PRIMARY_COLORS } from '@/lib/settings'
 import type { AppSettings, StaffUser } from '@/types'
@@ -12,18 +12,10 @@ type Props = {
 
 type BoolKey = { [K in keyof AppSettings]: AppSettings[K] extends boolean ? K : never }[keyof AppSettings]
 
-function choiceStyle(active: boolean) {
-  return {
-    border: active ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-    backgroundColor: active ? 'var(--muted)' : 'transparent',
-    color: 'var(--foreground)',
-  }
-}
-
 /**
- * Einstellungen wie im Mockup. Wirksam im Prototyp: Dunkelmodus, Farben,
- * kompakte Seitenleiste und Standard-Berufsfeld fuer neue Teilnehmende.
- * Die uebrigen Werte werden gespeichert, aber noch nicht ausgewertet.
+ * Settings that actually work: dark mode, colours, compact sidebar and the default
+ * occupational field for new participants (FE-29: options of the mockup without any
+ * effect were removed – language, date format, notifications, auto save …).
  */
 export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings)
@@ -59,43 +51,8 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
           <ColorChoice label="NAVIGATIONSFARBE" colors={PRIMARY_COLORS} value={draft.primaryColor} onChange={(c) => set('primaryColor', c)} />
         </SectionCard>
 
-        <SectionCard title="Sprache & Regional" desc="Spracheinstellungen und Datumsformate.">
-          <SettingRow label="Sprache der Oberfläche">
-            <div className="flex gap-2">
-              {(['de', 'en'] as const).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  aria-pressed={draft.language === lang}
-                  onClick={() => set('language', lang)}
-                  className="px-3 py-1.5 rounded text-xs font-mono font-medium transition-all"
-                  style={choiceStyle(draft.language === lang)}
-                >
-                  {lang === 'de' ? 'Deutsch' : 'English'}
-                </button>
-              ))}
-            </div>
-          </SettingRow>
-          <SettingRow label="Datumsformat">
-            <div className="flex gap-2">
-              {(['DD.MM.YYYY', 'YYYY-MM-DD'] as const).map((fmt) => (
-                <button
-                  key={fmt}
-                  type="button"
-                  aria-pressed={draft.dateFormat === fmt}
-                  onClick={() => set('dateFormat', fmt)}
-                  className="px-3 py-1.5 rounded text-xs font-mono transition-all"
-                  style={choiceStyle(draft.dateFormat === fmt)}
-                >
-                  {fmt}
-                </button>
-              ))}
-            </div>
-          </SettingRow>
-        </SectionCard>
-
-        <SectionCard title="Arbeitsblätter & KI" desc="Standardverhalten beim Erstellen und Bearbeiten von Arbeitsblättern.">
-          <SettingRow label="Standard-Berufsbild">
+        <SectionCard title="Teilnehmende" desc="Vorgaben beim Anlegen neuer Teilnehmerprofile.">
+          <SettingRow label="Standard-Berufsbild" desc="Wird für den ersten Bereich im Lernweg vorgeschlagen">
             <select
               aria-label="Standard-Berufsbild"
               value={draft.defaultBerufsbild}
@@ -107,40 +64,6 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
                 <option key={b}>{b}</option>
               ))}
             </select>
-          </SettingRow>
-          <SettingRow label="Standard-Exportformat">
-            <div className="flex gap-2">
-              {(['docx', 'pdf'] as const).map((fmt) => (
-                <button
-                  key={fmt}
-                  type="button"
-                  aria-pressed={draft.exportFormat === fmt}
-                  onClick={() => set('exportFormat', fmt)}
-                  className="px-3 py-1.5 rounded text-xs font-mono transition-all"
-                  style={choiceStyle(draft.exportFormat === fmt)}
-                >
-                  .{fmt}
-                </button>
-              ))}
-            </div>
-          </SettingRow>
-          <SettingRow label="KI-Ergebnis automatisch aufklappen" desc="Nach erfolgreicher Generierung direkt anzeigen">
-            <Toggle label="KI-Ergebnis automatisch aufklappen" value={draft.aiAutoExpand} onToggle={() => flip('aiAutoExpand')} />
-          </SettingRow>
-          <SettingRow label="Persona-Badges anzeigen" desc="Empfohlene Persona-Kennzeichnung auf Arbeitsblatt-Karten">
-            <Toggle label="Persona-Badges anzeigen" value={draft.showPersonaBadges} onToggle={() => flip('showPersonaBadges')} />
-          </SettingRow>
-          <SettingRow label="Automatisch speichern" desc="Änderungen beim Bearbeiten alle 30 Sekunden automatisch sichern">
-            <Toggle label="Automatisch speichern" value={draft.autoSave} onToggle={() => flip('autoSave')} />
-          </SettingRow>
-        </SectionCard>
-
-        <SectionCard title="Sitzung & Sicherheit" desc="Benachrichtigungen.">
-          <SettingRow label="E-Mail-Benachrichtigungen" desc="Bei neuen Arbeitsblättern oder Kommentaren eine E-Mail erhalten">
-            <Toggle label="E-Mail-Benachrichtigungen" value={draft.emailNotifications} onToggle={() => flip('emailNotifications')} />
-          </SettingRow>
-          <SettingRow label="Erinnerungen für ausstehende Arbeitsblätter" desc="Täglich an nicht abgeschlossene Teilnehmer-Aufgaben erinnern">
-            <Toggle label="Erinnerungen für ausstehende Arbeitsblätter" value={draft.worksheetReminders} onToggle={() => flip('worksheetReminders')} />
           </SettingRow>
         </SectionCard>
 
@@ -206,33 +129,11 @@ function ColorChoice({ label, colors, value, onChange }: { label: string; colors
   )
 }
 
-/** "Mein Konto" – Passwort ändern ist im Prototyp ohne Anmeldung nur eine Formularprüfung */
+/**
+ * "Mein Konto": name, e-mail and role. Changing the own password needs the login (FE-08);
+ * until then administrators set passwords in the user administration (FE-29).
+ */
 function AccountSection({ user }: { user: StaffUser }) {
-  const [current, setCurrent] = useState('')
-  const [next, setNext] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setSuccess(false)
-    if (!current) return setError('Bitte das aktuelle Passwort eingeben.')
-    if (next.length < 8) return setError('Das neue Passwort muss mindestens 8 Zeichen lang sein.')
-    if (next !== confirm) return setError('Die neuen Passwörter stimmen nicht überein.')
-    setError('')
-    setCurrent('')
-    setNext('')
-    setConfirm('')
-    setSuccess(true)
-  }
-
-  const fieldStyle = { ...inputStyle, border: `1px solid ${error ? 'var(--danger)' : 'var(--border)'}` }
-  const clear = () => {
-    setError('')
-    setSuccess(false)
-  }
-
   return (
     <SectionCard title="Mein Konto">
       <div className="flex items-center gap-4">
@@ -250,78 +151,9 @@ function AccountSection({ user }: { user: StaffUser }) {
           </div>
         </div>
       </div>
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <div className="text-sm font-semibold mb-4">Passwort ändern</div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-          <div>
-            <label htmlFor="pw-aktuell" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-              AKTUELLES PASSWORT
-            </label>
-            <input
-              id="pw-aktuell"
-              type="password"
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => {
-                setCurrent(e.target.value)
-                clear()
-              }}
-              placeholder="••••••••"
-              className="w-full px-3 py-2.5 rounded text-sm outline-none"
-              style={fieldStyle}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="pw-neu" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                NEUES PASSWORT
-              </label>
-              <input
-                id="pw-neu"
-                type="password"
-                autoComplete="new-password"
-                value={next}
-                onChange={(e) => {
-                  setNext(e.target.value)
-                  clear()
-                }}
-                placeholder="Min. 8 Zeichen"
-                className="w-full px-3 py-2.5 rounded text-sm outline-none"
-                style={fieldStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="pw-wiederholen" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                PASSWORT WIEDERHOLEN
-              </label>
-              <input
-                id="pw-wiederholen"
-                type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => {
-                  setConfirm(e.target.value)
-                  clear()
-                }}
-                placeholder="••••••••"
-                className="w-full px-3 py-2.5 rounded text-sm outline-none"
-                style={fieldStyle}
-              />
-            </div>
-          </div>
-          {error && <ErrorNote>{error}</ErrorNote>}
-          {success && <SuccessNote>✓ Eingaben sind gültig. Im Prototyp gibt es noch keine Anmeldung, das Passwort wird daher nicht gespeichert.</SuccessNote>}
-          <div>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded font-medium text-sm hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
-            >
-              Passwort ändern
-            </button>
-          </div>
-        </form>
-      </div>
+      <p className="text-sm" style={{ color: 'var(--muted-foreground)', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        Ein neues Passwort vergibt eine Administratorin oder ein Administrator unter „Benutzerverwaltung“.
+      </p>
     </SectionCard>
   )
 }

@@ -205,7 +205,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
               Lehrplan: {lernziel.ausbildungsbaustein} · Lernziel: {lernziel.titel}
               <span>
                 {' '}
-                · Quelle: {katalogQuelle === 'import' ? `${katalog.length} importierte Lernziele` : `${katalog.length} Beispiel-Lernziele (Import mit npm run import:lehrplaene)`}
+                · Quelle: {katalogQuelle === 'import' ? `${katalog.length} importierte Lernziele` : `${katalog.length} Beispiel-Lernziele`}
               </span>
             </div>
           ) : (
@@ -496,7 +496,7 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
       <div className="p-4 flex flex-col gap-5" style={{ backgroundColor: '#FFFFFF' }}>
         {anyMocked && (
           <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
-            ⚠ Kein API-Key – Beispielantwort (Mock). Mit GEMINI_API_KEY in der .env (Repo-Root) antwortet Gemini.
+            ⚠ Kein API-Key – Beispielantwort (Mock). Die KI ist auf dem Server noch nicht eingerichtet; das Blatt ist nur ein Muster.
           </div>
         )}
 

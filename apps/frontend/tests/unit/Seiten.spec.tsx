@@ -157,13 +157,13 @@ describe('Einstellungen', () => {
     expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('title', 'Dashboard')
   })
 
-  it('prueft die Eingaben beim Passwort aendern', () => {
+  it('zeigt nur Einstellungen, die auch wirken (FE-29)', () => {
     openPage('Einstellungen')
-    fireEvent.change(screen.getByLabelText('AKTUELLES PASSWORT'), { target: { value: 'alt' } })
-    fireEvent.change(screen.getByLabelText('NEUES PASSWORT'), { target: { value: 'abcdefgh' } })
-    fireEvent.change(screen.getByLabelText('PASSWORT WIEDERHOLEN'), { target: { value: 'abcdefgx' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Passwort ändern' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('stimmen nicht überein')
+    for (const ohneWirkung of ['Sprache der Oberfläche', 'Datumsformat', 'E-Mail-Benachrichtigungen', 'Automatisch speichern', 'Persona-Badges anzeigen']) {
+      expect(screen.queryByText(ohneWirkung)).not.toBeInTheDocument()
+    }
+    expect(screen.queryByRole('button', { name: 'Passwort ändern' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Ein neues Passwort vergibt/)).toBeInTheDocument()
   })
 })
 

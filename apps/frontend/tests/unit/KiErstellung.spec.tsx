@@ -217,7 +217,7 @@ describe('KI-Erstellung – Generierung', () => {
     openKiErstellung()
     fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Das Backend ist nicht erreichbar')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Der Server ist nicht erreichbar')
   })
 
   it('laedt eine Variante als Word-Datei herunter', async () => {

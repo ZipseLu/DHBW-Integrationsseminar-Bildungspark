@@ -113,7 +113,7 @@ export function LehrplaenePage({ onCreateWorksheet }: Props) {
       <div className="text-xs font-mono -mt-3" style={{ color: 'var(--muted-foreground)' }}>
         {quelle === 'import'
           ? `${lernzielCount} Lernziele aus den importierten Lehrplänen`
-          : `Beispieldaten: ${lernzielCount} Lernziele (vollständig nach Import mit npm run import:lehrplaene im Backend)`}
+          : `${lernzielCount} Beispiel-Lernziele – die vollständigen Lehrpläne sind noch nicht eingespielt`}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
