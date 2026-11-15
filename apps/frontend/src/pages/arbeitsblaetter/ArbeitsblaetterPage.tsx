@@ -49,7 +49,6 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
   const [hinweis, setHinweis] = useState<string | null>(null)
   const [filter, setFilter] = useState<WorksheetFilter>(EMPTY_FILTER)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
-  const [expandedId, setExpandedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
   const [transformSource, setTransformSource] = useState<TransformSource | null>(null)
   // Bumped after each upload so the list of uploaded documents reloads
@@ -217,10 +216,8 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
             <WorksheetCard
               key={w.backend?.id ?? w.id}
               worksheet={w}
-              expanded={expandedId === w.id}
               isFavorite={isFavorite(w)}
               onToggleFavorite={() => void toggleFavorite(w)}
-              onToggleExpand={() => setExpandedId(expandedId === w.id ? null : w.id)}
               onPreview={() => setDetail({ worksheet: w, tab: 'vorschau' })}
               onHistory={() => setDetail({ worksheet: w, tab: 'verlauf' })}
               onEdit={() => setDetail({ worksheet: w, tab: 'bearbeiten' })}

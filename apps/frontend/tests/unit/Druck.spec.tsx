@@ -158,10 +158,8 @@ describe('PDF-Knöpfe', () => {
     render(
       <WorksheetCard
         worksheet={worksheet}
-        expanded={false}
         isFavorite={false}
         onToggleFavorite={() => {}}
-        onToggleExpand={() => {}}
         onPreview={() => {}}
         onHistory={() => {}}
         onDownload={() => {}}

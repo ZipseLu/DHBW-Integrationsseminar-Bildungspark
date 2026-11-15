@@ -125,12 +125,11 @@ describe('Arbeitsblätter', () => {
     expect(screen.getByText('Keine Arbeitsblätter gefunden.')).toBeInTheDocument()
   })
 
-  it('klappt den Aufbau mit allen vier Niveaustufen auf', async () => {
+  it('hat keinen Knopf „Aufbau“ mehr (FE-29)', async () => {
     await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Aufbau/ }))
-    expect(within(card).getByText('BINNENDIFFERENZIERUNG NACH NIVEAUSTUFEN')).toBeInTheDocument()
-    expect(within(card).getAllByText(/^Beispiel:/)).toHaveLength(4)
+    expect(within(card).queryByRole('button', { name: /Aufbau/ })).not.toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: /Vorschau/ })).toBeInTheDocument()
   })
 
   it('oeffnet Vorschau und Verlauf im Seitenpanel', async () => {
