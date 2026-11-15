@@ -7,7 +7,7 @@ import { toggleKeepOne } from '@/lib/selection'
 import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
-/** Ähnliche Dokumente im Internet über die DuckDuckGo-Suche finden. */
+/** Finds worksheets on the web that contain all entered keywords (FE-36: no other documents). */
 export function WebSearchSection({ thema }: { thema: string }) {
   const [query, setQuery] = useState('')
   const [fileType, setFileType] = useState('')
@@ -54,7 +54,7 @@ export function WebSearchSection({ thema }: { thema: string }) {
       <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
         <span aria-hidden="true">🌐</span>
         <span className="text-xs font-mono font-medium" style={{ color: 'var(--muted-foreground)' }}>
-          ÄHNLICHE DOKUMENTE IM INTERNET SUCHEN
+          ARBEITSBLÄTTER IM INTERNET SUCHEN
         </span>
         <span className="text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>
           – optional als Vorlage oder Inspiration
@@ -109,14 +109,14 @@ export function WebSearchSection({ thema }: { thema: string }) {
 
         {!searchRunning && !searchError && resultsFor && results.length === 0 && (
           <div className="text-xs py-3" role="status" style={{ color: 'var(--muted-foreground)' }}>
-            Keine Treffer gefunden.
+            Keine Arbeitsblätter zu „{resultsFor}“ gefunden. Versuchen Sie weniger oder andere Stichwörter.
           </div>
         )}
 
         {searchRunning && (
           <div className="py-6 flex flex-col items-center gap-2" style={{ color: 'var(--muted-foreground)' }} role="status">
             <Spinner className="text-2xl" />
-            <span className="text-xs">Suche nach ähnlichen Dokumenten…</span>
+            <span className="text-xs">Suche nach passenden Arbeitsblättern…</span>
           </div>
         )}
 

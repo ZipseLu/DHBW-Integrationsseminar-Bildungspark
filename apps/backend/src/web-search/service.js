@@ -14,6 +14,11 @@
  *   intitle:              -> durchsucht nur den Titel
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
+ * Only worksheets are returned (FE-36): the engine query gets the term
+ * "Arbeitsblatt", and every hit must be a worksheet that contains all
+ * entered keywords (see worksheet-filter.js). If the engines answered but
+ * no hit passes the filter, the result is an empty list instead of an error.
+ *
  * Wenn alle Suchmaschinen fehlschlagen oder das Gesamtzeitlimit erreicht ist,
  * meldet die Suche einen Fehler (HTTP 503). Es werden bewusst keine
  * erfundenen Treffer mit nicht existierenden Links geliefert. Simulierte
@@ -25,6 +30,12 @@ import axios from 'axios'
 import * as cheerio from 'cheerio'
 import https from 'node:https'
 import { config } from '../config.js'
+import {
+  WORKSHEET_QUERY_TERM,
+  isMatchingWorksheet,
+  keywordStems,
+  queryNamesWorksheet,
+} from './worksheet-filter.js'
 
 const DUCKDUCKGO_HTML_URL = 'https://html.duckduckgo.com/html/'
 // Mehrere Yahoo-Hosts: einzelne Hosts antworten sporadisch mit HTTP 500.
@@ -37,6 +48,9 @@ const YAHOO_SEARCH_HOSTS = [
   'au.search.yahoo.com',
 ]
 const BING_SEARCH_URL = 'https://www.bing.com/search'
+
+// The relevance filter drops many hits, so the engines are asked for more.
+const RAW_RESULTS_FACTOR = 3
 
 const ALLOWED_FILE_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
 
@@ -162,6 +176,11 @@ function withFileType(query, fileType) {
   // Eigene filetype:-Operatoren des Nutzers nicht ueberschreiben.
   if (/\bfiletype:/i.test(query)) return query
   return `${query} (filetype:pdf OR filetype:docx)`
+}
+
+/** Adds the worksheet term unless the user already typed one (e.g. "Übungsblatt"). */
+function withWorksheetTerm(query) {
+  return queryNamesWorksheet(query) ? query : `${query} ${WORKSHEET_QUERY_TERM}`
 }
 
 /** True, wenn der Treffer eine echte Dokumentdatei ist. */
@@ -484,24 +503,32 @@ export async function searchWeb(query, fileType) {
   }
 
   const deadline = Date.now() + config.webSearch.totalTimeoutMs
+  const engineQuery = withWorksheetTerm(normalizedQuery)
+  const stems = keywordStems(normalizedQuery)
+  // True once an engine delivered hits – then "nothing matched" is a real answer, not an outage.
+  let answered = false
   const engines = [duckduckgoSearch, yahooSearch, bingSearch]
   for (const engine of engines) {
     // Gesamtbudget aufgebraucht: nicht noch einen weiteren Anbieter starten.
     if (Date.now() >= deadline) break
 
     try {
-      const results = await engine(normalizedQuery, normalizedFileType, maxResults, deadline)
-      const documents = results.filter((result) => isDocumentResult(result, normalizedFileType))
+      const results = await engine(engineQuery, normalizedFileType, maxResults * RAW_RESULTS_FACTOR, deadline)
+      const worksheets = results
+        .filter((result) => isDocumentResult(result, normalizedFileType))
+        .filter((result) => isMatchingWorksheet(result, stems))
+        .slice(0, maxResults)
 
-      if (documents.length > 0) {
+      if (worksheets.length > 0) {
         if (engine !== engines[0]) {
-          console.warn(`[web-search] Fallback über ${engine.name}: ${documents.length} Dokumente`)
+          console.warn(`[web-search] Fallback über ${engine.name}: ${worksheets.length} Arbeitsblätter`)
         }
-        return documents
+        return worksheets
       }
 
       if (results.length > 0) {
-        console.warn(`[web-search] ${engine.name}: ${results.length} Treffer, aber keine Dokumente`)
+        answered = true
+        console.warn(`[web-search] ${engine.name}: ${results.length} Treffer, aber keine passenden Arbeitsblätter`)
       }
     } catch (error) {
       // Validierungsfehler immer durchreichen, Suchfehler beim naechsten Anbieter versuchen.
@@ -509,6 +536,9 @@ export async function searchWeb(query, fileType) {
       console.warn(`[web-search] ${engine.name} nicht verfügbar (${error?.code ?? 'unbekannter_fehler'})`)
     }
   }
+
+  // The engines found documents, but none is a worksheet with all keywords.
+  if (answered) return []
 
   // Keine erfundenen Treffer: die Oberflaeche soll klar sagen, dass die
   // Websuche gerade nicht erreichbar ist (statt auf tote Links zu verweisen).

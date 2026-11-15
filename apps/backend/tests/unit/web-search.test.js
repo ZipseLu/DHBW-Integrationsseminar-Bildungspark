@@ -81,7 +81,7 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
       <div class="result results_links">
         <div class="links_main">
           <a class="result__a" href="https://bibb.de/material.pdf">BIBB Arbeitsblatt</a>
-          <div class="result__snippet">Offizielles BIBB Material zur Ausbildung.</div>
+          <div class="result__snippet">Offizielles BIBB Material zur Hygiene in der Ausbildung.</div>
         </div>
       </div>
       <div class="result result--ad">
@@ -99,7 +99,7 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     expect(axios.post).toHaveBeenCalledTimes(1)
     const [calledUrl, calledBody, calledOptions] = vi.mocked(axios.post).mock.calls[0]
     expect(calledUrl).toContain('html.duckduckgo.com/html/')
-    expect(calledBody).toBe('q=Hygiene+filetype%3Apdf')
+    expect(calledBody).toBe('q=Hygiene+filetype%3Apdf+Arbeitsblatt')
     expect(calledOptions).toMatchObject({
       headers: expect.objectContaining({ 'User-Agent': expect.any(String) }),
     })
@@ -131,7 +131,7 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     await searchWeb('Hygiene', 'docx')
 
     const [, calledBody] = vi.mocked(axios.post).mock.calls[0]
-    expect(calledBody).toBe('q=Hygiene+filetype%3Adocx')
+    expect(calledBody).toBe('q=Hygiene+Arbeitsblatt+filetype%3Adocx')
   })
 
   it('meldet einen Fehler, wenn keine Suchmaschine Dokumente liefert', async () => {
@@ -292,8 +292,80 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
 
     const [, calledBody] = vi.mocked(axios.post).mock.calls[0]
     expect(calledBody).toBe(
-      new URLSearchParams({ q: 'Hygiene (filetype:pdf OR filetype:docx)' }).toString(),
+      new URLSearchParams({ q: 'Hygiene Arbeitsblatt (filetype:pdf OR filetype:docx)' }).toString(),
     )
+  })
+
+  it('liefert nur Arbeitsblätter, die alle Stichwörter enthalten', async () => {
+    config.webSearch.provider = 'scrape'
+    vi.mocked(axios.post).mockResolvedValue({
+      status: 200,
+      data: `
+        <html><body>
+          <div class="result">
+            <a class="result__a" href="https://example.de/jahresbericht-2023.pdf">Jahresbericht 2023</a>
+            <div class="result__snippet">Hygiene und Sicherheit in der Küche unseres Betriebs.</div>
+          </div>
+          <div class="result">
+            <a class="result__a" href="https://example.de/hygiene-arbeitsblatt.pdf">Arbeitsblatt Hygiene</a>
+            <div class="result__snippet">Regeln zur Hygiene.</div>
+          </div>
+          <div class="result">
+            <a class="result__a" href="https://example.de/kueche/ab-hygiene.docx">Arbeitsblätter Hygiene in der Küche</a>
+          </div>
+          <div class="result">
+            <a class="result__a" href="https://example.de/hygieneregeln_kuechen_uebungsblatt.pdf">Übung</a>
+          </div>
+        </body></html>
+      `,
+    })
+
+    const results = await searchWeb('Hygiene Küche')
+
+    // Bericht (kein Arbeitsblatt) und Arbeitsblatt ohne "Küche" fallen weg
+    expect(results.map((r) => r.url)).toEqual([
+      'https://example.de/kueche/ab-hygiene.docx',
+      'https://example.de/hygieneregeln_kuechen_uebungsblatt.pdf',
+    ])
+  })
+
+  it('fügt "Arbeitsblatt" nicht doppelt hinzu, wenn es schon im Suchbegriff steht', async () => {
+    config.webSearch.provider = 'scrape'
+    vi.mocked(axios.post).mockResolvedValue({ status: 200, data: duckduckgoHtml })
+
+    await searchWeb('Übungsblatt Hygiene', 'pdf')
+
+    const [, calledBody] = vi.mocked(axios.post).mock.calls[0]
+    expect(calledBody).toBe(new URLSearchParams({ q: 'Übungsblatt Hygiene filetype:pdf' }).toString())
+  })
+
+  it('kürzt auf maxResults, fragt die Suchmaschine aber nach mehr Treffern', async () => {
+    config.webSearch.provider = 'scrape'
+    config.webSearch.maxResults = 2
+    const items = Array.from(
+      { length: 6 },
+      // The first three hits are worksheets on another topic and are dropped
+      (_, i) => `<div class="result"><a class="result__a" href="https://example.de/arbeitsblatt-${i < 3 ? 'mathe' : 'hygiene'}-${i}.pdf">Arbeitsblatt ${i}</a></div>`,
+    ).join('')
+    vi.mocked(axios.post).mockResolvedValue({ status: 200, data: `<html><body>${items}</body></html>` })
+
+    const results = await searchWeb('Hygiene')
+
+    expect(results.map((r) => r.url)).toEqual([
+      'https://example.de/arbeitsblatt-hygiene-3.pdf',
+      'https://example.de/arbeitsblatt-hygiene-4.pdf',
+    ])
+  })
+
+  it('liefert eine leere Liste statt eines Fehlers, wenn keine Treffer passen', async () => {
+    config.webSearch.provider = 'scrape'
+    vi.mocked(axios.post).mockResolvedValue({
+      status: 200,
+      data: '<html><body><div class="result"><a class="result__a" href="https://example.de/gesetz.pdf">Hygieneverordnung</a></div></body></html>',
+    })
+    vi.mocked(axios.get).mockRejectedValue(new Error('Netzwerkfehler'))
+
+    await expect(searchWeb('Hygiene')).resolves.toEqual([])
   })
 
   it('wechselt bei Yahoo auf einen anderen Host, wenn einer HTTP 500 liefert', async () => {
