@@ -7,6 +7,9 @@
  * texts are cut and the page says so.
  */
 
+import { AUFGABEN_TYP_LABEL } from '@/data/aufgaben'
+import type { Arbeitsblatt } from '@/lib/api'
+
 /** Limit of `erwartungen` in the backend schema */
 export const MAX_ERWARTUNGEN = 2000
 
@@ -33,4 +36,19 @@ export function formatGroesse(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   const kb = bytes / 1024
   return kb >= 1024 ? `${(kb / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.round(kb)} KB`
+}
+
+/**
+ * FE-23: plain text of a saved worksheet, used as template when it is adapted
+ * with the KI ("✦ Anpassen"). Compact, because it has to fit into 2000 characters.
+ */
+export function vorlageText(w: Arbeitsblatt): string {
+  const teile = [w.titel, w.einleitung.trim()]
+  for (const a of w.aufgaben) {
+    const zeilen = [`Aufgabe ${a.nr} (${AUFGABEN_TYP_LABEL[a.typ] ?? a.typ}): ${a.anweisung}`]
+    for (const o of a.optionen ?? []) zeilen.push(`- ${o}`)
+    teile.push(zeilen.join('\n'))
+  }
+  if (w.woerterbuch.length) teile.push(`Wörter-Buch: ${w.woerterbuch.map((e) => `${e.wort}: ${e.erklaerung}`).join('; ')}`)
+  return teile.join('\n\n')
 }
