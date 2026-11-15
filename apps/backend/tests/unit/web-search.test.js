@@ -258,6 +258,28 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     })
   })
 
+  it('liest bei Bing weitere Seiten, damit nach dem Filtern Arbeitsblätter übrig bleiben', async () => {
+    config.webSearch.provider = 'scrape'
+    vi.mocked(axios.post).mockResolvedValue({
+      status: 202,
+      data: '<html><body>Unfortunately, bots use DuckDuckGo too. Anomaly detected.</body></html>',
+    })
+    const bingHit = (target, title) =>
+      `<li class="b_algo"><h2><a href="https://www.bing.com/ck/a?!&&u=a1${Buffer.from(target).toString('base64url')}&ntb=1">${title}</a></h2></li>`
+    vi.mocked(axios.get).mockImplementation((url) => {
+      const u = String(url)
+      if (u.includes('search.yahoo.com')) return Promise.reject(new Error('Netzwerkfehler'))
+      const html = u.includes('first=11')
+        ? bingHit('https://example.de/hygiene-arbeitsblatt.pdf', 'Arbeitsblatt Hygiene')
+        : bingHit('https://example.de/hygiene-checkliste.pdf', 'Checkliste Hygiene')
+      return Promise.resolve({ status: 200, data: `<html><body>${html}</body></html>` })
+    })
+
+    const results = await searchWeb('Hygiene', 'pdf')
+
+    expect(results.map((r) => r.url)).toEqual(['https://example.de/hygiene-arbeitsblatt.pdf'])
+  })
+
   it('liefert nur echte Dokumente und filtert normale Webseiten aus', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockResolvedValue({
