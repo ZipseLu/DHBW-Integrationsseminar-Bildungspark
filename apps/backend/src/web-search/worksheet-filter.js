@@ -5,7 +5,10 @@
  * words (laws, brochures, annual reports, …). Teachers only want worksheets
  * about the entered topic, so a hit is kept only if
  *   1. it is recognisably a worksheet (marker word in title, URL or snippet) and
- *   2. every keyword of the query appears in title, URL or snippet.
+ *   2. at least half of the keywords appear in title, URL or snippet.
+ * Requiring every keyword was too strict: a worksheet on "Begleitpapiere
+ * prüfen" is often titled "Lieferschein Warenannahme". Hits containing more
+ * keywords are ranked first, so complete matches come before partial ones.
  *
  * Matching is deliberately simple and dependency free: lower case, umlauts
  * folded (ä -> ae, ß -> ss), a light German suffix stemmer and a second
@@ -22,6 +25,10 @@ const WORKSHEET_MARKERS = [
   'aufgabenbl', // Aufgabenblatt
   'kopiervorlage',
   'worksheet',
+  'lernsituation',
+  'unterrichtsmaterial',
+  'lernmaterial',
+  'uebungsaufgab', // Übungsaufgaben
 ]
 
 /** Search term added to the engine query when the user did not type a marker word. */
@@ -109,9 +116,29 @@ function haystackOf(result) {
   return { spaced, joined }
 }
 
-/** True if the hit is a worksheet and contains every keyword of the query. */
-export function isMatchingWorksheet(result, stems) {
+/**
+ * Number of keywords found in the hit, or -1 if the hit is not a worksheet.
+ */
+export function worksheetScore(result, stems) {
   const { spaced, joined } = haystackOf(result)
-  if (!WORKSHEET_MARKERS.some((marker) => joined.includes(marker))) return false
-  return stems.every((s) => spaced.includes(s) || joined.includes(s))
+  if (!WORKSHEET_MARKERS.some((marker) => joined.includes(marker))) return -1
+  return stems.filter((s) => spaced.includes(s) || joined.includes(s)).length
+}
+
+/** Minimum number of keywords a hit must contain: one keyword fully, otherwise at least half. */
+export function requiredMatches(stems) {
+  return stems.length <= 1 ? stems.length : Math.ceil(stems.length / 2)
+}
+
+/**
+ * Keeps worksheets with enough keywords, best matches first
+ * (stable sort: equal scores keep the search engine's order).
+ */
+export function rankWorksheets(results, stems) {
+  const minimum = requiredMatches(stems)
+  return results
+    .map((result, index) => ({ result, index, score: worksheetScore(result, stems) }))
+    .filter((entry) => entry.score >= 0 && entry.score >= minimum)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.result)
 }

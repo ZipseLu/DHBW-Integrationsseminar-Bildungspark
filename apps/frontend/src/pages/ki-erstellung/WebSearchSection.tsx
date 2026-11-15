@@ -7,7 +7,7 @@ import { toggleKeepOne } from '@/lib/selection'
 import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
-/** Finds worksheets on the web that contain all entered keywords (FE-36: no other documents). */
+/** Finds worksheets on the web that match the entered keywords (FE-36: no other documents). */
 export function WebSearchSection({ thema }: { thema: string }) {
   const [query, setQuery] = useState('')
   const [fileType, setFileType] = useState('')

@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   fold,
-  isMatchingWorksheet,
   keywordStems,
   queryNamesWorksheet,
+  rankWorksheets,
+  requiredMatches,
   stem,
+  worksheetScore,
 } from '../../src/web-search/worksheet-filter.js'
 
 describe('worksheet-filter', () => {
@@ -30,17 +32,41 @@ describe('worksheet-filter', () => {
     expect(queryNamesWorksheet('Brüche')).toBe(false)
   })
 
-  it('verlangt ein Arbeitsblatt-Merkmal und alle Stichwörter', () => {
+  it('zählt Stichwörter nur bei Arbeitsblättern', () => {
     const stems = keywordStems('Hände waschen')
-    expect(isMatchingWorksheet({ title: 'Arbeitsblatt Händewaschen', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(true)
-    expect(isMatchingWorksheet({ title: 'Händewaschen – Leitfaden', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(false)
-    expect(isMatchingWorksheet({ title: 'Arbeitsblatt Hände', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(false)
+    expect(worksheetScore({ title: 'Arbeitsblatt Händewaschen', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(2)
+    expect(worksheetScore({ title: 'Arbeitsblatt Hände', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(1)
+    expect(worksheetScore({ title: 'Händewaschen – Leitfaden', url: 'https://x.de/a.pdf', snippet: '' }, stems)).toBe(-1)
   })
 
   it('findet Merkmal und Stichwörter auch in der URL', () => {
     const stems = keywordStems('Gabelstapler')
     expect(
-      isMatchingWorksheet({ title: 'Download', url: 'https://x.de/AB_Gabelstapler%20Arbeitsbl%C3%A4tter.pdf', snippet: '' }, stems),
-    ).toBe(true)
+      worksheetScore({ title: 'Download', url: 'https://x.de/AB_Gabelstapler%20Arbeitsbl%C3%A4tter.pdf', snippet: '' }, stems),
+    ).toBe(1)
+  })
+
+  it('verlangt ein Stichwort ganz, sonst mindestens die Hälfte', () => {
+    expect(requiredMatches(['a'])).toBe(1)
+    expect(requiredMatches(['a', 'b'])).toBe(1)
+    expect(requiredMatches(['a', 'b', 'c'])).toBe(2)
+  })
+
+  it('sortiert vollständige Treffer nach vorne und verwirft zu schwache', () => {
+    const stems = keywordStems('Begleitpapiere prüfen Wareneingang')
+    const hit = (title) => ({ title, url: 'https://x.de/a.pdf', snippet: '' })
+    const ranked = rankWorksheets(
+      [
+        hit('Arbeitsblatt Lieferschein Wareneingang'),
+        hit('Arbeitsblatt: Begleitpapiere im Wareneingang prüfen'),
+        hit('Begleitpapiere prüfen Wareneingang – Verordnung'),
+        hit('Arbeitsblatt Begleitpapiere Wareneingang'),
+      ],
+      stems,
+    )
+    expect(ranked.map((r) => r.title)).toEqual([
+      'Arbeitsblatt: Begleitpapiere im Wareneingang prüfen',
+      'Arbeitsblatt Begleitpapiere Wareneingang',
+    ])
   })
 })

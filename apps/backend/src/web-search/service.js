@@ -15,8 +15,8 @@
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
  * Only worksheets are returned (FE-36): the engine query gets the term
- * "Arbeitsblatt", and every hit must be a worksheet that contains all
- * entered keywords (see worksheet-filter.js). If the engines answered but
+ * "Arbeitsblatt", and every hit must be a worksheet that contains at least
+ * half of the entered keywords, best matches first (see worksheet-filter.js). If the engines answered but
  * no hit passes the filter, the result is an empty list instead of an error.
  *
  * Wenn alle Suchmaschinen fehlschlagen oder das Gesamtzeitlimit erreicht ist,
@@ -32,9 +32,9 @@ import https from 'node:https'
 import { config } from '../config.js'
 import {
   WORKSHEET_QUERY_TERM,
-  isMatchingWorksheet,
   keywordStems,
   queryNamesWorksheet,
+  rankWorksheets,
 } from './worksheet-filter.js'
 
 const DUCKDUCKGO_HTML_URL = 'https://html.duckduckgo.com/html/'
@@ -514,10 +514,8 @@ export async function searchWeb(query, fileType) {
 
     try {
       const results = await engine(engineQuery, normalizedFileType, maxResults * RAW_RESULTS_FACTOR, deadline)
-      const worksheets = results
-        .filter((result) => isDocumentResult(result, normalizedFileType))
-        .filter((result) => isMatchingWorksheet(result, stems))
-        .slice(0, maxResults)
+      const documents = results.filter((result) => isDocumentResult(result, normalizedFileType))
+      const worksheets = rankWorksheets(documents, stems).slice(0, maxResults)
 
       if (worksheets.length > 0) {
         if (engine !== engines[0]) {

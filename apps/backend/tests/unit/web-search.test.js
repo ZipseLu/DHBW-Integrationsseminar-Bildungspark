@@ -296,7 +296,7 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     )
   })
 
-  it('liefert nur Arbeitsblätter, die alle Stichwörter enthalten', async () => {
+  it('liefert nur Arbeitsblätter zum Thema, vollständige Treffer zuerst', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockResolvedValue({
       status: 200,
@@ -311,6 +311,9 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
             <div class="result__snippet">Regeln zur Hygiene.</div>
           </div>
           <div class="result">
+            <a class="result__a" href="https://example.de/bruchrechnen-arbeitsblatt.pdf">Arbeitsblatt Bruchrechnen</a>
+          </div>
+          <div class="result">
             <a class="result__a" href="https://example.de/kueche/ab-hygiene.docx">Arbeitsblätter Hygiene in der Küche</a>
           </div>
           <div class="result">
@@ -322,10 +325,11 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
 
     const results = await searchWeb('Hygiene Küche')
 
-    // Bericht (kein Arbeitsblatt) und Arbeitsblatt ohne "Küche" fallen weg
+    // Report (no worksheet) and worksheet on another topic are dropped; the partial match comes last
     expect(results.map((r) => r.url)).toEqual([
       'https://example.de/kueche/ab-hygiene.docx',
       'https://example.de/hygieneregeln_kuechen_uebungsblatt.pdf',
+      'https://example.de/hygiene-arbeitsblatt.pdf',
     ])
   })
 
