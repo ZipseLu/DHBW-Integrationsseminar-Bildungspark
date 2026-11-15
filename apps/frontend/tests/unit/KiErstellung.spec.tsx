@@ -127,6 +127,37 @@ describe('KI-Erstellung – Formular', () => {
     expect(screen.getByRole('button', { name: /Generieren nicht möglich/ })).toBeDisabled()
   })
 
+  it('übernimmt das gewählte Lernziel ohne Baustein als Suchbegriff für die Internetsuche', () => {
+    openKiErstellung()
+    const suche = screen.getByLabelText('Suchbegriff für die Internetsuche') as HTMLInputElement
+    expect(suche.value).toBe('Begleitpapiere prüfen')
+
+    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: 'lokal-2' } })
+    expect(suche.value).toBe('Güter entladen')
+
+    // Der Suchbegriff bleibt änderbar und darf auch ganz gelöscht werden
+    fireEvent.change(suche, { target: { value: '' } })
+    expect(suche.value).toBe('')
+    fireEvent.change(suche, { target: { value: 'Gabelstapler' } })
+    expect(suche.value).toBe('Gabelstapler')
+  })
+
+  it('kürzt lange importierte Lernziele für die Suche an einer Wortgrenze', async () => {
+    const niveaus = { T: { kompetenz: 'k', beispiel: '' }, A: { kompetenz: 'k', beispiel: '' }, F: { kompetenz: 'k', beispiel: '' }, B: { kompetenz: 'k', beispiel: '' } }
+    mockBackend({
+      lehrplaene: () =>
+        jsonResponse({
+          anzahl: 1,
+          lernziele: [{ id: 1, berufsfeld: 'Lagerlogistik, Handel & Versand', baustein: 1, abschnitt: 1, ausbildungsbaustein: 'Wareneingang', titel: 'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben prüfen', niveaus }],
+        }),
+    })
+    openKiErstellung()
+
+    expect(await screen.findByText(/Quelle: 1 importierte Lernziele/)).toBeInTheDocument()
+    const suche = screen.getByLabelText('Suchbegriff für die Internetsuche') as HTMLInputElement
+    expect(suche.value).toBe('Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften')
+  })
+
   it('sperrt das Generieren fuer Berufsfelder ohne Lehrplan', () => {
     openKiErstellung()
     fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Garten- und Landschaftsbau' } })

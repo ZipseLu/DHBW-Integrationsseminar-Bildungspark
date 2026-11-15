@@ -8,8 +8,14 @@ import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
 /** Finds worksheets on the web that match the entered keywords (FE-36: no other documents). */
-export function WebSearchSection({ thema }: { thema: string }) {
-  const [query, setQuery] = useState('')
+export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vorschlag?: string }) {
+  // The selected learning goal is pre-filled and stays editable; choosing another goal replaces it
+  const [query, setQuery] = useState(vorschlag)
+  const [vorschlagBisher, setVorschlagBisher] = useState(vorschlag)
+  if (vorschlag !== vorschlagBisher) {
+    setVorschlagBisher(vorschlag)
+    setQuery(vorschlag)
+  }
   const [fileType, setFileType] = useState('')
   const [results, setResults] = useState<WebResult[]>([])
   const [resultsFor, setResultsFor] = useState('')

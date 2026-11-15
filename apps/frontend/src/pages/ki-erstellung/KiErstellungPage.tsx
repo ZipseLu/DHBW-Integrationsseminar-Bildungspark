@@ -32,6 +32,24 @@ type LernzielOption = LernzielInput & { key: string; kurztitel: string }
 
 const kurz = (text: string, max = 70) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
+/**
+ * Default search term for the web search: the learning goal as shown in the list, without
+ * "Baustein n". Long imported titles are cut at a word boundary instead of mid-word with "…".
+ */
+function suchbegriffAusLernziel(l: Pick<LernzielOption, 'titel' | 'kurztitel'>, max = 80): string {
+  if (!l.kurztitel.endsWith('…')) return l.kurztitel
+  const woerter: string[] = []
+  for (const wort of l.titel.split(/\s+/)) {
+    if ([...woerter, wort].join(' ').length > max) break
+    woerter.push(wort)
+  }
+  // No dangling filler word at the end ("… Gefahrgutvorschriften und")
+  while (woerter.length > 1 && FUELLWOERTER.has(woerter[woerter.length - 1].toLowerCase())) woerter.pop()
+  return woerter.join(' ') || l.kurztitel.slice(0, -1)
+}
+
+const FUELLWOERTER = new Set(['und', 'oder', 'sowie', 'von', 'vom', 'mit', 'zu', 'zum', 'zur', 'der', 'die', 'das', 'den', 'des', 'für', 'nach', 'unter', 'bei', 'in', 'im', 'auf', 'an', 'am'])
+
 /** Fallback ohne Import: die 12 Beispiel-Lernziele aus den Lehrplaenen */
 const LOKALE_LERNZIELE: LernzielOption[] = WORKSHEETS.map((w) => ({ ...lernzielFromWorksheet(w), key: `lokal-${w.id}`, kurztitel: w.title }))
 
@@ -248,7 +266,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
             </div>
           </div>
 
-          <WebSearchSection thema={thema} />
+          <WebSearchSection thema={thema} vorschlag={lernziel ? suchbegriffAusLernziel(lernziel) : ''} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
