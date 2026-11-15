@@ -8,6 +8,12 @@ import { KiErstellungPage, formatWartezeit, warteHinweis } from '@/pages/ki-erst
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+/** Sekunden, die der Zähler anzeigt ("⏱ 0:01" → 1); -1, wenn kein Zählerstand zu lesen ist. */
+function gezeigteSekunden(element: HTMLElement): number {
+  const treffer = element.textContent?.match(/⏱ (\d+):(\d{2})/)
+  return treffer ? Number(treffer[1]) * 60 + Number(treffer[2]) : -1
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -26,9 +32,10 @@ describe('Wartezeit der KI (FE-24)', () => {
     fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
 
     const anzeige = await screen.findByTestId('wartezeit')
-    expect(anzeige).toHaveTextContent('⏱ 0:00')
     expect(anzeige).toHaveTextContent('Eine Variante dauert meist 20 Sekunden bis 2 Minuten.')
-    await waitFor(() => expect(anzeige).toHaveTextContent('⏱ 0:01'), { timeout: 2500 })
+    // Der Zähler startet bei 0:00 und läuft dann hoch. Bewusst keine exakte Sekunde
+    // prüfen: auf langsamen CI-Runnern kann beim Prüfen schon 0:02 stehen (CI-Flake).
+    await waitFor(() => expect(gezeigteSekunden(anzeige)).toBeGreaterThanOrEqual(1), { timeout: 5000 })
 
     freigeben(json({ error: 'llm_timeout', message: 'Zeitüberschreitung' }, 502))
     await waitFor(() => expect(screen.queryByTestId('wartezeit')).not.toBeInTheDocument())

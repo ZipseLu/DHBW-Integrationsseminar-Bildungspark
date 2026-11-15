@@ -2,16 +2,20 @@
 
 Arbeitsblattverwaltung für den Bildungspark Heilbronn-Franken.
 
-> **Status (28.10.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
+> **Status (15.11.2026):** Prototyp. Docker, CI und Test-Pipeline stehen.
 > Das Frontend enthält alle Seiten des Figma-Mockups (Version 41): **Dashboard**, **Lehrpläne**, **Arbeitsblätter**, **KI-Erstellung**,
 > **Teilnehmende**, **Benutzerverwaltung** und **Einstellungen**.
-> KI-Erstellung und Lehrpläne nutzen das Backend (ohne Backend: Beispiel-Lernziele), die übrigen Seiten Beispieldaten im Browser.
+> Arbeitsblätter, Lehrpläne, KI-Erstellung, Teilnehmende und Benutzerverwaltung nutzen das Backend;
+> ohne Backend zeigen sie Beispieldaten mit Hinweis. Nur die Einstellungen bleiben rein lokal.
 > **Neu: Die KI-Erstellung erzeugt echte Arbeitsblätter über das Backend** (Lernziel aus dem Lehrplan →
 > Gemini → Validator → Anzeige → Word-Export; ohne API-Key im Mock-Modus) – siehe
 > **[docs/prototyp-ki-arbeitsblatt.md](docs/prototyp-ki-arbeitsblatt.md)**.
-> Die Seite Arbeitsblätter arbeitet weiter mit lokalen Beispieldaten; Upload-Analyse, Websuche und
-> das „Anpassen“-Panel sind simuliert; die Buttons „Öffnen“, „PDF“ und „Alle zur Bibliothek
-> hinzufügen“ haben noch keine Funktion. Gespeichert wird noch nichts.
+> Die Seite Arbeitsblätter zeigt die in MySQL gespeicherten Arbeitsblätter (Suche, Filter, Favoriten,
+> Vorschau, Bearbeiten, Archivieren), exportiert Word-Dateien und öffnet für gespeicherte Blätter eine
+> Druckansicht („Als PDF speichern“). „✦ Anpassen“ übergibt Berufsfeld, Lernziel und Inhalt des
+> Arbeitsblatts als Vorlage an die KI-Erstellung – genauso wie ein hochgeladenes Dokument (FE-05).
+> Simuliert ist nur noch die Varianten-Generierung aus Websuchtreffern; dort hat
+> „Alle zur Bibliothek hinzufügen“ noch keine Funktion.
 >
 > Die Beispieldaten stammen aus den 14 Lehrplänen des Bildungsparks (TQ Lager, Metall, Gastro).
 > Was fachlich belegt ist und was Annahme bleibt, steht in **[docs/fachliche-grundlagen.md](docs/fachliche-grundlagen.md)** –
@@ -164,6 +168,11 @@ Ohne `GEMINI_API_KEY` läuft derselbe Ablauf mit einer festen Beispielantwort (M
 
 | `GET /api/lehrplaene` | Lernziele der Lehrpläne aus der Datenbank (Migration 005), sonst aus `data/lehrplaene.json`; leer, solange `npm run import:lehrplaene` nicht gelaufen ist |
 
+**Dashboard (BE-07):** `GET /api/dashboard` liefert Arbeitsblattzahlen je Status, Kennzahlen zu nicht archivierten
+Arbeitsblättern, die Anzahl Teilnehmender mit aktiver Lernstation und bis zu fünf zuletzt geänderte Arbeitsblätter
+mit ihrer letzten Aktion. Archivierte Arbeitsblätter sind in `proStatus.archiviert` und
+`gesamtInklusiveArchiviert` enthalten, nicht in `arbeitsblaetter.gesamt`.
+
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
 pseudonymisierte Profile (Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
 Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)** und **[Datenschutz/Löschung (BE-08)](docs/datenschutz-loeschkonzept-logging.md)**.
@@ -309,6 +318,8 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │   ├── app.js            Express-App (exportiert – Supertest lädt sie)
 │   │   │   ├── config.js         Env-Konfiguration ohne Secrets
 │   │   │   ├── db.js             MySQL-Pool (mysql2/promise)
+│   │   │   ├── dashboard/
+│   │   │   │   └── repository.js Kennzahlen und letzte Aktivitäten (BE-07)
 │   │   │   ├── ai/
 │   │   │   │   ├── provider.js   Provider-Abstraktion (Gemini ↔ Azure)
 │   │   │   │   ├── gemini.js     Gemini-Adapter (@google/genai, JSON-Schema-Ausgabe)
@@ -333,6 +344,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 │   │   │       ├── teilnehmende.js  /api/teilnehmende (Profile + Lernweg, BE-02)
 │   │   │       ├── benutzer.js      /api/benutzer (Mitarbeiterkonten, BE-03)
 │   │   │       ├── auth.js          /api/auth/login, /api/auth/me (Anmeldung, BE-01; Token-Prüfung in src/auth/)
+│   │   │       ├── dashboard.js     GET /api/dashboard (BE-07)
 │   │   │       └── zuordnungen.js   /api/teilnehmende/…/zuordnungen, …/lernstand (BE-04; Regeln in src/zuordnungen/)
 │   │   └── tests/
 │   │       ├── unit/             Vitest, ohne DB (laufen immer im Mock-Modus)
@@ -552,16 +564,17 @@ docker compose down -v && docker compose up --build
 - [ ] Auth (JWT) für Dozent/Assistent/Admin – **Backend fertig (`/api/auth`, BE-01, 03.11.)**, Login-Maske (FE-08) und Pflicht-Anmeldung für schreibende Endpunkte (BE-06) offen
 - [x] Entscheidung: Frontend bleibt React (TypeScript), aufgebaut aus dem Mockup
 - [x] `apps/frontend/package-lock.json` erzeugt und committet
-- [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.)**
-- [ ] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – **Backend fertig (`/api/arbeitsblaetter`, 28.10.)**, Frontend-Anbindung (Speichern-Button, Liste) offen
+- [ ] Frontend an das Backend anbinden (Arbeitsblätter, Anmeldung) – **KI-Erstellung ist angebunden (22.10.), Liste/Speichern/Bearbeiten der Arbeitsblätter seit FE-23**; Login-Maske (FE-08) offen
+- [x] Generierte Arbeitsblätter speichern, bearbeiten und freigeben – Backend `/api/arbeitsblaetter` (28.10.) und Frontend-Anbindung (Speichern, Liste, Bearbeiten, Archivieren)
 - [x] Lehrplan-Import (96 Lernziele aus den 14 DOCX) per `npm run import:lehrplaene` – lokal, Datei bleibt außerhalb von Git; seit 03.11. auch in der Datenbank (Migration 005, `docs/lehrplaene-datenbank.md`)
 - [x] Seiten Dashboard, Teilnehmende, Benutzerverwaltung, Einstellungen (Frontend, Beispieldaten)
-- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende-API (`/api/teilnehmende`, BE-02) und Benutzerverwaltung-API (`/api/benutzer`, BE-03) fertig**, Frontend-Anbindung (FE-09, FE-12) und Einstellungen (BE-09) offen
-- [ ] Lernstand anzeigen und Arbeitsblätter zuordnen – **Backend fertig (`/api/teilnehmende/:kennung/zuordnungen`, `/lernstand`, BE-04, 03.11.)**, Frontend-Anbindung (FE-11) offen
-- [ ] Vorhandene Arbeitsblätter hochladen und anpassen – **Backend fertig (`/api/uploads`, Migration 003, 12.11.)**, Frontend-Anbindung (FE-05) offen
+- [ ] Teilnehmende, Mitarbeiterkonten und Einstellungen im Backend speichern – **Teilnehmende (FE-12) und Benutzerverwaltung (FE-09) sind angebunden**, Einstellungen (BE-09) offen
+- [x] Lernstand anzeigen und Arbeitsblätter zuordnen – Backend (`/api/teilnehmende/:kennung/zuordnungen`, `/lernstand`, BE-04, 03.11.) und Frontend-Anbindung (FE-11, 15.11.)
+- [x] Vorhandene Arbeitsblätter hochladen und anpassen – `/api/uploads` (12.11.), Upload als Vorlage (FE-05) und „✦ Anpassen“ (FE-23, 15.11.)
 - [x] Seite „Berichte“ entfernt (war nur ein Platzhalter; Lernstand steht auf Dashboard und Teilnehmende)
+- [ ] Berichte & Auswertungen fachlich festlegen und umsetzen
 - [x] Seite **Lehrpläne** (Projektauftrag Teilziel 3, Use Cases UC-03/UC-06) – nach Figma-Mockup Version 41
-- [ ] Buttons ohne Funktion: „Öffnen“/„PDF“ je Variante, „Alle zur Bibliothek hinzufügen“, „Öffnen“ bei gespeicherten Dokumenten
+- [ ] Buttons ohne Funktion: Varianten-Generierung aus Websuchtreffern und „Alle zur Bibliothek hinzufügen“ in den Suchtreffern
 - [x] Backend-Skripte `db:migrate` und `db:seed` (28.10.); ein `db:reset` ist `docker compose down -v` bzw. `npm run db:seed -- --reset`
 - [x] `@google/genai` installiert und gegen die echte API getestet (22.10.); `@azure/openai` später
 - [ ] Playwright-Version in `e2e/package.json` und `e2e/Dockerfile` synchron halten (aktuell 1.49.1)

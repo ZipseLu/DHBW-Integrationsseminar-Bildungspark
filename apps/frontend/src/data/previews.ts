@@ -1,35 +1,4 @@
-import { BERUFSBILD_GASTRO, BERUFSBILD_METALL } from '@/data/constants'
 import type { Level } from '@/types'
-
-type PiktoItem = { icon: string; label: string; task: string }
-
-/** Beispielaufgaben fuer Piktogramm-Varianten, je Berufsfeld (Platzhalter des Prototyps) */
-const PIKTO_PREVIEW: Record<'lager' | 'gastro' | 'metall', PiktoItem[]> = {
-  lager: [
-    { icon: '📦', label: 'Paket', task: 'Zeige auf das Paket.' },
-    { icon: '🏷️', label: 'Etikett', task: 'Klebe das Etikett auf das Paket.' },
-    { icon: '🚚', label: 'LKW', task: 'Der LKW kommt. Was machst du?' },
-    { icon: '✅', label: 'Haken', task: 'Hake ab, wenn das Paket fertig ist.' },
-  ],
-  gastro: [
-    { icon: '🧼', label: 'Hände waschen', task: 'Erst Hände waschen!' },
-    { icon: '🧤', label: 'Handschuhe', task: 'Ziehe Handschuhe an.' },
-    { icon: '🍳', label: 'Kochen', task: 'Stelle die Pfanne auf den Herd.' },
-    { icon: '🌡️', label: 'Temperatur', task: 'Kontrolliere die Temperatur.' },
-  ],
-  metall: [
-    { icon: '🥽', label: 'Schutzbrille', task: 'Setze die Schutzbrille auf.' },
-    { icon: '🔧', label: 'Schraubenschlüssel', task: 'Hole den Schraubenschlüssel.' },
-    { icon: '📐', label: 'Zeichnung', task: 'Schau auf die Zeichnung.' },
-    { icon: '✅', label: 'Haken', task: 'Hake ab, wenn das Teil fertig ist.' },
-  ],
-}
-
-export function piktoPreviewFor(berufsbild: string): PiktoItem {
-  if (berufsbild === BERUFSBILD_GASTRO) return PIKTO_PREVIEW.gastro[0]
-  if (berufsbild === BERUFSBILD_METALL) return PIKTO_PREVIEW.metall[0]
-  return PIKTO_PREVIEW.lager[0]
-}
 
 /** Hinweise und Beispielaufgaben je Niveaustufe fuer die Varianten-Vorschau */
 export const TRANSFORM_PREVIEWS: Record<Level, { aufgaben: string[]; hinweis: string }> = {

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { WORKSHEETS } from '@/data/worksheets'
-import { downloadGespeichertesDocx, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
+import { downloadGespeichertesDocx, fetchArbeitsblatt, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
 import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
 import { druckeGespeichertesArbeitsblatt } from '@/lib/druck'
 import { downloadWorksheetDocx } from '@/lib/docx'
 import { fehlertext, loadSavedWorksheets, worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { EMPTY_FILTER, ausbildungsbausteinOptions, bausteinOptions, filterWorksheets, type WorksheetFilter } from '@/lib/worksheetFilter'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
+import { vorlageText } from '@/lib/vorlage'
 import type { StaffUser, Worksheet } from '@/types'
 import { UploadListe } from './UploadListe'
-import { TransformPanel, type TransformSource } from './TransformPanel'
 import { UploadSection } from './UploadSection'
 import { WorksheetCard } from './WorksheetCard'
 import { WorksheetDetailPanel, type DetailTab } from './WorksheetDetailPanel'
@@ -50,7 +50,6 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
   const [filter, setFilter] = useState<WorksheetFilter>(EMPTY_FILTER)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
-  const [transformSource, setTransformSource] = useState<TransformSource | null>(null)
   // Bumped after each upload so the list of uploaded documents reloads
   const [uploadVersion, setUploadVersion] = useState(0)
 
@@ -143,6 +142,23 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
   }
 
   /** FE-10: apply a saved change (content or status) to the list and the open panel */
+  /**
+   * FE-23: "✦ Anpassen" opens the real KI-Erstellung (replaces the former simulated
+   * panel). Berufsfeld and Lernziel are preselected; for saved worksheets the content
+   * goes along as template, like an uploaded worksheet (FE-05).
+   */
+  async function anpassen(w: Worksheet) {
+    setAktionsFehler(null)
+    const vorauswahl: KiVorauswahl = { berufsfeld: w.berufsbild, baustein: w.baustein || undefined, titel: w.abschnitt.titel, thema: w.title }
+    if (!w.backend) return onKiAnpassen(vorauswahl)
+    try {
+      const blatt = await fetchArbeitsblatt(w.backend.id)
+      onKiAnpassen({ ...vorauswahl, vorlage: { name: w.title, text: vorlageText(blatt.inhalt) } })
+    } catch (error) {
+      setAktionsFehler(`Anpassen nicht möglich: ${fehlertext(error)}`)
+    }
+  }
+
   function uebernehme(blatt: GespeichertesArbeitsblatt) {
     setWorksheets((alle) => uebernehmeGespeichertes(alle, blatt))
     if (blatt.status === 'archiviert') {
@@ -226,7 +242,7 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
                 setAktionsFehler(null)
                 if (w.backend) druckeGespeichertesArbeitsblatt(w.backend.id).catch((error: unknown) => setAktionsFehler(`PDF nicht möglich: ${fehlertext(error)}`))
               }}
-              onAdapt={() => setTransformSource(w)}
+              onAdapt={() => void anpassen(w)}
             />
           ))}
 
@@ -255,13 +271,12 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
           onClose={() => setDetail(null)}
           onAdapt={() => {
             setDetail(null)
-            setTransformSource(detail.worksheet)
+            void anpassen(detail.worksheet)
           }}
           onDownload={() => void download(detail.worksheet)}
         />
       )}
 
-      {transformSource && <TransformPanel source={transformSource} onClose={() => setTransformSource(null)} />}
     </div>
   )
 }
