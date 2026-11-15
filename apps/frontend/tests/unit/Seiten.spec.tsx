@@ -151,7 +151,7 @@ describe('Einstellungen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }))
 
     expect(screen.getByText('✓ Gespeichert')).toBeInTheDocument()
-    expect(document.documentElement.style.getPropertyValue('--background')).toBe('#1A1714')
+    expect(document.documentElement.style.getPropertyValue('--background')).toBe('#0E1924')
     expect(loadSettings()).toMatchObject({ darkMode: true, sidebarCompact: true })
     // Kompakt: Beschriftung nur noch als aria-label/title
     expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('title', 'Dashboard')

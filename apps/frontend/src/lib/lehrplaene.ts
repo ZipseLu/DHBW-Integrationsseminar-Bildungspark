@@ -29,7 +29,7 @@ export const FIELD_STYLES: Record<string, { color: string; bg: string; mark: str
   [BERUFSBILD_GASTRO]: { color: '#7A2E00', bg: '#F8E8DD', mark: 'G' },
 }
 
-const FALLBACK_STYLE = { color: '#6B6354', bg: '#EBE5D6', mark: '?' }
+const FALLBACK_STYLE = { color: '#4A5866', bg: '#E6EEF6', mark: '?' }
 
 export function fieldStyle(berufsfeld: string) {
   return FIELD_STYLES[berufsfeld] ?? FALLBACK_STYLE

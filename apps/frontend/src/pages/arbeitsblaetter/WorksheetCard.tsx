@@ -197,7 +197,7 @@ export function WorksheetCard({
                         {s.label}
                       </span>
                     </div>
-                    <div className="px-3 py-2.5" style={{ backgroundColor: '#FFFEF9' }}>
+                    <div className="px-3 py-2.5" style={{ backgroundColor: '#FFFFFF' }}>
                       <div className="text-xs mb-2 leading-snug" style={{ color: 'var(--foreground)' }}>
                         {row.kompetenz}
                       </div>
@@ -219,7 +219,7 @@ export function WorksheetCard({
 }
 
 export const STATUS_STYLES = {
-  entwurf: { label: 'Entwurf', bg: '#EBF0F8', color: '#1E3A5F' },
+  entwurf: { label: 'Entwurf', bg: '#DCEAF7', color: '#00487A' },
   freigegeben: { label: 'Freigegeben', bg: '#D4EDDA', color: '#1A5C32' },
   archiviert: { label: 'Archiviert', bg: '#FAD9C8', color: '#7A2E00' },
 } as const

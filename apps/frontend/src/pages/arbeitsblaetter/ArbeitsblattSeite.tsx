@@ -2,7 +2,8 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { AUFGABEN_TYP_LABEL, PIKTOGRAMM_SYMBOL } from '@/data/aufgaben'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
 import { fetchArbeitsblatt, type Arbeitsblatt, type Aufgabe } from '@/lib/api'
-import { versetztePaare } from '@/lib/druck'
+import { BRIEFKOPF_PNG } from '@/assets/briefkopf'
+import { CD, versetztePaare } from '@/lib/druck'
 import { fehlertext } from '@/lib/gespeicherteArbeitsblaetter'
 
 /**
@@ -10,9 +11,10 @@ import { fehlertext } from '@/lib/gespeicherteArbeitsblaetter'
  * the Word export and the print view (lib/druck.ts), shown as a white page.
  */
 
-const smallCaps: CSSProperties = { fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 9, color: '#1E3A5F' }
-const muted = '#6B6354'
-const border = '#D5CEBB'
+const muted = CD.grau
+const border = CD.linie
+const ueberschrift: CSSProperties = { fontWeight: 700, fontSize: 12.5, margin: '12px 0 2px' }
+const box = (farbe: string): CSSProperties => ({ backgroundColor: farbe, padding: '6px 8px 4px', marginTop: 12 })
 
 function Absaetze({ text }: { text: string }) {
   return (
@@ -62,7 +64,7 @@ function AufgabeInhalt({ aufgabe }: { aufgabe: Aufgabe }) {
         </table>
       )
     case 'malen':
-      return <div aria-label="Malrahmen" style={{ height: 120, border: `1px solid ${border}`, margin: '4px 0 8px' }} />
+      return <div aria-label="Malrahmen" style={{ height: 120, border: `1.5px solid ${CD.text}`, backgroundColor: '#FFFFFF', margin: '4px 0 8px' }} />
     case 'praxis':
       return <p style={{ margin: '0 0 6px 10px' }}>( ) Ja &nbsp;&nbsp;&nbsp; ( ) Nein</p>
     default:
@@ -82,7 +84,7 @@ export function ArbeitsblattSeite({ arbeitsblatt: w }: { arbeitsblatt: Arbeitsbl
   const bausteinInfo = [w.berufsfeld, w.baustein !== undefined ? `Baustein ${w.baustein}` : null, w.ausbildungsbaustein].filter(Boolean).join(' · ')
 
   return (
-    <div className="flex flex-col items-center" style={{ backgroundColor: '#C8C0B4', padding: '20px 8px', minHeight: '100%', margin: '0 -24px' }}>
+    <div className="flex flex-col items-center" style={{ backgroundColor: '#C9D6E3', padding: '20px 8px', minHeight: '100%', margin: '0 -24px' }}>
       <article
         aria-label={`Vorschau ${w.titel}`}
         style={{
@@ -92,29 +94,30 @@ export function ArbeitsblattSeite({ arbeitsblatt: w }: { arbeitsblatt: Arbeitsbl
           boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
           padding: '36px 40px 44px',
           fontFamily: 'Calibri, "Segoe UI", sans-serif',
-          color: '#1A1714',
+          color: CD.text,
           fontSize: 12,
           lineHeight: 1.5,
         }}
       >
-        <div style={{ ...smallCaps, fontSize: 8.5 }}>Bildungspark Heilbronn-Franken</div>
-        <h3 style={{ fontSize: 19, fontWeight: 700, margin: '6px 0 2px', lineHeight: 1.25 }}>{w.titel}</h3>
+        {/* FE-21: letterhead graphic as on the paper worksheets */}
+        <img src={BRIEFKOPF_PNG} alt="Bildungspark Heilbronn-Franken gGmbH – Bildung · Arbeit · Zukunft" style={{ display: 'block', width: '100%', height: 'auto', marginBottom: 18 }} />
+        <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 2px', lineHeight: 1.25 }}>Arbeitsblatt: {w.titel}</h3>
         <div style={{ fontSize: 10.5, color: muted }}>{bausteinInfo}</div>
         <div style={{ fontSize: 10.5, color: muted, margin: '4px 0 12px' }}>
           <span style={{ backgroundColor: farbe.bg, color: farbe.text, fontWeight: 700, padding: '1px 6px' }}>Stufe {w.stufe}</span> &nbsp;
           {formatOption(w.format)?.label ?? w.format} · {w.sprache}
         </div>
 
-        <div style={smallCaps}>Lernziel</div>
+        <div style={ueberschrift}>Lernziel</div>
         <p style={{ margin: '2px 0 10px' }}>{w.lernziel}</p>
-        <div style={smallCaps}>Darum geht es</div>
+        <div style={ueberschrift}>Darum geht es</div>
         <div style={{ marginTop: 2 }}>
           <Absaetze text={w.einleitung} />
         </div>
 
         {w.aufgaben.map((aufgabe) => (
-          <section key={aufgabe.nr} style={{ marginTop: 12 }}>
-            <h4 style={{ fontSize: 12.5, fontWeight: 700, margin: '0 0 4px', padding: '2px 6px', backgroundColor: farbe.bg, color: farbe.text }}>
+          <section key={aufgabe.nr} style={box(CD.aufgabe)}>
+            <h4 style={{ fontSize: 12.5, fontWeight: 700, margin: '0 0 4px' }}>
               {aufgabe.piktogramm && <span aria-hidden="true">{PIKTOGRAMM_SYMBOL[aufgabe.piktogramm] ?? ''} </span>}
               Aufgabe {aufgabe.nr}: {AUFGABEN_TYP_LABEL[aufgabe.typ] ?? aufgabe.typ}
             </h4>
@@ -124,20 +127,20 @@ export function ArbeitsblattSeite({ arbeitsblatt: w }: { arbeitsblatt: Arbeitsbl
         ))}
 
         {w.woerterbuch.length > 0 && (
-          <>
-            <div style={{ ...smallCaps, marginTop: 14 }}>Kleines Wörter-Buch</div>
+          <section style={box(CD.woerterbuch)}>
+            <div style={{ ...ueberschrift, marginTop: 0 }}>Kleines Wörter-Buch</div>
             {w.woerterbuch.map((e) => (
               <p key={e.wort} style={{ margin: '2px 0 2px 10px' }}>
                 <strong>{e.wort}:</strong> {e.erklaerung}
               </p>
             ))}
-          </>
+          </section>
         )}
 
         {w.hinweisAnleiter && (
           <>
-            <div style={{ ...smallCaps, marginTop: 14 }}>Hinweis für die Lehrkraft</div>
-            <p style={{ fontSize: 10.5, color: muted, fontStyle: 'italic', backgroundColor: '#FFFEF9', border: `1px solid ${border}`, padding: '6px 8px', margin: '2px 0 0' }}>
+            <div style={{ ...ueberschrift, marginTop: 14 }}>Hinweis für die Lehrkraft</div>
+            <p style={{ fontSize: 10.5, color: muted, fontStyle: 'italic', backgroundColor: '#FFFFFF', border: '1px solid #BFBFBF', padding: '6px 8px', margin: '2px 0 0' }}>
               {w.hinweisAnleiter}
             </p>
           </>

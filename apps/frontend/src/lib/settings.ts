@@ -4,8 +4,9 @@ import { AA_TEXT, mitKontrast } from '@/lib/kontrast'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   darkMode: false,
-  accentColor: '#C4632A',
-  primaryColor: '#1E3A5F',
+  // FE-21: colors of the Bildungspark corporate design (worksheet template)
+  accentColor: '#009FE3',
+  primaryColor: '#00487A',
   sidebarCompact: false,
   defaultBerufsbild: BERUFSBILD_LAGER,
   aiAutoExpand: true,
@@ -18,31 +19,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoSave: true,
 }
 
-export const ACCENT_COLORS = ['#C4632A', '#2A6B4B', '#1E5FA0', '#7A2E9A', '#C4A020', '#C42A2A'] as const
-export const PRIMARY_COLORS = ['#1E3A5F', '#1A5C32', '#4A1A6B', '#5C3A1A', '#1A4A5C', '#3A1A1A'] as const
+export const ACCENT_COLORS = ['#009FE3', '#C4632A', '#2A6B4B', '#7A2E9A', '#C4A020', '#C42A2A'] as const
+export const PRIMARY_COLORS = ['#00487A', '#1E3A5F', '#1A5C32', '#4A1A6B', '#5C3A1A', '#3A1A1A'] as const
 
+// FE-21: cool neutrals that go with the Bildungspark blue (instead of the cream tones of the mockup)
 const LIGHT = {
-  '--background': '#f5f1e8',
-  '--foreground': '#1a1714',
-  '--card': '#fdfaf3',
-  '--card-foreground': '#1a1714',
-  '--muted': '#ebe5d6',
-  '--muted-foreground': '#6b6354',
-  '--border': '#d5cebb',
-  '--tint-success': '#F0FBF4',
-  '--tint-info': '#EBF0F8',
+  '--background': '#F3F7FB',
+  '--foreground': '#14202B',
+  '--card': '#FFFFFF',
+  '--card-foreground': '#14202B',
+  '--muted': '#E6EEF6',
+  '--muted-foreground': '#4A5866',
+  '--border': '#C9D6E3',
+  '--tint-success': '#EEF9F1',
+  '--tint-info': '#DCEAF7',
 }
 
 const DARK = {
-  '--background': '#1A1714',
-  '--foreground': '#F5F1E8',
-  '--card': '#242019',
-  '--card-foreground': '#F5F1E8',
-  '--muted': '#2C2820',
-  '--muted-foreground': '#A69D8D',
-  '--border': '#3A352C',
-  '--tint-success': '#1E3326',
-  '--tint-info': '#1B2633',
+  '--background': '#0E1924',
+  '--foreground': '#EEF3F8',
+  '--card': '#15222F',
+  '--card-foreground': '#EEF3F8',
+  '--muted': '#1C2B3A',
+  '--muted-foreground': '#9DB0C2',
+  '--border': '#2A3B4C',
+  '--tint-success': '#1B3326',
+  '--tint-info': '#1A2C3E',
 }
 
 /** Heller Text auf Akzent- und Primärflächen (Buttons, Sidebar) */
@@ -93,6 +95,9 @@ export function applyTheme(settings: AppSettings, root: HTMLElement = document.d
 
 const STORAGE_KEY = 'bildungspark.einstellungen'
 
+/** Default colors before FE-21 (mockup) */
+const ALTE_STANDARDFARBEN = { accentColor: '#C4632A', primaryColor: '#1E3A5F' }
+
 /**
  * Einstellungen liegen im Prototyp nur im Browser (localStorage).
  * Ist der Speicher gesperrt oder leer, gelten die Standardwerte.
@@ -101,7 +106,13 @@ export function loadSettings(): AppSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<AppSettings>) }
+    const gespeichert = JSON.parse(raw) as Partial<AppSettings>
+    // FE-21: whoever still has the old default colors of the mockup gets the corporate design
+    if (gespeichert.accentColor === ALTE_STANDARDFARBEN.accentColor && gespeichert.primaryColor === ALTE_STANDARDFARBEN.primaryColor) {
+      delete gespeichert.accentColor
+      delete gespeichert.primaryColor
+    }
+    return { ...DEFAULT_SETTINGS, ...gespeichert }
   } catch {
     return DEFAULT_SETTINGS
   }

@@ -14,15 +14,17 @@ import {
   convertInchesToTwip,
 } from 'docx'
 import { saveAs } from 'file-saver'
+import { briefkopfHeader } from '@/lib/briefkopfDocx'
 import { LEVEL_STYLES, niveausOf } from '@/data/constants'
 import type { Level, Worksheet } from '@/types'
 
 const FONT = 'Calibri'
-const COLOR_PRIMARY = '1E3A5F'
-const COLOR_TEXT = '1A1714'
-const COLOR_MUTED = '6B6354'
-const COLOR_BORDER = 'D5CEBB'
-const COLOR_PAPER = 'FFFEF9'
+// FE-21: Bildungspark corporate design (same values as CD in lib/druck.ts)
+const COLOR_PRIMARY = '00487A'
+const COLOR_TEXT = '1F1F1F'
+const COLOR_MUTED = '5F5F5F'
+const COLOR_BORDER = 'BFBFBF'
+const COLOR_PAPER = 'DCEAF7'
 
 /** '#D4EDDA' -> 'D4EDDA' (docx erwartet Hex ohne #) */
 const hex = (color: string) => color.replace('#', '')
@@ -38,9 +40,6 @@ export function buildWorksheetDocument(w: Worksheet): Document {
   const levels = niveausOf(w)
 
   const header = [
-    new Paragraph({
-      children: [new TextRun({ text: 'BILDUNGSPARK HEILBRONN-FRANKEN', size: 16, color: COLOR_PRIMARY, bold: true, font: FONT })],
-    }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       children: [new TextRun({ text: w.title, size: 36, bold: true, color: COLOR_TEXT, font: FONT })],
@@ -164,6 +163,8 @@ export function buildWorksheetDocument(w: Worksheet): Document {
     sections: [
       {
         properties: { page: { margin: { top: margin, bottom: margin, left: margin, right: margin } } },
+        // FE-21: letterhead graphic in the page header
+        headers: { default: briefkopfHeader() },
         children: [...header, table, ...footer],
       },
     ],

@@ -151,7 +151,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
         </div>
 
         {vorauswahl?.vorlage && (
-          <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#EBF0F8', color: '#1A3A5C' }} role="note">
+          <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#DCEAF7', color: '#1A3A5C' }} role="note">
             📄 Vorlage „{vorauswahl.vorlage.name}“ übernommen: Der Text steht unter „Erwartungen an das Arbeitsblatt“
             {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}.{' '}
             {vorauswahl.baustein !== undefined ? 'Lernziel ist vorausgewählt – bitte Stufen und Formate wählen.' : 'Bitte noch das passende Lernziel wählen.'}
@@ -494,7 +494,7 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
         </div>
       </div>
 
-      <div className="p-4 flex flex-col gap-5" style={{ backgroundColor: '#FFFEF9' }}>
+      <div className="p-4 flex flex-col gap-5" style={{ backgroundColor: '#FFFFFF' }}>
         {anyMocked && (
           <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
             ⚠ Kein API-Key – Beispielantwort (Mock). Mit GEMINI_API_KEY in der .env (Repo-Root) antwortet Gemini.

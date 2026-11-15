@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
@@ -24,32 +24,32 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --font-sans: 'Inter', sans-serif;
-  --font-display: 'Fraunces', serif;
+  --font-display: 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
   --font-mono: 'DM Mono', monospace;
 }
 
 :root {
-  --background: #f5f1e8;
-  --foreground: #1a1714;
-  --card: #fdfaf3;
-  --card-foreground: #1a1714;
-  --primary: #1e3a5f;
-  --primary-foreground: #f5f1e8;
-  --secondary: #e8e2d4;
-  --secondary-foreground: #1a1714;
-  --muted: #ebe5d6;
-  --muted-foreground: #6b6354;
-  --accent: #b45b27;
-  --accent-foreground: #fdfaf3;
-  --border: #d5cebb;
-  --ring: #1e3a5f;
+  --background: #f3f7fb;
+  --foreground: #14202b;
+  --card: #ffffff;
+  --card-foreground: #14202b;
+  --primary: #00487a;
+  --primary-foreground: #ffffff;
+  --secondary: #e6eef6;
+  --secondary-foreground: #14202b;
+  --muted: #e6eef6;
+  --muted-foreground: #4a5866;
+  --accent: #0077aa;
+  --accent-foreground: #ffffff;
+  --border: #c9d6e3;
+  --ring: #00487a;
   /* Textfarben mit mind. 4,5 : 1 (FE-15) – werden von applyTheme() je nach Einstellung neu berechnet */
-  --accent-text: #9d4f22;
-  --primary-text: #1e3a5f;
+  --accent-text: #0077aa;
+  --primary-text: #00487a;
   --danger: #bc3333;
   --success: #277347;
-  --tint-success: #f0fbf4;
-  --tint-info: #ebf0f8;
+  --tint-success: #eef9f1;
+  --tint-info: #dceaf7;
   --stufe-T-text: #1a5c32;
   --stufe-A-text: #1a3a5c;
   --stufe-F-text: #7a5c00;

@@ -1,3 +1,4 @@
+import logo from '@/assets/bildungspark-logo.png'
 import { NAV_ITEMS, ROLE_LABELS } from '@/data/constants'
 import type { NavItem, StaffUser } from '@/types'
 
@@ -24,7 +25,10 @@ export function Sidebar({ user, active, onNavigate, compact = false }: Props) {
           </div>
         ) : (
           <>
-            <div className="text-xs font-mono tracking-widest uppercase opacity-80 mb-1">Bildungspark</div>
+            {/* FE-21: Bildungspark logo on a white surface, so the light blue boxes stay visible */}
+            <div className="rounded bg-white px-3 py-2.5 mb-4">
+              <img src={logo} alt="Bildungspark Heilbronn-Franken" className="block w-full h-auto" width={426} height={103} />
+            </div>
             <div className="font-display text-xl font-semibold leading-tight">Arbeitsblatt&shy;verwaltung</div>
           </>
         )}
