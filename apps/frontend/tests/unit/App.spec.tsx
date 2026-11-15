@@ -4,7 +4,6 @@ import App from '@/App'
 
 /**
  * Komponententests: rendern die App in jsdom und klicken sie durch.
- * Simulierte Wartezeiten sind im Testmodus 0 ms (siehe lib/simulation.ts).
  * Die KI-Erstellung ruft das Backend auf – hier mit gemocktem fetch
  * (ausfuehrliche Tests in KiErstellung.spec.tsx).
  */
@@ -157,14 +156,15 @@ describe('Arbeitsblätter', () => {
     expect(screen.queryByRole('article', { name: 'Güter entladen' })).not.toBeInTheDocument()
   })
 
-  it('erzeugt im Anpassen-Panel vier Varianten', async () => {
+  // FE-23: "Anpassen" opens the real KI-Erstellung instead of a simulated panel
+  it('öffnet bei „Anpassen“ die KI-Erstellung mit vorausgewähltem Lernziel', async () => {
     await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Güter entladen' })
     fireEvent.click(within(card).getByRole('button', { name: /Anpassen/ }))
 
-    const dialog = screen.getByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: '✦ 4 Varianten erstellen' }))
-    expect(await within(dialog).findByText('✓ 4 Varianten bereit')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'KI-Erstellung', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Güter entladen')
   })
 })
 

@@ -153,7 +153,8 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
         {vorauswahl?.vorlage && (
           <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#DCEAF7', color: '#1A3A5C' }} role="note">
             📄 Vorlage „{vorauswahl.vorlage.name}“ übernommen: Der Text steht unter „Erwartungen an das Arbeitsblatt“
-            {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}. Bitte noch das passende Lernziel wählen.
+            {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}.{' '}
+            {vorauswahl.baustein !== undefined ? 'Lernziel ist vorausgewählt – bitte Stufen und Formate wählen.' : 'Bitte noch das passende Lernziel wählen.'}
           </div>
         )}
 
