@@ -57,21 +57,22 @@ function renderApp() {
   render(<App />)
 }
 
-/** Startseite Arbeitsblaetter rendern und warten, bis die Liste (hier: Beispieldaten) geladen ist */
-async function renderArbeitsblaetter() {
-  renderApp()
-  await screen.findByRole('article', { name: 'Begleitpapiere prüfen' })
-}
-
 function navigate(label: string) {
   const nav = screen.getByRole('navigation', { name: 'Hauptnavigation' })
   fireEvent.click(within(nav).getByRole('button', { name: new RegExp(label) }))
 }
 
+/** Opens the page Arbeitsblätter and waits until the list (here: sample data) is loaded */
+async function renderArbeitsblaetter() {
+  renderApp()
+  navigate('Arbeitsblätter')
+  await screen.findByRole('article', { name: 'Begleitpapiere prüfen' })
+}
+
 describe('Start', () => {
-  it('oeffnet direkt die Arbeitsblaetter, ohne Anmeldung', () => {
+  it('oeffnet direkt das Dashboard, ohne Anmeldung', () => {
     renderApp()
-    expect(screen.getByRole('heading', { level: 1, name: 'Arbeitsblätter' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Übersicht' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Anmelden' })).not.toBeInTheDocument()
     expect(screen.getByText('Celine Hager')).toBeInTheDocument()
   })
@@ -82,7 +83,6 @@ describe('Navigation', () => {
     ['Dashboard', 'Übersicht'],
     ['Lehrpläne', 'Lehrpläne'],
     ['Teilnehmende', 'Teilnehmende'],
-    ['Berichte', 'Berichte'],
     ['Benutzerverwaltung', 'Benutzerverwaltung'],
     ['Einstellungen', 'Einstellungen'],
   ])('Seite "%s" ist vorhanden und hat Inhalt', (label, title) => {
@@ -90,6 +90,11 @@ describe('Navigation', () => {
     navigate(label)
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
     expect(document.querySelector('main')).not.toBeEmptyDOMElement()
+  })
+
+  it('hat keine Seite „Berichte“ mehr (aus dem Umfang genommen)', () => {
+    renderApp()
+    expect(screen.queryByRole('button', { name: /Berichte/ })).not.toBeInTheDocument()
   })
 
   it('"+ Arbeitsblatt erstellen" fuehrt zur KI-Erstellung', () => {

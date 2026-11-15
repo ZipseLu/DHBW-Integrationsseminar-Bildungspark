@@ -80,6 +80,25 @@ describe('Druckansicht (FE-04)', () => {
     expect(html).toContain('<td class="links">Anleiter</td><td>☐&nbsp;&nbsp;Bringt Ware</td>')
   })
 
+  it('hängt auf Wunsch einen Lösungsteil für die Lehrkraft an (FE-25)', () => {
+    const mitLoesung: Arbeitsblatt = {
+      ...BLATT,
+      aufgaben: BLATT.aufgaben.map((a) => (a.nr === 1 ? { ...a, loesung: 'Ich sage Bescheid.' } : a)),
+    }
+    const ohne = arbeitsblattDruckHtml(mitLoesung)
+    expect(ohne).not.toContain('NUR FÜR DIE LEHRKRAFT')
+    expect(ohne).toContain('<title>Der LKW ist da</title>')
+
+    const html = arbeitsblattDruckHtml(mitLoesung, new Date('2026-11-15T10:00:00'), { mitLoesungen: true })
+    expect(html).toContain('<title>Der LKW ist da – mit Lösungen</title>')
+    expect(html).toContain('<div class="loesungsteil">')
+    expect(html).toContain('NUR FÜR DIE LEHRKRAFT – NICHT AN TEILNEHMENDE AUSGEBEN')
+    expect(html).toContain('<h4>Aufgabe 1: Ankreuzen</h4><p>Ich sage Bescheid.</p>')
+    // Matching task: the correct pairs, not the shifted print order
+    expect(html).toContain('<li>LKW → Bringt Ware</li><li>Anleiter → Hilft dir</li>')
+    expect(html).toContain('<h4>Aufgabe 5: Nach-denken</h4><p class="ohne">Keine Lösung angegeben – bitte selbst prüfen.</p>')
+  })
+
   it('maskiert Text aus der KI-Antwort', () => {
     const html = arbeitsblattDruckHtml({ ...BLATT, titel: '<script>alert(1)</script>', sprache: 'Leichte "Sprache"' as Arbeitsblatt['sprache'] })
     expect(html).not.toContain('<script>alert(1)</script>')
@@ -117,6 +136,15 @@ describe('PDF-Knöpfe', () => {
     worksheet: BLATT,
     meta: { provider: 'gemini', model: 'mock', mocked: true, durationMs: 12, promptVersion: '1.0.2', attempts: 1, usage: null, validation: { ok: true, hinweise: [] } },
   }
+
+  it('KI-Erstellung: „PDF mit Lösungen“ druckt den Lösungsteil mit (FE-25)', async () => {
+    render(<GeneratedWorksheetCard result={RESULT} onVorschau={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: '🖨 PDF mit Lösungen' }))
+    const { frame, print } = druckAbfangen()
+    expect(frame.contentDocument?.title).toBe('Der LKW ist da – mit Lösungen')
+    expect(frame.contentDocument?.body.textContent).toContain('NUR FÜR DIE LEHRKRAFT')
+    await waitFor(() => expect(print).toHaveBeenCalled())
+  })
 
   it('KI-Erstellung: „PDF“ öffnet die Druckansicht der Variante', async () => {
     render(<GeneratedWorksheetCard result={RESULT} onVorschau={() => {}} />)

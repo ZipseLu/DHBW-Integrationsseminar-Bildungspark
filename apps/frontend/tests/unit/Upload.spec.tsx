@@ -5,6 +5,13 @@ import type { UploadMitText } from '@/lib/api'
 import { MAX_ERWARTUNGEN, erwartungenAusVorlage, formatGroesse, themaAusDateiname } from '@/lib/vorlage'
 import { pruefeDatei } from '@/pages/arbeitsblaetter/UploadSection'
 
+/** The app starts on the dashboard; the upload lives on the page Arbeitsblätter */
+function renderArbeitsblaetter() {
+  render(<App />)
+  const nav = screen.getByRole('navigation', { name: 'Hauptnavigation' })
+  fireEvent.click(within(nav).getByRole('button', { name: /Arbeitsblätter/ }))
+}
+
 /**
  * FE-05: upload an existing worksheet, store it in the backend (/api/uploads)
  * and hand it to the KI-Erstellung. fetch is a small in-memory backend that
@@ -139,7 +146,7 @@ describe('Hilfsfunktionen', () => {
 describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('lädt eine Word-Datei hoch und zeigt sie in der Liste', async () => {
     const { anfragen } = uploadBackend()
-    render(<App />)
+    renderArbeitsblaetter()
 
     fireEvent.change(screen.getByLabelText('BERUFSFELD (optional)'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
     waehleDatei(docx())
@@ -159,7 +166,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
 
   it('lehnt nicht erlaubte Dateien ab, ohne etwas zu senden', () => {
     const { anfragen } = uploadBackend()
-    render(<App />)
+    renderArbeitsblaetter()
     waehleDatei(new File(['MZ'], 'virus.exe'))
     expect(screen.getByText(/Dateityp „.exe“ wird nicht unterstützt/)).toHaveAttribute('role', 'alert')
     expect(anfragen.some((a) => a.method === 'POST')).toBe(false)
@@ -167,14 +174,14 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
 
   it('meldet, wenn das Backend nicht erreichbar ist', async () => {
     uploadBackend({ fehler: 503 })
-    render(<App />)
+    renderArbeitsblaetter()
     waehleDatei(docx())
     expect(await screen.findByText('Der Upload ist gerade nicht möglich: Die Datenbank ist nicht verfügbar.')).toHaveAttribute('role', 'alert')
   })
 
   it('ergänzt bei einem PDF den Text und übergibt ihn an die KI-Erstellung', async () => {
     const { anfragen } = uploadBackend()
-    render(<App />)
+    renderArbeitsblaetter()
     waehleDatei(new File(['%PDF'], 'Lieferschein.pdf', { type: 'application/pdf' }))
 
     expect(await screen.findByText(/wird kein Text gelesen/)).toBeInTheDocument()
@@ -199,7 +206,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
 
   it('speichert eingefügten Text', async () => {
     const { anfragen } = uploadBackend()
-    render(<App />)
+    renderArbeitsblaetter()
     fireEvent.click(screen.getByRole('tab', { name: '📋 Text einfügen' }))
     fireEvent.change(screen.getByLabelText(/^THEMA/), { target: { value: 'Hygiene' } })
     fireEvent.change(screen.getByLabelText('TEXT DES ARBEITSBLATTS'), { target: { value: 'Wasche die Hände.' } })
@@ -217,7 +224,7 @@ describe('Liste der hochgeladenen Dokumente (FE-05)', () => {
       { id: 'a1', dateiname: 'Scan.pdf', dateityp: 'pdf', groesse: 2048, hatDatei: true, textQuelle: null, textLaenge: 0, textVorschau: null, berufsfeld: null, thema: null, hochgeladenVon: 'T. Neumann', hochgeladenAm: '2026-11-10T08:00:00.000Z', geaendertAm: '2026-11-10T08:00:00.000Z', text: null },
       { id: 'a2', dateiname: 'Hygiene.docx', dateityp: 'docx', groesse: 4096, hatDatei: true, textQuelle: 'datei', textLaenge: 17, textVorschau: 'Wasche die Hände.', berufsfeld: 'Gastronomie & Hauswirtschaft', thema: 'Hygiene', hochgeladenVon: null, hochgeladenAm: '2026-11-11T08:00:00.000Z', geaendertAm: '2026-11-11T08:00:00.000Z', text: 'Wasche die Hände.' },
     )
-    render(<App />)
+    renderArbeitsblaetter()
     const liste = (await screen.findByRole('heading', { name: 'Hochgeladene Dokumente' })).closest('section') as HTMLElement
 
     fireEvent.click(within(liste).getByRole('button', { name: 'Scan.pdf öffnen' }))

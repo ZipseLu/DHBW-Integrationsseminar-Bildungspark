@@ -136,11 +136,12 @@ describe('Vorschau gespeicherter Arbeitsblätter (FE-22)', () => {
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled())
   })
 
-  it('bietet bei gespeicherten Blättern im Panel „PDF“ an', async () => {
+  it('bietet bei gespeicherten Blättern im Panel „PDF“ und „PDF mit Lösungen“ an', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ arbeitsblatt: { ...BLATT, inhalt: INHALT } })))
     panel(worksheetAusGespeichertem(BLATT, 1))
     await screen.findByRole('article', { name: 'Vorschau Güter richtig aus-zeichnen' })
-    expect(screen.getByRole('button', { name: /PDF/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'PDF mit Lösungen' })).toBeInTheDocument()
   })
 })
 

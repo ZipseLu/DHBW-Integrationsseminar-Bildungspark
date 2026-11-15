@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { KEIN_KI_STAND, VerlassenDialog, hatUngesichertes, type KiStand } from '@/components/VerlassenDialog'
 import { NAV_ITEMS } from '@/data/constants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
 import { Header } from '@/layout/Header'
@@ -8,7 +9,6 @@ import { applyTheme, loadSettings, saveSettings } from '@/lib/settings'
 import { useTeilnehmende } from '@/lib/teilnehmende'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 import { BenutzerverwaltungPage } from '@/pages/benutzerverwaltung/BenutzerverwaltungPage'
-import { BerichtePage } from '@/pages/berichte/BerichtePage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { EinstellungenPage } from '@/pages/einstellungen/EinstellungenPage'
 import { KiErstellungPage } from '@/pages/ki-erstellung/KiErstellungPage'
@@ -27,7 +27,8 @@ import type { AppSettings, NavItem, StaffUser } from '@/types'
  */
 export default function App() {
   const user = CURRENT_USER
-  const [activeNav, setActiveNav] = useState<NavItem>('arbeitsblaetter')
+  // The app always starts on the dashboard (landing page after login)
+  const [activeNav, setActiveNav] = useState<NavItem>('dashboard')
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   // FE-12: profiles from GET /api/teilnehmende (sample data if the backend is unavailable)
   const teilnehmende = useTeilnehmende(activeNav === 'dashboard' || activeNav === 'teilnehmer')
@@ -46,10 +47,36 @@ export default function App() {
     if (main) main.scrollTop = 0
   }
 
-  function navigate(item: NavItem) {
+  // FE-27: unsaved variants of the KI-Erstellung; leaving the page asks first
+  const [kiStand, setKiStand] = useState<KiStand>(KEIN_KI_STAND)
+  const [wartendesZiel, setWartendesZiel] = useState<NavItem | null>(null)
+  const meldeKiStand = useCallback((stand: KiStand) => setKiStand(stand), [])
+
+  function wechsle(item: NavItem) {
     setKiVorauswahl(null)
     zeigeSeite(item)
   }
+
+  function navigate(item: NavItem) {
+    // Staying on the plain KI page keeps the variants; everything else would discard them
+    const bleibtErhalten = item === 'ki-erstellung' && kiVorauswahl === null
+    if (activeNav === 'ki-erstellung' && !bleibtErhalten && hatUngesichertes(kiStand)) {
+      setWartendesZiel(item)
+      return
+    }
+    wechsle(item)
+  }
+
+  // Closing or reloading the tab: the browser shows its own warning
+  useEffect(() => {
+    if (activeNav !== 'ki-erstellung' || !hatUngesichertes(kiStand)) return
+    const warnen = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnen)
+    return () => window.removeEventListener('beforeunload', warnen)
+  }, [activeNav, kiStand])
 
   function createFromLehrplan(vorauswahl: KiVorauswahl) {
     setKiVorauswahl(vorauswahl)
@@ -94,18 +121,29 @@ export default function App() {
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} />
+            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} onStand={meldeKiStand} />
           )}
           {activeNav === 'teilnehmer' && (
             <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
           )}
-          {activeNav === 'berichte' && <BerichtePage />}
           {activeNav === 'benutzerverwaltung' && user.role === 'admin' && (
             <BenutzerverwaltungPage currentUser={user} users={staffUsers} onChange={setStaffUsers} />
           )}
           {activeNav === 'einstellungen' && <EinstellungenPage currentUser={user} settings={settings} onSave={handleSaveSettings} />}
         </main>
       </div>
+      {wartendesZiel && (
+        <VerlassenDialog
+          stand={kiStand}
+          onBleiben={() => setWartendesZiel(null)}
+          onVerlassen={() => {
+            const ziel = wartendesZiel
+            setWartendesZiel(null)
+            setKiStand(KEIN_KI_STAND)
+            wechsle(ziel)
+          }}
+        />
+      )}
     </div>
   )
 }

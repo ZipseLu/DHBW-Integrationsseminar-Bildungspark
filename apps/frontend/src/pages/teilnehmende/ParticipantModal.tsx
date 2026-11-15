@@ -3,7 +3,7 @@ import { stufeTextVar } from '@/lib/settings'
 import { Modal } from '@/components/Modal'
 import { ErrorNote, fieldLabelClass, inputStyle } from '@/components/Widgets'
 import { BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
-import { moveItem, type StationDraft } from '@/lib/participants'
+import { moveItem, pruefeKennung, type StationDraft } from '@/lib/participants'
 import type { Format, Participant } from '@/types'
 
 type Props = {
@@ -22,6 +22,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
   const emptyStation: StationDraft = { berufsbild: defaultBerufsbild, level: 'T', format: 'text' }
   const [id, setId] = useState(editing?.id ?? '')
   const [error, setError] = useState('')
+  const [kennungUngueltig, setKennungUngueltig] = useState(false)
   const [speichert, setSpeichert] = useState(false)
   const [stations, setStations] = useState<StationDraft[]>(
     editing ? editing.berufsbilder.map((b) => ({ berufsbild: b.berufsbild, level: b.level, format: b.format })) : [emptyStation],
@@ -32,6 +33,13 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (speichert) return
+    // FE-28: check the ID before anything is sent
+    const kennungFehler = editing ? null : pruefeKennung(id)
+    if (kennungFehler) {
+      setError(kennungFehler)
+      setKennungUngueltig(true)
+      return
+    }
     setSpeichert(true)
     try {
       const meldung = await onSave(id.trim(), stations)
@@ -48,30 +56,36 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
 
   return (
     <Modal title={editing ? 'Teilnehmer bearbeiten' : 'Neuen Teilnehmer hinzufügen'} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
+      <form onSubmit={handleSubmit} noValidate className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
         <div>
           <label htmlFor="tn-kennung" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ANONYME KENNUNG {!editing && <span className="font-normal">(optional)</span>}
+            ANONYME KENNUNG {!editing && <span className="font-normal">(IW3-Nummer, Pflichtfeld)</span>}
           </label>
           <input
             id="tn-kennung"
             type="text"
-            placeholder="z.B. IW3-0001 oder leer lassen"
+            placeholder="z. B. IW3-4421"
             value={id}
             readOnly={Boolean(editing)}
-            aria-describedby={editing ? 'tn-kennung-hinweis' : undefined}
+            required={!editing}
+            aria-required={!editing}
+            aria-invalid={kennungUngueltig || undefined}
+            aria-describedby="tn-kennung-hinweis"
+            autoComplete="off"
+            spellCheck={false}
             onChange={(e) => {
               setId(e.target.value)
               setError('')
+              setKennungUngueltig(false)
             }}
             className="w-full px-3 py-2.5 rounded text-sm outline-none font-mono"
             style={editing ? { ...inputStyle, opacity: 0.7 } : inputStyle}
           />
-          {editing && (
-            <p id="tn-kennung-hinweis" className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Die Kennung kann nicht geändert werden. Für eine neue Kennung das Profil löschen und neu anlegen.
-            </p>
-          )}
+          <p id="tn-kennung-hinweis" className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+            {editing
+              ? 'Die Kennung kann nicht geändert werden. Für eine neue Kennung das Profil löschen und neu anlegen.'
+              : 'Die IW3-Nummer aus der Akte – keine Namen.'}
+          </p>
         </div>
 
         <div>

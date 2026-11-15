@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import { PARTICIPANTS } from '@/data/participants'
 import { STAFF_USERS, initialsOf } from '@/data/users'
-import { buildStations, moveItem, nextParticipantId } from '@/lib/participants'
+import { buildStations, moveItem, pruefeKennung } from '@/lib/participants'
 import { DEFAULT_SETTINGS, applyTheme, loadSettings, saveSettings } from '@/lib/settings'
 import { shortName } from '@/pages/teilnehmende/ParticipantCard'
 
 /**
- * Tests fuer Dashboard, Teilnehmende, Berichte, Benutzerverwaltung und Einstellungen.
+ * Tests fuer Dashboard, Teilnehmende, Benutzerverwaltung und Einstellungen.
  */
 
 beforeEach(() => {
@@ -70,6 +70,26 @@ describe('Teilnehmende', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Die Kennung IW3-9999 gibt es bereits.')
   })
 
+  it('verlangt die IW3-Nummer und lehnt Namen ab (FE-28)', async () => {
+    openPage('Teilnehmende')
+    await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
+    const anzahl = screen.getAllByRole('article').length
+    fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
+    const dialog = screen.getByRole('dialog')
+    const feld = within(dialog).getByLabelText(/ANONYME KENNUNG/)
+    expect(feld).toBeRequired()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Bitte die IW3-Nummer der Person eintragen')
+    expect(feld).toHaveAttribute('aria-invalid', 'true')
+
+    fireEvent.change(feld, { target: { value: 'Max Müller' } })
+    expect(feld).not.toHaveAttribute('aria-invalid')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('keine Namen')
+    expect(screen.getAllByRole('article')).toHaveLength(anzahl)
+  })
+
   it('loescht erst nach Bestaetigung', async () => {
     openPage('Teilnehmende')
     const card = await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
@@ -93,13 +113,6 @@ describe('Teilnehmende', () => {
     fireEvent.click(zuweisen)
 
     expect(screen.getByRole('status')).toHaveTextContent('Arbeitsblatt „Begleitpapiere prüfen“ wurde IW3-4421 zugewiesen.')
-  })
-})
-
-describe('Berichte', () => {
-  it('zeigt den Platzhalter aus dem Mockup', () => {
-    openPage('Berichte')
-    expect(screen.getByRole('heading', { name: 'Berichte & Auswertungen' })).toBeInTheDocument()
   })
 })
 
@@ -174,8 +187,11 @@ describe('Hilfsfunktionen', () => {
     expect(first).toMatchObject({ status: 'aktiv', startDate: '2026-10-28' })
   })
 
-  it('vergibt freie Kennungen und verschiebt Eintraege', () => {
-    expect(nextParticipantId([])).toBe('TN-001')
+  it('prueft die Kennung (FE-28) und verschiebt Eintraege', () => {
+    expect(pruefeKennung('IW3-4421')).toBeNull()
+    expect(pruefeKennung(' iw3-4421 ')).toBeNull()
+    expect(pruefeKennung('')).toContain('IW3-Nummer')
+    expect(pruefeKennung('Max Müller')).toContain('keine Namen')
     expect(moveItem(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c'])
     expect(moveItem(['a', 'b'], 0, -1)).toEqual(['a', 'b'])
   })

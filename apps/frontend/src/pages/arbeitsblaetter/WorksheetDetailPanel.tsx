@@ -152,6 +152,21 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
             <span aria-hidden="true">🖨</span> PDF
           </button>
         )}
+        {w.backend && (
+          <button
+            type="button"
+            onClick={() => {
+              setDruckFehler(null)
+              if (w.backend)
+                druckeGespeichertesArbeitsblatt(w.backend.id, { mitLoesungen: true }).catch((error: unknown) => setDruckFehler(`PDF nicht möglich: ${fehlertext(error)}`))
+            }}
+            className="px-4 py-2 rounded text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--card)' }}
+            title="Arbeitsblatt mit Lösungsteil für die Lehrkraft am Ende"
+          >
+            <span aria-hidden="true">🖨</span> PDF mit Lösungen
+          </button>
+        )}
       </div>
       {druckFehler && (
         <div role="alert" className="px-6 pb-3 text-xs" style={{ color: '#7A2E00' }}>
