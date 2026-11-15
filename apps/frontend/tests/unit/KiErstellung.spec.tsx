@@ -65,12 +65,16 @@ type Handlers = {
   docx?: () => Response
   lehrplaene?: () => Response
   save?: (body: Record<string, unknown>) => Response | Promise<Response>
+  /** Further endpoints (web search, editor); undefined = not handled here */
+  andere?: (url: string, init?: RequestInit) => Response | undefined
 }
 
 /** Gemocktes Backend: beantwortet die drei Endpunkte, die die Seite aufruft */
 function mockBackend(handlers: Handlers = {}) {
   let saveNr = 0
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    const andere = handlers.andere?.(url, init)
+    if (andere) return andere
     if (url === '/api/lehrplaene') return handlers.lehrplaene?.() ?? jsonResponse({ anzahl: 0, lernziele: [] })
     if (url === '/api/ai/arbeitsblatt/docx') return handlers.docx?.() ?? jsonResponse({ error: 'nicht_gemockt', message: 'kein docx-Mock' }, 500)
     if (url === '/api/ai/arbeitsblatt') return handlers.generate ? handlers.generate(JSON.parse(String(init?.body))) : jsonResponse(RESULT)
@@ -125,6 +129,37 @@ describe('KI-Erstellung – Formular', () => {
     // Lager hat im Import nichts -> gesperrt, obwohl lokale Beispiele existieren wuerden
     fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
     expect(screen.getByRole('button', { name: /Generieren nicht möglich/ })).toBeDisabled()
+  })
+
+  it('übernimmt das gewählte Lernziel ohne Baustein als Suchbegriff für die Internetsuche', () => {
+    openKiErstellung()
+    const suche = screen.getByLabelText('Suchbegriff für die Internetsuche') as HTMLInputElement
+    expect(suche.value).toBe('Begleitpapiere prüfen')
+
+    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: 'lokal-2' } })
+    expect(suche.value).toBe('Güter entladen')
+
+    // Der Suchbegriff bleibt änderbar und darf auch ganz gelöscht werden
+    fireEvent.change(suche, { target: { value: '' } })
+    expect(suche.value).toBe('')
+    fireEvent.change(suche, { target: { value: 'Gabelstapler' } })
+    expect(suche.value).toBe('Gabelstapler')
+  })
+
+  it('kürzt lange importierte Lernziele für die Suche an einer Wortgrenze', async () => {
+    const niveaus = { T: { kompetenz: 'k', beispiel: '' }, A: { kompetenz: 'k', beispiel: '' }, F: { kompetenz: 'k', beispiel: '' }, B: { kompetenz: 'k', beispiel: '' } }
+    mockBackend({
+      lehrplaene: () =>
+        jsonResponse({
+          anzahl: 1,
+          lernziele: [{ id: 1, berufsfeld: 'Lagerlogistik, Handel & Versand', baustein: 1, abschnitt: 1, ausbildungsbaustein: 'Wareneingang', titel: 'Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften und nach betrieblichen Vorgaben prüfen', niveaus }],
+        }),
+    })
+    openKiErstellung()
+
+    expect(await screen.findByText(/Quelle: 1 importierte Lernziele/)).toBeInTheDocument()
+    const suche = screen.getByLabelText('Suchbegriff für die Internetsuche') as HTMLInputElement
+    expect(suche.value).toBe('Begleitpapiere unter Berücksichtigung von Zoll- und Gefahrgutvorschriften')
   })
 
   it('sperrt das Generieren fuer Berufsfelder ohne Lehrplan', () => {
@@ -340,5 +375,100 @@ describe('KI-Erstellung – React-Keys (FE-03)', () => {
     const keyWarnungen = consoleError.mock.calls.filter((call) => call.some((arg) => String(arg).includes('same key')))
     expect(keyWarnungen).toEqual([])
     consoleError.mockRestore()
+  })
+})
+
+describe('KI-Erstellung – Internet-Vorlage anpassen (FE-35)', () => {
+  const TREFFER = { title: 'PDF Arbeitsblatt Begleitpapiere', url: 'https://example.de/begleitpapiere.pdf', snippet: 'Lieferschein prüfen', source: 'example.de', fileType: 'pdf', mocked: false }
+
+  function webBackend(dokument: () => Response) {
+    mockBackend({
+      andere: (url) => {
+        if (url.startsWith('/api/web-search?')) return jsonResponse({ query: 'x', results: [TREFFER], count: 1 })
+        if (url === '/api/web-search/dokument') return dokument()
+        return undefined
+      },
+    })
+  }
+
+  async function waehleTreffer() {
+    openKiErstellung()
+    fireEvent.click(screen.getByRole('button', { name: /Suchen/ }))
+    const treffer = await screen.findByText('PDF Arbeitsblatt Begleitpapiere')
+    fireEvent.click(within(treffer.closest('div.rounded-lg') as HTMLElement).getByRole('button', { name: 'Auswählen' }))
+  }
+
+  it('liest das gewählte Dokument und erstellt daraus angepasste Varianten', async () => {
+    webBackend(() => jsonResponse({ text: 'Aufgabe 1: Prüfe den Lieferschein.', dateityp: 'pdf', gekuerzt: false, mocked: false }))
+    await waehleTreffer()
+
+    fireEvent.click(screen.getByRole('button', { name: '✦ 4 Varianten aus diesem Dokument erstellen' }))
+
+    const region = await screen.findByRole('region', { name: 'Erstellte Varianten' })
+    await within(region).findByText('✓ 4 Varianten erstellt')
+    const dokumentAufruf = fetchMock.mock.calls.find((call) => call[0] === '/api/web-search/dokument')
+    expect(requestBody(dokumentAufruf as unknown[])).toEqual({ url: TREFFER.url })
+
+    const generiert = fetchMock.mock.calls.filter((call) => call[0] === '/api/ai/arbeitsblatt').map(requestBody)
+    expect(generiert.map((b) => b.stufe)).toEqual(['T', 'A', 'F', 'B'])
+    expect(generiert[0].erwartungen).toContain('Vorhandenes Arbeitsblatt „Arbeitsblatt Begleitpapiere“ als Vorlage verwenden')
+    expect(generiert[0].erwartungen).toContain('Aufgabe 1: Prüfe den Lieferschein.')
+    expect(within(region).getByRole('link', { name: 'Arbeitsblatt Begleitpapiere' })).toHaveAttribute('href', TREFFER.url)
+    expect(screen.getByText(/Dokument übernommen/)).toBeInTheDocument()
+  })
+
+  it('zeigt verständlich an, wenn das Dokument nicht gelesen werden kann', async () => {
+    webBackend(() => jsonResponse({ error: 'pdf_nicht_lesbar', message: 'PDF-Dateien kann das Backend nur mit eingerichteter Gemini-KI lesen.' }, 422))
+    await waehleTreffer()
+
+    fireEvent.click(screen.getByRole('button', { name: /aus diesem Dokument erstellen/ }))
+
+    expect(await screen.findByText(/nur mit eingerichteter Gemini-KI lesen/)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Erstellte Varianten' })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/ai/arbeitsblatt')).toBe(false)
+  })
+
+  it('speichert eine Variante beim Bearbeiten und zeigt danach den geänderten Inhalt', async () => {
+    let gespeichert: Record<string, unknown> | null = null
+    const patches: Record<string, unknown>[] = []
+    mockBackend({
+      andere: (url, init) => {
+        if (url !== '/api/arbeitsblaetter/id-1') return undefined
+        if (init?.method === 'PATCH') {
+          const body = JSON.parse(String(init.body)) as { worksheet: Record<string, unknown> }
+          patches.push(body)
+          gespeichert = { ...(gespeichert as Record<string, unknown>), inhalt: body.worksheet, titel: body.worksheet.titel, version: 2 }
+        }
+        return jsonResponse({ arbeitsblatt: gespeichert })
+      },
+      save: (body) => {
+        const worksheet = body.worksheet as Record<string, unknown>
+        gespeichert = {
+          id: 'id-1', titel: worksheet.titel, berufsfeld: worksheet.berufsfeld, baustein: 1, ausbildungsbaustein: 'Wareneingang', lernziel: worksheet.lernziel,
+          stufe: worksheet.stufe, format: worksheet.format, sprache: worksheet.sprache, status: 'entwurf', kiGeneriert: true, favorit: false, elternId: null,
+          version: 1, erstelltVon: 'Celine Hager', erstelltAm: '2026-11-15T10:00:00.000Z', geaendertAm: '2026-11-15T10:00:00.000Z', inhalt: worksheet,
+        }
+        return jsonResponse({ arbeitsblatt: gespeichert }, 201)
+      },
+    })
+    openKiErstellung()
+    fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
+    const region = await screen.findByRole('region', { name: 'Erstellte Varianten' })
+    await within(region).findByText('✓ 1 Variante erstellt')
+
+    fireEvent.click(within(region).getByRole('button', { name: '✎ Bearbeiten' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Arbeitsblatt bearbeiten' })
+    expect(saveCalls()).toHaveLength(1)
+    expect(within(region).getByRole('button', { name: '✓ Gespeichert' })).toBeDisabled()
+    const titel = await within(dialog).findByLabelText('Titel')
+    fireEvent.change(titel, { target: { value: 'Der LKW ist angekommen' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Änderungen speichern' }))
+
+    expect(await within(dialog).findByText('✓ Gespeichert als Version 2')).toBeInTheDocument()
+    expect(patches).toHaveLength(1)
+    expect(patches[0]).toMatchObject({ autor: 'Celine Hager', worksheet: { titel: 'Der LKW ist angekommen' } })
+    // The card shows the edited content
+    expect(within(region).getByRole('article', { name: /Der LKW ist angekommen/ })).toHaveTextContent('✎ bearbeitet')
   })
 })

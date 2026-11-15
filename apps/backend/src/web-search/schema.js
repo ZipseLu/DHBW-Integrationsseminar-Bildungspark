@@ -13,3 +13,8 @@ export const WebSearchQuerySchema = z.object({
   ),
 })
 
+
+/** FE-35: body of POST /api/web-search/dokument */
+export const DokumentBodySchema = z.object({
+  url: z.string().trim().min(1, 'Adresse ist erforderlich').max(2000, 'Adresse ist zu lang'),
+})

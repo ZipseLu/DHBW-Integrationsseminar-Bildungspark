@@ -14,6 +14,11 @@
  *   intitle:              -> durchsucht nur den Titel
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
+ * Only worksheets are returned (FE-36): the engine query gets the term
+ * "Arbeitsblatt", every hit must be recognisable as a worksheet, and hits
+ * containing more keywords come first (see worksheet-filter.js). If the engines answered but
+ * no hit passes the filter, the result is an empty list instead of an error.
+ *
  * Wenn alle Suchmaschinen fehlschlagen oder das Gesamtzeitlimit erreicht ist,
  * meldet die Suche einen Fehler (HTTP 503). Es werden bewusst keine
  * erfundenen Treffer mit nicht existierenden Links geliefert. Simulierte
@@ -25,6 +30,12 @@ import axios from 'axios'
 import * as cheerio from 'cheerio'
 import https from 'node:https'
 import { config } from '../config.js'
+import {
+  WORKSHEET_QUERY_TERM,
+  keywordStems,
+  queryNamesWorksheet,
+  rankWorksheets,
+} from './worksheet-filter.js'
 
 const DUCKDUCKGO_HTML_URL = 'https://html.duckduckgo.com/html/'
 // Mehrere Yahoo-Hosts: einzelne Hosts antworten sporadisch mit HTTP 500.
@@ -37,6 +48,9 @@ const YAHOO_SEARCH_HOSTS = [
   'au.search.yahoo.com',
 ]
 const BING_SEARCH_URL = 'https://www.bing.com/search'
+
+// The relevance filter drops many hits, so the engines are asked for more.
+const RAW_RESULTS_FACTOR = 3
 
 const ALLOWED_FILE_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
 
@@ -162,6 +176,11 @@ function withFileType(query, fileType) {
   // Eigene filetype:-Operatoren des Nutzers nicht ueberschreiben.
   if (/\bfiletype:/i.test(query)) return query
   return `${query} (filetype:pdf OR filetype:docx)`
+}
+
+/** Adds the worksheet term unless the user already typed one (e.g. "Übungsblatt"). */
+function withWorksheetTerm(query) {
+  return queryNamesWorksheet(query) ? query : `${query} ${WORKSHEET_QUERY_TERM}`
 }
 
 /** True, wenn der Treffer eine echte Dokumentdatei ist. */
@@ -413,25 +432,46 @@ async function yahooSearch(query, fileType, maxResults, deadline) {
   return results
 }
 
+// Bing shows 10 hits per page; the worksheet filter needs more candidates (FE-36)
+const BING_MAX_PAGES = 3
+
 /** Bing-Scraper als weiterer schluesselfreier Ersatz. */
 async function bingSearch(query, fileType, maxResults, deadline) {
   const searchQuery = withFileType(query, fileType)
-  const url = `${BING_SEARCH_URL}?q=${encodeURIComponent(searchQuery)}&setlang=de`
-
-  let response
-  try {
-    response = await fetchHtml(url, 2, deadline)
-  } catch {
-    throw new WebSearchError('Bing ist nicht erreichbar.', 503, 'web_search_unavailable')
-  }
-
-  if (response.status >= 400) {
-    throw new WebSearchError(`Bing antwortete mit ${response.status}.`, 503, 'web_search_unavailable')
-  }
-
-  const $ = cheerio.load(String(response.data ?? ''))
   const results = []
   const seenUrls = new Set()
+
+  for (let page = 0; page < BING_MAX_PAGES && results.length < maxResults; page += 1) {
+    // Further pages only while time is left; the first page decides whether Bing is reachable
+    if (page > 0 && Date.now() >= deadline) break
+    const offset = page > 0 ? `&first=${page * 10 + 1}` : ''
+    const url = `${BING_SEARCH_URL}?q=${encodeURIComponent(searchQuery)}&setlang=de&cc=de${offset}`
+
+    let response
+    try {
+      response = await fetchHtml(url, page === 0 ? 2 : 1, deadline)
+    } catch {
+      if (page > 0) break
+      throw new WebSearchError('Bing ist nicht erreichbar.', 503, 'web_search_unavailable')
+    }
+
+    if (response.status >= 400) {
+      if (page > 0) break
+      throw new WebSearchError(`Bing antwortete mit ${response.status}.`, 503, 'web_search_unavailable')
+    }
+
+    const before = results.length
+    parseBingPage(String(response.data ?? ''), results, seenUrls, maxResults)
+    // No new hits: last page reached
+    if (results.length === before) break
+  }
+
+  return results
+}
+
+/** Reads the organic hits of one Bing result page into `results`. */
+function parseBingPage(html, results, seenUrls, maxResults) {
+  const $ = cheerio.load(html)
 
   $('li.b_algo').each((_, element) => {
     if (results.length >= maxResults) return false
@@ -456,8 +496,6 @@ async function bingSearch(query, fileType, maxResults, deadline) {
       ),
     )
   })
-
-  return results
 }
 
 /**
@@ -484,24 +522,34 @@ export async function searchWeb(query, fileType) {
   }
 
   const deadline = Date.now() + config.webSearch.totalTimeoutMs
+  const engineQuery = withWorksheetTerm(normalizedQuery)
+  const stems = keywordStems(normalizedQuery)
+  // True once an engine delivered hits – then "nothing matched" is a real answer, not an outage.
+  let answered = false
   const engines = [duckduckgoSearch, yahooSearch, bingSearch]
   for (const engine of engines) {
     // Gesamtbudget aufgebraucht: nicht noch einen weiteren Anbieter starten.
     if (Date.now() >= deadline) break
 
     try {
-      const results = await engine(normalizedQuery, normalizedFileType, maxResults, deadline)
+      const results = await engine(engineQuery, normalizedFileType, maxResults * RAW_RESULTS_FACTOR, deadline)
       const documents = results.filter((result) => isDocumentResult(result, normalizedFileType))
+      const worksheets = rankWorksheets(documents, stems).slice(0, maxResults)
 
-      if (documents.length > 0) {
+      if (worksheets.length > 0) {
         if (engine !== engines[0]) {
-          console.warn(`[web-search] Fallback über ${engine.name}: ${documents.length} Dokumente`)
+          console.warn(`[web-search] Fallback über ${engine.name}: ${worksheets.length} Arbeitsblätter`)
         }
-        return documents
+        return worksheets
       }
 
       if (results.length > 0) {
-        console.warn(`[web-search] ${engine.name}: ${results.length} Treffer, aber keine Dokumente`)
+        answered = true
+        console.warn(`[web-search] ${engine.name}: ${results.length} Treffer, aber keine passenden Arbeitsblätter`)
+        // Shows what was dropped, so the filter can be checked against real hits
+        for (const result of results.slice(0, 10)) {
+          console.warn(`[web-search]   verworfen: ${result.title} | ${result.url}`)
+        }
       }
     } catch (error) {
       // Validierungsfehler immer durchreichen, Suchfehler beim naechsten Anbieter versuchen.
@@ -509,6 +557,9 @@ export async function searchWeb(query, fileType) {
       console.warn(`[web-search] ${engine.name} nicht verfügbar (${error?.code ?? 'unbekannter_fehler'})`)
     }
   }
+
+  // The engines found documents, but none is a worksheet with all keywords.
+  if (answered) return []
 
   // Keine erfundenen Treffer: die Oberflaeche soll klar sagen, dass die
   // Websuche gerade nicht erreichbar ist (statt auf tote Links zu verweisen).

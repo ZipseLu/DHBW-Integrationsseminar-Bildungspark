@@ -14,6 +14,7 @@ import {
   generateArbeitsblatt,
   lernzielFromWorksheet,
   saveArbeitsblatt,
+  type Arbeitsblatt,
   type ArbeitsblattResult,
   type LernzielInput,
 } from '@/lib/api'
@@ -21,7 +22,8 @@ import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
 import { GeneratedWorksheetCard, type SpeicherZustand } from './GeneratedWorksheetCard'
-import { WebSearchSection } from './WebSearchSection'
+import { WebSearchSection, type WebVorlage } from './WebSearchSection'
+import { WorksheetEditor } from '../arbeitsblaetter/WorksheetEditor'
 import type { KiStand } from '@/components/VerlassenDialog'
 
 const labelClass = 'block text-xs font-mono font-medium mb-1.5'
@@ -32,11 +34,38 @@ type LernzielOption = LernzielInput & { key: string; kurztitel: string }
 
 const kurz = (text: string, max = 70) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
+/**
+ * Default search term for the web search: the learning goal as shown in the list, without
+ * "Baustein n". Long imported titles are cut at a word boundary instead of mid-word with "…".
+ */
+function suchbegriffAusLernziel(l: Pick<LernzielOption, 'titel' | 'kurztitel'>, max = 80): string {
+  if (!l.kurztitel.endsWith('…')) return l.kurztitel
+  const woerter: string[] = []
+  for (const wort of l.titel.split(/\s+/)) {
+    if ([...woerter, wort].join(' ').length > max) break
+    woerter.push(wort)
+  }
+  // No dangling filler word at the end ("… Gefahrgutvorschriften und")
+  while (woerter.length > 1 && FUELLWOERTER.has(woerter[woerter.length - 1].toLowerCase())) woerter.pop()
+  return woerter.join(' ') || l.kurztitel.slice(0, -1)
+}
+
+const FUELLWOERTER = new Set(['und', 'oder', 'sowie', 'von', 'vom', 'mit', 'zu', 'zum', 'zur', 'der', 'die', 'das', 'den', 'des', 'für', 'nach', 'unter', 'bei', 'in', 'im', 'auf', 'an', 'am'])
+
 /** Fallback ohne Import: die 12 Beispiel-Lernziele aus den Lehrplaenen */
 const LOKALE_LERNZIELE: LernzielOption[] = WORKSHEETS.map((w) => ({ ...lernzielFromWorksheet(w), key: `lokal-${w.id}`, kurztitel: w.title }))
 
 /** Eckdaten der letzten Generierung – bleiben stehen, auch wenn das Formular danach geaendert wird */
-type Generated = { nr: number; thema: string; berufsbild: string; sprache: Sprache; lernziel: LernzielOption; total: number }
+type Generated = {
+  nr: number
+  thema: string
+  berufsbild: string
+  sprache: Sprache
+  lernziel: LernzielOption
+  total: number
+  /** FE-35: web search hit the variants were adapted from */
+  vorlage?: { titel: string; url: string }
+}
 
 type Progress = { current: number; total: number; label: string }
 
@@ -102,12 +131,21 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    await generiere(levels, formats, erwartungen.trim())
+  }
+
+  /** FE-35: adapt a web search hit – its text goes into the prompt like an uploaded template (FE-05) */
+  async function ausWebVorlage(vorlage: WebVorlage, webLevels: Level[], webFormats: Format[]) {
+    const { erwartungen: vorlageErwartungen } = erwartungenAusVorlage(vorlage.titel, vorlage.text)
+    await generiere(webLevels, webFormats, vorlageErwartungen, { titel: vorlage.titel, url: vorlage.url })
+  }
+
+  async function generiere(gewaehlteLevels: Level[], gewaehlteFormats: Format[], trimmedErwartungen: string, vorlage?: Generated['vorlage']) {
     if (!lernziel || running) return
 
-    const variants = levels.flatMap((level) => formats.map((format) => ({ level, format })))
-    const snapshot: Generated = { nr: (generated?.nr ?? 0) + 1, thema: thema.trim(), berufsbild, sprache, lernziel, total: variants.length }
+    const variants = gewaehlteLevels.flatMap((level) => gewaehlteFormats.map((format) => ({ level, format })))
+    const snapshot: Generated = { nr: (generated?.nr ?? 0) + 1, thema: thema.trim(), berufsbild, sprache, lernziel, total: variants.length, vorlage }
     const { key: _key, kurztitel: _kurztitel, ...request } = lernziel
-    const trimmedErwartungen = erwartungen.trim()
 
     setResults([])
     setError(null)
@@ -248,7 +286,12 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
             </div>
           </div>
 
-          <WebSearchSection thema={thema} />
+          <WebSearchSection
+            thema={thema}
+            vorschlag={lernziel ? suchbegriffAusLernziel(lernziel) : ''}
+            onAnpassen={lernziel ? (vorlage, webLevels, webFormats) => void ausWebVorlage(vorlage, webLevels, webFormats) : undefined}
+            generierungLaeuft={running}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -333,6 +376,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
 
       {generated && (
         <GeneratedVariants
+          scrollen={Boolean(generated.vorlage)}
           key={generated.nr}
           generated={generated}
           results={results}
@@ -385,6 +429,8 @@ function Wartezeit() {
 }
 
 type GeneratedVariantsProps = {
+  /** FE-35: scroll the variants into view (they appear far below the web search) */
+  scrollen?: boolean
   generated: Generated
   results: ArbeitsblattResult[]
   progress: Progress | null
@@ -396,11 +442,20 @@ type GeneratedVariantsProps = {
 
 const fehlerText = (caught: unknown) => (caught instanceof ApiError ? caught.message : 'Unbekannter Fehler beim Speichern.')
 
-function GeneratedVariants({ generated, results, progress, error, erstelltVon, onStand }: GeneratedVariantsProps) {
+function GeneratedVariants({ scrollen = false, generated, results: generiert, progress, error, erstelltVon, onStand }: GeneratedVariantsProps) {
   const finished = progress === null
+  // FE-35: content edited after saving replaces the generated content of that variant
+  const [ueberarbeitet, setUeberarbeitet] = useState<Record<number, Arbeitsblatt>>({})
+  const results = generiert.map((r, index) => (ueberarbeitet[index] ? { ...r, worksheet: ueberarbeitet[index] } : r))
   const anyMocked = results.some((r) => r.meta.mocked)
   const stufen = [...new Set(results.map((r) => r.worksheet.stufe))]
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
+  const [bearbeiten, setBearbeiten] = useState<{ index: number; id: string } | null>(null)
+  const bereichRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (scrollen) bereichRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [scrollen])
 
   // FE-02: Speicherstand je Variante (Index in `results`). Die Ref spiegelt den State,
   // damit „Alle speichern" beim Durchlaufen immer den aktuellen Stand sieht.
@@ -427,7 +482,11 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
         meta: result.meta,
         erstelltVon,
         elternId: elternIdRef.current,
-        notiz: generated.thema ? `KI-Erstellung: ${generated.thema}` : 'KI-Erstellung',
+        notiz: generated.vorlage
+          ? `KI-Erstellung aus Internet-Vorlage: ${generated.vorlage.url}`
+          : generated.thema
+            ? `KI-Erstellung: ${generated.thema}`
+            : 'KI-Erstellung',
       })
       elternIdRef.current ??= blatt.id
       setZustand(index, { art: 'gespeichert', id: blatt.id })
@@ -436,6 +495,13 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
       setZustand(index, { art: 'fehler', text: fehlerText(caught) })
       return false
     }
+  }
+
+  /** FE-35: editing works on the saved worksheet (new version), so an unsaved variant is saved first */
+  async function oeffneBearbeiten(index: number) {
+    if (!(await speichern(index))) return
+    const zustand = speicherRef.current[index]
+    if (zustand?.art === 'gespeichert') setBearbeiten({ index, id: zustand.id })
   }
 
   async function alleSpeichern() {
@@ -464,7 +530,7 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
   else status = `${results.length} von ${generated.total} Varianten erstellt`
 
   return (
-    <section className="rounded-lg overflow-hidden" style={{ border: '1px solid #2A7A4B' }} aria-label="Erstellte Varianten">
+    <section ref={bereichRef} className="rounded-lg overflow-hidden" style={{ border: '1px solid #2A7A4B' }} aria-label="Erstellte Varianten">
       <div className="px-5 py-3.5" style={{ backgroundColor: '#F0FBF4', borderBottom: '1px solid #C3E6CB' }}>
         <div className="text-sm font-semibold" style={{ color: '#1A5C32' }} role="status">
           {status}
@@ -472,6 +538,14 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs font-mono mt-0.5" style={{ color: '#2A7A4B' }}>
             „{generated.thema || generated.lernziel.kurztitel}" · {generated.berufsbild} · {generated.sprache}
+            {generated.vorlage && (
+              <>
+                {' · Vorlage: '}
+                <a href={generated.vorlage.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                  {generated.vorlage.titel}
+                </a>
+              </>
+            )}
           </div>
           {finished && results.length > 0 && (
             <div className="flex items-center gap-2">
@@ -534,6 +608,8 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
                     onVorschau={() => setPreview({ level: result.worksheet.stufe, format: result.worksheet.format })}
                     speicherZustand={speicher[index] ?? { art: 'offen' }}
                     onSpeichern={finished ? () => void speichern(index) : undefined}
+                    onBearbeiten={finished ? () => void oeffneBearbeiten(index) : undefined}
+                    ueberarbeitet={Boolean(ueberarbeitet[index])}
                   />
                 ))}
             </div>
@@ -542,7 +618,43 @@ function GeneratedVariants({ generated, results, progress, error, erstelltVon, o
       </div>
 
       {preview && <VariantPreview generated={generated} target={preview} onClose={() => setPreview(null)} />}
+      {bearbeiten && (
+        <VarianteBearbeiten
+          id={bearbeiten.id}
+          autor={erstelltVon}
+          onSaved={(inhalt) => setUeberarbeitet((prev) => ({ ...prev, [bearbeiten.index]: inhalt }))}
+          onClose={() => setBearbeiten(null)}
+        />
+      )}
     </section>
+  )
+}
+
+/**
+ * FE-35: edit a generated variant right here. It uses the editor of the library (FE-10),
+ * which loads the saved worksheet and stores changes as a new version.
+ */
+function VarianteBearbeiten({ id, autor, onSaved, onClose }: { id: string; autor: string; onSaved: (inhalt: Arbeitsblatt) => void; onClose: () => void }) {
+  const [ungespeichert, setUngespeichert] = useState(false)
+  const schliessen = () => {
+    if (ungespeichert && !window.confirm('Die Änderungen sind noch nicht gespeichert. Trotzdem schließen?')) return
+    onClose()
+  }
+  return (
+    <SlideOver label="Arbeitsblatt bearbeiten" width={560} onClose={schliessen}>
+      <div className="px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div>
+          <h2 className="font-display text-lg font-semibold">Arbeitsblatt bearbeiten</h2>
+          <div className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+            Das Blatt ist in der Bibliothek gespeichert – Änderungen werden dort als neue Version abgelegt.
+          </div>
+        </div>
+        <CloseButton onClick={schliessen} />
+      </div>
+      <div className="flex-1 overflow-auto px-6 py-5">
+        <WorksheetEditor backendId={id} autor={autor} onDirtyChange={setUngespeichert} onSaved={(blatt) => onSaved(blatt.inhalt)} />
+      </div>
+    </SlideOver>
   )
 }
 
