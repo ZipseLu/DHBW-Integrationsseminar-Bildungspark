@@ -4,7 +4,6 @@ import {
   keywordStems,
   queryNamesWorksheet,
   rankWorksheets,
-  requiredMatches,
   stem,
   worksheetScore,
 } from '../../src/web-search/worksheet-filter.js'
@@ -46,13 +45,14 @@ describe('worksheet-filter', () => {
     ).toBe(1)
   })
 
-  it('verlangt ein Stichwort ganz, sonst mindestens die Hälfte', () => {
-    expect(requiredMatches(['a'])).toBe(1)
-    expect(requiredMatches(['a', 'b'])).toBe(1)
-    expect(requiredMatches(['a', 'b', 'c'])).toBe(2)
+  it('erkennt Arbeitshefte und Lernfeld-Material', () => {
+    const hit = (title, snippet = '') => ({ title, url: 'https://x.de/a.pdf', snippet })
+    expect(worksheetScore(hit('Arbeitsheft Gut - Güter - Logistik'), [])).toBe(0)
+    expect(worksheetScore(hit('Fachkraft für Lagerlogistik - LF01: Güter annehmen'), [])).toBe(0)
+    expect(worksheetScore(hit('Checkliste Gefahrguttransport', 'Begleitpapiere: Beförderungspapier'), [])).toBe(-1)
   })
 
-  it('sortiert vollständige Treffer nach vorne und verwirft zu schwache', () => {
+  it('sortiert Treffer mit mehr Stichwörtern nach vorne und verwirft Nicht-Arbeitsblätter', () => {
     const stems = keywordStems('Begleitpapiere prüfen Wareneingang')
     const hit = (title) => ({ title, url: 'https://x.de/a.pdf', snippet: '' })
     const ranked = rankWorksheets(
@@ -67,6 +67,7 @@ describe('worksheet-filter', () => {
     expect(ranked.map((r) => r.title)).toEqual([
       'Arbeitsblatt: Begleitpapiere im Wareneingang prüfen',
       'Arbeitsblatt Begleitpapiere Wareneingang',
+      'Arbeitsblatt Lieferschein Wareneingang',
     ])
   })
 })

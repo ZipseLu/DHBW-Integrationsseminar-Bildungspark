@@ -296,7 +296,7 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     )
   })
 
-  it('liefert nur Arbeitsblätter zum Thema, vollständige Treffer zuerst', async () => {
+  it('liefert nur Arbeitsblätter, Treffer mit allen Stichwörtern zuerst', async () => {
     config.webSearch.provider = 'scrape'
     vi.mocked(axios.post).mockResolvedValue({
       status: 200,
@@ -325,11 +325,12 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
 
     const results = await searchWeb('Hygiene Küche')
 
-    // Report (no worksheet) and worksheet on another topic are dropped; the partial match comes last
+    // The report (no worksheet) is dropped; worksheets with more keywords come first
     expect(results.map((r) => r.url)).toEqual([
       'https://example.de/kueche/ab-hygiene.docx',
       'https://example.de/hygieneregeln_kuechen_uebungsblatt.pdf',
       'https://example.de/hygiene-arbeitsblatt.pdf',
+      'https://example.de/bruchrechnen-arbeitsblatt.pdf',
     ])
   })
 
@@ -348,8 +349,8 @@ describe('searchWeb – Scrape-Modus (DuckDuckGo HTML)', () => {
     config.webSearch.maxResults = 2
     const items = Array.from(
       { length: 6 },
-      // The first three hits are worksheets on another topic and are dropped
-      (_, i) => `<div class="result"><a class="result__a" href="https://example.de/arbeitsblatt-${i < 3 ? 'mathe' : 'hygiene'}-${i}.pdf">Arbeitsblatt ${i}</a></div>`,
+      // The first three hits are no worksheets and are dropped
+      (_, i) => `<div class="result"><a class="result__a" href="https://example.de/${i < 3 ? 'bericht' : 'arbeitsblatt'}-hygiene-${i}.pdf">Dokument ${i}</a></div>`,
     ).join('')
     vi.mocked(axios.post).mockResolvedValue({ status: 200, data: `<html><body>${items}</body></html>` })
 

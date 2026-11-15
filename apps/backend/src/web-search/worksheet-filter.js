@@ -5,10 +5,11 @@
  * words (laws, brochures, annual reports, …). Teachers only want worksheets
  * about the entered topic, so a hit is kept only if
  *   1. it is recognisably a worksheet (marker word in title, URL or snippet) and
- *   2. at least half of the keywords appear in title, URL or snippet.
- * Requiring every keyword was too strict: a worksheet on "Begleitpapiere
- * prüfen" is often titled "Lieferschein Warenannahme". Hits containing more
- * keywords are ranked first, so complete matches come before partial ones.
+ *   2. it was found by the engine for the keywords plus "Arbeitsblatt".
+ * The keywords themselves are not required: the engine matches the whole
+ * document, but we only see title, URL and a two-line snippet, so requiring
+ * them dropped real worksheets (e.g. "Arbeitsheft Logistik" for "Begleitpapiere
+ * prüfen"). Instead, hits containing more keywords are ranked first.
  *
  * Matching is deliberately simple and dependency free: lower case, umlauts
  * folded (ä -> ae, ß -> ss), a light German suffix stemmer and a second
@@ -29,7 +30,15 @@ const WORKSHEET_MARKERS = [
   'unterrichtsmaterial',
   'lernmaterial',
   'uebungsaufgab', // Übungsaufgaben
+  'arbeitsheft',
+  'lernfeld',
+  'unterrichtseinheit',
+  'stundenentwurf',
+  'loesungsblatt',
 ]
+
+/** Learning field codes of German vocational schools, e.g. "LF01", "LF 7". */
+const LEARNING_FIELD_PATTERN = /\blf ?\d{1,2}\b/
 
 /** Search term added to the engine query when the user did not type a marker word. */
 export const WORKSHEET_QUERY_TERM = 'Arbeitsblatt'
@@ -70,6 +79,10 @@ export function stem(word) {
     }
   }
   return word
+}
+
+function hasWorksheetMarker(spaced, joined) {
+  return WORKSHEET_MARKERS.some((marker) => joined.includes(marker)) || LEARNING_FIELD_PATTERN.test(spaced)
 }
 
 function isWorksheetWord(word) {
@@ -121,24 +134,18 @@ function haystackOf(result) {
  */
 export function worksheetScore(result, stems) {
   const { spaced, joined } = haystackOf(result)
-  if (!WORKSHEET_MARKERS.some((marker) => joined.includes(marker))) return -1
+  if (!hasWorksheetMarker(spaced, joined)) return -1
   return stems.filter((s) => spaced.includes(s) || joined.includes(s)).length
 }
 
-/** Minimum number of keywords a hit must contain: one keyword fully, otherwise at least half. */
-export function requiredMatches(stems) {
-  return stems.length <= 1 ? stems.length : Math.ceil(stems.length / 2)
-}
-
 /**
- * Keeps worksheets with enough keywords, best matches first
+ * Keeps worksheets only, best keyword matches first
  * (stable sort: equal scores keep the search engine's order).
  */
 export function rankWorksheets(results, stems) {
-  const minimum = requiredMatches(stems)
   return results
     .map((result, index) => ({ result, index, score: worksheetScore(result, stems) }))
-    .filter((entry) => entry.score >= 0 && entry.score >= minimum)
+    .filter((entry) => entry.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.result)
 }

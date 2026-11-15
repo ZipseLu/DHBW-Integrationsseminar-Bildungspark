@@ -15,8 +15,8 @@
  *   "exakte phrase"       -> erzwingt genaue Wortgruppe
  *
  * Only worksheets are returned (FE-36): the engine query gets the term
- * "Arbeitsblatt", and every hit must be a worksheet that contains at least
- * half of the entered keywords, best matches first (see worksheet-filter.js). If the engines answered but
+ * "Arbeitsblatt", every hit must be recognisable as a worksheet, and hits
+ * containing more keywords come first (see worksheet-filter.js). If the engines answered but
  * no hit passes the filter, the result is an empty list instead of an error.
  *
  * Wenn alle Suchmaschinen fehlschlagen oder das Gesamtzeitlimit erreicht ist,
