@@ -6,6 +6,7 @@ import { runMigrations } from '../../src/db/migrate.js'
 import { seedArbeitsblaetter, waehleLernziele, FALLBACK_LERNZIELE } from '../../src/arbeitsblaetter/seed.js'
 import { count } from '../../src/arbeitsblaetter/repository.js'
 import { REQUEST_T_TEXT, WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
+import { api, TEST_KONTEN } from '../helpers/auth.js'
 
 /**
  * Routen der Arbeitsblatt-Verwaltung gegen eine echte MySQL.
@@ -368,6 +369,70 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(response.headers['content-type']).toContain('wordprocessingml')
       expect(response.headers['content-disposition']).toContain('_T-text.docx')
       expect(Buffer.from(response.body).subarray(0, 2).toString()).toBe('PK')
+    })
+  })
+
+  describe('Bearbeiter aus der Anmeldung (BE-05)', () => {
+    const blatt = (overrides = {}) => ({ worksheet: { ...WORKSHEET_T_TEXT, baustein: 1, ausbildungsbaustein: 'Wareneingang' }, ...overrides })
+
+    it('übernimmt beim Speichern den Namen aus dem Token, nicht erstelltVon aus dem Body', async () => {
+      const response = await api(app, 'dozent').post('/api/arbeitsblaetter').send(blatt({ erstelltVon: 'Jemand Anderes' }))
+      expect(response.status).toBe(201)
+      expect(response.body.arbeitsblatt.erstelltVon).toBe(TEST_KONTEN.dozent.name)
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${response.body.arbeitsblatt.id}/verlauf`)
+      expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'erstellt', autor: TEST_KONTEN.dozent.name })
+    })
+
+    it('trägt bei Änderung, Freigabe und Archivierung den angemeldeten Bearbeiter in den Verlauf ein', async () => {
+      const { id } = await speichern(app)
+      const neu = { ...WORKSHEET_T_TEXT, baustein: 1, ausbildungsbaustein: 'Wareneingang', titel: 'Geändert' }
+
+      expect((await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ worksheet: neu, autor: 'Gefälscht' })).status).toBe(200)
+      expect((await api(app, 'dozent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben', autor: 'Gefälscht', notiz: 'passt' })).status).toBe(200)
+      expect((await api(app, 'admin').delete(`/api/arbeitsblaetter/${id}`).send({ autor: 'Gefälscht' })).status).toBe(200)
+
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
+      expect(verlauf.status).toBe(200)
+      // Neueste zuerst: Person, Aktion, Datum je Eintrag
+      const eintraege = verlauf.body.eintraege.map(({ aktion, autor }) => ({ aktion, autor }))
+      expect(eintraege.slice(0, 3)).toEqual([
+        { aktion: 'archiviert', autor: TEST_KONTEN.admin.name },
+        { aktion: 'freigegeben', autor: TEST_KONTEN.dozent.name },
+        { aktion: 'bearbeitet', autor: TEST_KONTEN.assistent.name },
+      ])
+      for (const eintrag of verlauf.body.eintraege) expect(Date.parse(eintrag.erstelltAm)).not.toBeNaN()
+      expect(JSON.stringify(verlauf.body)).not.toContain('Gefälscht')
+    })
+
+    it('ohne Token gilt bis BE-06 weiter der Name aus dem Body', async () => {
+      const { id } = await speichern(app, {}, { erstelltVon: 'C. Hager' })
+      await request(app).patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben', autor: 'C. Hager' })
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
+      expect(verlauf.body.eintraege.map((v) => v.autor)).toEqual(['C. Hager', 'C. Hager'])
+    })
+
+    it('Freigeben und auf Entwurf zurücksetzen nur für admin und dozent', async () => {
+      const { id } = await speichern(app)
+      const assistenz = await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben' })
+      expect(assistenz.status).toBe(403)
+      expect(assistenz.body.error).toBe('forbidden')
+      expect((await request(app).get(`/api/arbeitsblaetter/${id}`)).body.arbeitsblatt.status).toBe('entwurf')
+
+      expect((await api(app, 'dozent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben' })).status).toBe(200)
+      expect((await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'entwurf' })).status).toBe(403)
+    })
+
+    it('Assistenz darf Inhalt bearbeiten und Favoriten setzen', async () => {
+      const { id } = await speichern(app)
+      expect((await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ favorit: true })).status).toBe(200)
+    })
+
+    it('archivieren nur admin/dozent, endgültig löschen nur admin', async () => {
+      const { id } = await speichern(app)
+      expect((await api(app, 'assistent').delete(`/api/arbeitsblaetter/${id}`)).status).toBe(403)
+      expect((await api(app, 'dozent').delete(`/api/arbeitsblaetter/${id}?endgueltig=true`)).status).toBe(403)
+      expect((await api(app, 'dozent').delete(`/api/arbeitsblaetter/${id}`)).status).toBe(200)
+      expect((await api(app, 'admin').delete(`/api/arbeitsblaetter/${id}?endgueltig=true`)).status).toBe(204)
     })
   })
 
