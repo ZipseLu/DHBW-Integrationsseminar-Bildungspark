@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
 import { buildStations, nextParticipantId, type StationDraft } from '@/lib/participants'
+import { useLernstand } from '@/lib/lernstand'
 import type { TeilnehmendeState } from '@/lib/teilnehmende'
+import type { Lernstand } from '@/lib/api'
 import type { Participant } from '@/types'
 import { AssignWorksheetModal } from './AssignWorksheetModal'
+import { ZuordnenModal } from './ZuordnenModal'
 import { ParticipantCard } from './ParticipantCard'
 import { ParticipantModal } from './ParticipantModal'
 
@@ -14,11 +17,18 @@ type Props = {
   defaultBerufsbild: string
 }
 
+/** IDs of all worksheets already assigned to a person (open and done) */
+function zugeordneteIds(l: Lernstand | undefined): Set<string> {
+  return new Set(l?.berufsfelder.flatMap((b) => [...b.offen, ...b.erledigt].map((z) => z.arbeitsblatt.id)) ?? [])
+}
+
 /** Dialogzustand: geschlossen, neue Person oder Bearbeiten */
 type EditState = { mode: 'closed' } | { mode: 'new' } | { mode: 'edit'; participant: Participant }
 
 export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
   const { participants, quelle } = teilnehmende
+  // FE-11: learning progress only for profiles from the backend
+  const lernstand = useLernstand(quelle.art === 'backend')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [edit, setEdit] = useState<EditState>({ mode: 'closed' })
   const [assignFor, setAssignFor] = useState<Participant | null>(null)
@@ -110,6 +120,15 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
         </div>
       )}
 
+      {lernstand.quelle.art === 'fehler' && (
+        <div role="alert" className="rounded-lg px-4 py-3 text-sm flex items-start gap-3" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
+          <span className="flex-1">Der Lernstand konnte nicht geladen werden: {lernstand.quelle.grund}</span>
+          <button type="button" onClick={lernstand.neuLaden} className="text-xs underline flex-shrink-0">
+            Erneut laden
+          </button>
+        </div>
+      )}
+
       {quelle.art === 'laden' && (
         <div role="status" className="py-10 text-center text-sm rounded-lg" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
           Teilnehmende werden geladen …
@@ -125,6 +144,15 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
           onAssign={() => setAssignFor(p)}
           onEdit={() => setEdit({ mode: 'edit', participant: p })}
           onDelete={() => void handleDelete(p.id)}
+          lernstand={
+            lernstand.quelle.art === 'bereit'
+              ? {
+                  daten: lernstand.je[p.id] ?? null,
+                  onStatus: (z, status) => lernstand.setStatus(p.id, z.id, status),
+                  onEntfernen: (z) => lernstand.entfernen(p.id, z.id),
+                }
+              : undefined
+          }
         />
       ))}
 
@@ -143,7 +171,23 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
         />
       )}
 
-      {assignFor && (
+      {/* With profiles from the backend the assignment is always saved – also while the learning progress is still loading */}
+      {assignFor && lernstand.quelle.art !== 'aus' && (
+        <ZuordnenModal
+          participant={assignFor}
+          zugeordnet={zugeordneteIds(lernstand.je[assignFor.id])}
+          onClose={() => setAssignFor(null)}
+          onZuordnen={async (blatt) => {
+            const meldung = await lernstand.zuordnen(assignFor.id, blatt.id)
+            if (meldung) return meldung
+            setNotice(`Arbeitsblatt „${blatt.titel}“ wurde ${assignFor.id} zugewiesen.`)
+            setAssignFor(null)
+            return null
+          }}
+        />
+      )}
+
+      {assignFor && lernstand.quelle.art === 'aus' && (
         <AssignWorksheetModal
           participant={assignFor}
           onClose={() => setAssignFor(null)}

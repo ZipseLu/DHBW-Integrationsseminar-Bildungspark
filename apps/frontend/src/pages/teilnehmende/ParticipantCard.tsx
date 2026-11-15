@@ -4,7 +4,9 @@ import { ProgressBar } from '@/components/Widgets'
 import { LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { activeStation, doneCount, worksheetsFor } from '@/lib/participants'
+import type { Lernstand, Zuordnung, ZuordnungStatus } from '@/lib/api'
 import type { BerufStation, Participant } from '@/types'
+import { LernstandListe } from './LernstandListe'
 
 const DONE_BG = '#D4EDDA'
 const DONE_TEXT = '#1A5C32'
@@ -17,13 +19,25 @@ type Props = {
   onAssign: () => void
   onEdit: () => void
   onDelete: () => void
+  /**
+   * FE-11: learning progress from the backend. Without it (sample data) the card
+   * keeps the prototype list of the sample worksheets.
+   */
+  lernstand?: {
+    daten: Lernstand | null
+    onStatus: (zuordnung: Zuordnung, status: ZuordnungStatus) => Promise<string | null>
+    onEntfernen: (zuordnung: Zuordnung) => Promise<string | null>
+  }
 }
 
-export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete }: Props) {
+export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, lernstand }: Props) {
   const [listCollapsed, setListCollapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = activeStation(p)
   const finished = p.berufsbilder.filter((b) => b.status === 'abgeschlossen').length
+  const anzahl = lernstand?.daten?.anzahl ?? { erledigt: 0, offen: 0, gesamt: 0 }
+  const naechstes = lernstand?.daten?.alsNaechstes ?? null
+  const erledigtText = lernstand ? `${anzahl.erledigt} von ${anzahl.gesamt} Arbeitsblättern erledigt` : active ? `${doneCount(active, WORKSHEETS)} Arbeitsblätter erledigt` : ''
 
   return (
     <article
@@ -43,7 +57,8 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
           {active && (
             <div className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
               Aktuell: <strong style={{ color: 'var(--foreground)' }}>{active.berufsbild}</strong>
-              <span className="ml-2">{doneCount(active, WORKSHEETS)} Arbeitsblätter erledigt</span>
+              <span className="ml-2">{erledigtText}</span>
+              {naechstes && <span className="ml-2">· als Nächstes: {naechstes.arbeitsblatt.titel}</span>}
             </div>
           )}
         </div>
@@ -81,7 +96,9 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
         <div style={{ height: 3, width: `${p.progress}%`, backgroundColor: p.progress === 100 ? DONE_STRONG : 'var(--primary)', transition: 'width 0.3s' }} />
       </div>
 
-      {active && worksheetsFor(WORKSHEETS, active.berufsbild).length > 0 && (
+      {lernstand && <LernstandListe lernstand={lernstand.daten} onStatus={lernstand.onStatus} onEntfernen={lernstand.onEntfernen} />}
+
+      {!lernstand && active && worksheetsFor(WORKSHEETS, active.berufsbild).length > 0 && (
         <ActiveWorksheets station={active} collapsed={listCollapsed} onToggle={() => setListCollapsed((c) => !c)} />
       )}
 
@@ -101,7 +118,10 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Abgeschlossen', value: `${finished} von ${p.berufsbilder.length}` },
-              { label: 'Arbeitsblätter', value: `${p.berufsbilder.reduce((sum, b) => sum + doneCount(b, WORKSHEETS), 0)} erledigt` },
+              {
+                label: 'Arbeitsblätter',
+                value: lernstand ? `${anzahl.erledigt} von ${anzahl.gesamt} erledigt` : `${p.berufsbilder.reduce((sum, b) => sum + doneCount(b, WORKSHEETS), 0)} erledigt`,
+              },
               { label: 'Zuletzt aktiv', value: p.lastActive },
             ].map((s) => (
               <div key={s.label} className="rounded p-3 text-center" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
