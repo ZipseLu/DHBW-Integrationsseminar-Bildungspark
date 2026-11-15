@@ -74,10 +74,14 @@ type Props = {
   speicherZustand?: SpeicherZustand
   /** Fehlt, solange noch generiert wird – dann ist „Speichern“ gesperrt */
   onSpeichern?: () => void
+  /** FE-35: opens the editor (saves the variant first); missing while generating */
+  onBearbeiten?: () => void
+  /** FE-35: the content shown was edited after generating */
+  ueberarbeitet?: boolean
 }
 
 /** Anzeige eines KI-generierten Arbeitsblatts mit Validator-Hinweisen, Speichern und Word-Download */
-export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = { art: 'offen' }, onSpeichern }: Props) {
+export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = { art: 'offen' }, onSpeichern, onBearbeiten, ueberarbeitet = false }: Props) {
   const { worksheet, meta } = result
   const s = LEVEL_STYLES[worksheet.stufe]
   const opt = formatOption(worksheet.format)
@@ -124,6 +128,7 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
         </div>
         <span className="text-xs font-mono" style={{ color: s.text }}>
           {meta.mocked ? 'Mock' : `${meta.provider}${meta.model ? ` · ${meta.model}` : ''}`} · {dauer}
+          {ueberarbeitet && ' · ✎ bearbeitet'}
         </span>
       </div>
 
@@ -216,6 +221,18 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
               >
                 {speicherZustand.art === 'gespeichert' ? '✓ Gespeichert' : speicherZustand.art === 'speichert' ? 'Wird gespeichert…' : '💾 Speichern'}
               </button>
+              {onBearbeiten && (
+                <button
+                  type="button"
+                  onClick={onBearbeiten}
+                  disabled={speicherZustand.art === 'speichert'}
+                  title={speicherZustand.art === 'gespeichert' ? undefined : 'Speichert das Blatt in der Bibliothek und öffnet es zum Bearbeiten'}
+                  className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
+                  style={{ border: '1px solid var(--border)', color: 'var(--foreground)', backgroundColor: 'var(--background)' }}
+                >
+                  ✎ Bearbeiten
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleDownload}

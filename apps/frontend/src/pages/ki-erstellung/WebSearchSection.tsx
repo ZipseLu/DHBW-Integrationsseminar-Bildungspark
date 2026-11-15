@@ -1,14 +1,29 @@
 import { useState } from 'react'
-import { LevelBadge } from '@/components/LevelBadge'
 import { FormatPicker, LevelPicker } from '@/components/Pickers'
 import { GenerateButton, Spinner, VariantSummary } from '@/components/VariantSummary'
-import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { LEVELS } from '@/data/constants'
+import { ApiError } from '@/lib/api'
+import { ladeWebDokument, searchWebResults } from '@/lib/webSearch'
 import { toggleKeepOne } from '@/lib/selection'
-import { searchWebResults } from '@/lib/webSearch'
 import type { Format, Level, WebResult } from '@/types'
 
+/** FE-35: a web search hit with its text, used as template for the KI-Erstellung */
+export type WebVorlage = { titel: string; url: string; text: string }
+
+type Props = {
+  thema: string
+  vorschlag?: string
+  /** Generates the chosen variants from the template; missing = adapting is not possible (no learning goal) */
+  onAnpassen?: (vorlage: WebVorlage, levels: Level[], formats: Format[]) => void
+  /** True while the KI-Erstellung is generating variants */
+  generierungLaeuft?: boolean
+}
+
+/** "PDF Arbeitsheft Logistik - Westermann" -> "Arbeitsheft Logistik - Westermann" (engines prefix the file type) */
+const ohneDateitypPraefix = (titel: string) => titel.replace(/^(PDF|DOCX?)\s+/i, '')
+
 /** Finds worksheets on the web that match the entered keywords (FE-36: no other documents). */
-export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vorschlag?: string }) {
+export function WebSearchSection({ thema, vorschlag = '', onAnpassen, generierungLaeuft = false }: Props) {
   // The selected learning goal is pre-filled and stays editable; choosing another goal replaces it
   const [query, setQuery] = useState(vorschlag)
   const [vorschlagBisher, setVorschlagBisher] = useState(vorschlag)
@@ -26,7 +41,10 @@ export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vor
 
   const [searchRunning, setSearchRunning] = useState(false)
   const [searchError, setSearchError] = useState('')
-  const [variantsReady, setVariantsReady] = useState(false)
+  // FE-35: reading the selected document (PDF/DOCX) before the variants are generated
+  const [dokumentLaedt, setDokumentLaedt] = useState(false)
+  const [dokumentFehler, setDokumentFehler] = useState('')
+  const [uebergeben, setUebergeben] = useState<string | null>(null)
   /** Wahr, wenn mindestens ein Treffer aus dem Mock-Modus stammt (keine echte Websuche) */
   const [mockMode, setMockMode] = useState(false)
 
@@ -40,7 +58,8 @@ export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vor
     setResultsFor(q)
     setOpen(true)
     setSelectedUrl(null)
-    setVariantsReady(false)
+    setDokumentFehler('')
+    setUebergeben(null)
     setMockMode(false)
     setSearchRunning(true)
     try {
@@ -52,6 +71,22 @@ export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vor
       setSearchError(error instanceof Error ? error.message : 'Die Websuche ist fehlgeschlagen.')
     } finally {
       setSearchRunning(false)
+    }
+  }
+
+  async function anpassen(r: WebResult) {
+    if (!onAnpassen || dokumentLaedt) return
+    setDokumentLaedt(true)
+    setDokumentFehler('')
+    setUebergeben(null)
+    try {
+      const dokument = await ladeWebDokument(r.url)
+      setUebergeben(r.url)
+      onAnpassen({ titel: ohneDateitypPraefix(r.title), url: r.url, text: dokument.text }, levels, formats)
+    } catch (error) {
+      setDokumentFehler(error instanceof ApiError ? error.message : 'Das Dokument konnte nicht gelesen werden.')
+    } finally {
+      setDokumentLaedt(false)
     }
   }
 
@@ -191,7 +226,11 @@ export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vor
                       <button
                         type="button"
                         aria-pressed={isSelected}
-                        onClick={() => { setSelectedUrl(isSelected ? null : r.url) }}
+                        onClick={() => {
+                          setSelectedUrl(isSelected ? null : r.url)
+                          setDokumentFehler('')
+                          setUebergeben(null)
+                        }}
                         className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded font-medium transition-all"
                         style={{
                           backgroundColor: isSelected ? 'var(--primary)' : 'var(--muted)',
@@ -235,56 +274,32 @@ export function WebSearchSection({ thema, vorschlag = '' }: { thema: string; vor
 
                         <VariantSummary levels={levels} formats={formats} />
 
-                        {!variantsReady ? (
+                        {onAnpassen ? (
                           <GenerateButton
-                            running={searchRunning}
+                            running={dokumentLaedt || generierungLaeuft}
                             count={levels.length * formats.length}
-                            verb="übernehmen"
-                            onClick={() => setVariantsReady(true)}
+                            verb="aus diesem Dokument erstellen"
+                            runningText={dokumentLaedt ? 'Dokument wird gelesen…' : 'Varianten werden erstellt…'}
+                            onClick={() => void anpassen(r)}
                           />
                         ) : (
-                          <div className="flex flex-col gap-2">
-                            <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
-                              ✓ Auswahl übernommen
-                            </div>
-                            <div className="text-xs leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
-                              Die eigentliche Generierung der Varianten aus einem Suchtreffer folgt noch. Die Auswahl
-                              zeigt nur, welche Varianten später erzeugt werden.
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {levels.flatMap((l) =>
-                                formats.map((f) => {
-                                  const s = LEVEL_STYLES[l]
-                                  return (
-                                    <div
-                                      key={`${l}-${f}`}
-                                      className="rounded px-3 py-2 flex items-center gap-2"
-                                      style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
-                                    >
-                                      <LevelBadge level={l} />
-                                      <span className="text-xs flex-1 truncate" style={{ color: 'var(--muted-foreground)' }}>
-                                        {formatOption(f).label}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        aria-label={`Variante ${l} ${formatOption(f).label} herunterladen`}
-                                        className="text-xs px-2 py-0.5 rounded"
-                                        style={{ backgroundColor: s.bg, color: s.text }}
-                                      >
-                                        ↓
-                                      </button>
-                                    </div>
-                                  )
-                                }),
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className="text-xs py-2 rounded font-medium"
-                              style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
-                            >
-                              Alle zur Bibliothek hinzufügen
-                            </button>
+                          <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }} role="note">
+                            Zum Anpassen bitte oben ein Berufsfeld mit Lehrplan und ein Lernziel wählen.
+                          </div>
+                        )}
+                        {dokumentLaedt && (
+                          <div className="text-xs" style={{ color: 'var(--muted-foreground)' }} role="status">
+                            Das Dokument wird geladen und gelesen – bei PDFs liest die KI den Text, das dauert etwas.
+                          </div>
+                        )}
+                        {dokumentFehler && (
+                          <div className="text-xs px-3 py-2 rounded" role="alert" style={{ backgroundColor: '#FDECEC', color: '#8A1C1C' }}>
+                            {dokumentFehler}
+                          </div>
+                        )}
+                        {uebergeben === r.url && !dokumentLaedt && (
+                          <div className="text-xs font-mono font-medium" style={{ color: 'var(--success)' }} role="status">
+                            ✓ Dokument übernommen – die angepassten Varianten erscheinen unten unter „Erstellte Varianten“.
                           </div>
                         )}
                       </div>

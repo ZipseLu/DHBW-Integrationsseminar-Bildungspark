@@ -1,7 +1,9 @@
 /**
  * Route für die Websuche nach Arbeitsblättern.
  *
- *   GET /api/web-search?q=...
+ *   GET  /api/web-search?q=...
+ *   POST /api/web-search/dokument  { url }  -> { text, dateityp, gekuerzt, mocked }
+ *        FE-35: loads a hit (PDF/DOCX) and returns its text as template for the KI-Erstellung
  *
  * Sucht im Internet nach Arbeitsblättern (PDF, DOCX, …) und gibt
  * strukturierte Treffer zurück (Titel, URL, Snippet, Quelle, Dateityp).
@@ -21,7 +23,8 @@ import { Router } from 'express'
 import { config } from '../config.js'
 import { createRateLimit } from '../http/rate-limit.js'
 import { searchWeb } from '../web-search/service.js'
-import { WebSearchQuerySchema } from '../web-search/schema.js'
+import { DokumentBodySchema, WebSearchQuerySchema } from '../web-search/schema.js'
+import { DokumentError, ladeDokument } from '../web-search/dokument.js'
 
 export const webSearchRouter = Router()
 
@@ -59,3 +62,20 @@ webSearchRouter.get(
     }
   },
 )
+
+webSearchRouter.post('/dokument', rateLimit, async (req, res, next) => {
+  try {
+    const parsed = DokumentBodySchema.safeParse(req.body ?? {})
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'validation_error', message: 'Ungültige Adresse.', details: parsed.error.issues })
+    }
+    const dokument = await ladeDokument(parsed.data.url)
+    res.json(dokument)
+  } catch (error) {
+    if (error instanceof DokumentError) {
+      console.warn(`[web-search] Dokument: ${error.code}`)
+      return res.status(error.status).json({ error: error.code, message: error.message })
+    }
+    next(error)
+  }
+})

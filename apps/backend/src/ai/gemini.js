@@ -22,14 +22,18 @@ async function getClient() {
   return clientPromise
 }
 
-export async function callGemini({ system, prompt, temperature = 0.7, maxTokens = 2048, jsonMode = false, jsonSchema = null, signal = undefined, model = undefined }) {
+export async function callGemini({ system, prompt, temperature = 0.7, maxTokens = 2048, jsonMode = false, jsonSchema = null, signal = undefined, model = undefined, files = [] }) {
   const client = await getClient()
   const wantsJson = jsonMode || Boolean(jsonSchema)
   const usedModel = model || config.ai.gemini.model
+  // FE-35: files (e.g. a PDF) are sent as inline data in front of the text prompt
+  const contents = files.length
+    ? [{ role: 'user', parts: [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: prompt }] }]
+    : prompt
 
   const response = await client.models.generateContent({
     model: usedModel,
-    contents: prompt,
+    contents,
     config: {
       systemInstruction: system,
       temperature,

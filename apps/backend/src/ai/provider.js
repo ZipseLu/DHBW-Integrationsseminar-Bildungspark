@@ -32,6 +32,7 @@ import { callAzureOpenAI } from './azure.js'
  * @property {object} [jsonSchema]  JSON-Schema, an das sich die Antwort halten muss (impliziert jsonMode)
  * @property {AbortSignal} [signal] Abbruch/Timeout von aussen
  * @property {string} [model]      Modell fuer diesen Aufruf (Default: GEMINI_MODEL); Azure ignoriert das Feld
+ * @property {Array<{mimeType: string, data: string}>} [files]  Files as base64 (e.g. a PDF, FE-35); only Gemini reads them
  */
 
 /**
