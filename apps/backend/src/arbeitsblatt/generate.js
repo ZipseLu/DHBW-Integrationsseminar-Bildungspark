@@ -181,7 +181,7 @@ export async function generateArbeitsblatt(input, deps = {}) {
           ? 'Die Antwort war zu lang und wurde abgeschnitten. Fasse dich kürzer.'
           : parsed.error
     }
-    console.warn(`[arbeitsblatt] Versuch ${attempt} ungültig: ${korrektur}`)
+    console.warn(`[arbeitsblatt] Versuch ${attempt} ungültig (${parsed.ok ? 'fehlende_antwortoptionen' : 'ungueltiges_json'})`)
 
     if (jsonRetried || signal.aborted) break
     jsonRetried = true

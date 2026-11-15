@@ -42,6 +42,33 @@ describe('WorksheetSchema', () => {
   })
 })
 
+describe('GenerateRequestSchema – Datenschutz', () => {
+  it('lehnt Teilnehmerdaten als unbekannte Anfragefelder ab', () => {
+    const aufAnfrageEbene = GenerateRequestSchema.safeParse({
+      ...REQUEST_T_TEXT,
+      teilnehmer: { kennung: 'IW3-9701', name: 'Max Mustermann' },
+    })
+    const imLernziel = GenerateRequestSchema.safeParse({
+      ...REQUEST_T_TEXT,
+      lernziel: { ...REQUEST_T_TEXT.lernziel, teilnehmer: { kennung: 'IW3-9701' } },
+    })
+    const inEinerStufe = GenerateRequestSchema.safeParse({
+      ...REQUEST_T_TEXT,
+      lernziel: {
+        ...REQUEST_T_TEXT.lernziel,
+        niveaus: {
+          ...REQUEST_T_TEXT.lernziel.niveaus,
+          T: { ...REQUEST_T_TEXT.lernziel.niveaus.T, teilnehmer: { kennung: 'IW3-9701' } },
+        },
+      },
+    })
+
+    expect(aufAnfrageEbene.success).toBe(false)
+    expect(imLernziel.success).toBe(false)
+    expect(inEinerStufe.success).toBe(false)
+  })
+})
+
 describe('GenerateRequestSchema', () => {
   it('akzeptiert eine vollstaendige Anfrage und wandelt baustein in eine Zahl', () => {
     const result = GenerateRequestSchema.safeParse({ ...REQUEST_T_TEXT, lernziel: { ...REQUEST_T_TEXT.lernziel, baustein: '1' } })

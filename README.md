@@ -170,8 +170,8 @@ mit ihrer letzten Aktion. Archivierte Arbeitsblätter sind in `proStatus.archivi
 `gesamtInklusiveArchiviert` enthalten, nicht in `arbeitsblaetter.gesamt`.
 
 **Teilnehmende (BE-02):** `GET/POST /api/teilnehmende`, `GET/PUT/DELETE /api/teilnehmende/:kennung` speichern
-anonymisierte Profile (pseudonyme Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
-Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)**.
+pseudonymisierte Profile (Kennung wie `IW3-4421`, keine Namen) mit ihrem Lernweg je Berufsfeld –
+Details: **[docs/persistenz-teilnehmende.md](docs/persistenz-teilnehmende.md)** und **[Datenschutz/Löschung (BE-08)](docs/datenschutz-loeschkonzept-logging.md)**.
 
 **Benutzerverwaltung (BE-03):** `GET/POST /api/benutzer`, `GET/PATCH/DELETE /api/benutzer/:id` verwalten die
 Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) – Details:
