@@ -110,7 +110,7 @@ export default function App() {
         <Header title={title} onCreate={() => navigate('ki-erstellung')} />
 
         <main id="inhalt" tabIndex={-1} className="flex-1 p-8 overflow-auto focus:outline-none" data-page={activeNav}>
-          {activeNav === 'dashboard' && <DashboardPage participants={teilnehmende.participants} onNavigate={navigate} />}
+          {activeNav === 'dashboard' && <DashboardPage participants={teilnehmende.participants} onNavigate={navigate} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />}
           {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} />}
           {activeNav === 'arbeitsblaetter' && (
             <ArbeitsblaetterPage

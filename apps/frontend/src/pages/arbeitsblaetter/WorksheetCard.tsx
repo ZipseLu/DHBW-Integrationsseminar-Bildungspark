@@ -1,4 +1,4 @@
-import { FORMAT_BADGE_COLORS, LEVEL_STYLES, PERSONA_MAP, formatOption, niveausOf } from '@/data/constants'
+import { FORMAT_BADGE_COLORS, LEVEL_STYLES, formatOption, niveausOf } from '@/data/constants'
 import type { Worksheet } from '@/types'
 
 type Props = {
@@ -78,23 +78,17 @@ export function WorksheetCard({
             <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>
               {w.sprache}
             </span>
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-              → Personas:
-            </span>
-            {levels.map((l) => {
-              const letter = PERSONA_MAP[l][w.format]
-              const s = LEVEL_STYLES[l]
-              return (
-                <span
-                  key={l}
-                  className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
-                  title={`Persona ${letter}: ${s.label} · ${opt.label}`}
-                  style={{ backgroundColor: s.bg, color: s.text }}
-                >
-                  {letter}
-                </span>
-              )
-            })}
+            {/* FE-30: levels instead of the former persona letters */}
+            {levels.map((l) => (
+              <span
+                key={l}
+                className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                title={`Stufe ${l}: ${LEVEL_STYLES[l].label}`}
+                style={{ backgroundColor: LEVEL_STYLES[l].bg, color: LEVEL_STYLES[l].text }}
+              >
+                {l}
+              </span>
+            ))}
           </div>
         </div>
 

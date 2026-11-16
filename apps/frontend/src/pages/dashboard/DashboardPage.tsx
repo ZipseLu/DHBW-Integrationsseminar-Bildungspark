@@ -1,24 +1,23 @@
 import { useEffect, useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
-import { StatCard } from '@/components/Widgets'
-import { FORMAT_BADGE_COLORS, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP } from '@/data/constants'
+import { ProgressBar, StatCard } from '@/components/Widgets'
+import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { dashboardAusBeispielen, dashboardAusGespeicherten, type DashboardDaten } from '@/lib/dashboardDaten'
 import { fehlertext, loadSavedWorksheets } from '@/lib/gespeicherteArbeitsblaetter'
-import type { Level, NavItem, Participant } from '@/types'
-
-/** Kurzbeschreibung des Bedarfs je Barrierefreiheits-Format (Persona-Karten) */
-const FORMAT_NEEDS: Record<string, string> = {
-  text: 'Liest selbstständig – keine zusätzlichen Symbole oder Anpassungen nötig.',
-  piktogramm: 'Versteht Aufgaben besser durch Bilder und Symbole statt reinem Text.',
-  mathefrei: 'Hat Schwierigkeiten mit Zahlen – Rechenaufgaben werden qualitativ ersetzt.',
-  'piktogramm-mathefrei': 'Kombinierter Bedarf: Symbole und keine Rechenschritte für maximale Barrierefreiheit.',
-}
+import { useLernstand } from '@/lib/lernstand'
+import { activeStation, stationsStand } from '@/lib/participants'
+import type { NavItem, Participant } from '@/types'
 
 type Props = {
   participants: readonly Participant[]
   onNavigate: (item: NavItem) => void
+  /** FE-30: participants come from the backend, so their learning progress can be loaded */
+  lernstandAktiv?: boolean
 }
+
+/** How many people the overview lists before "Alle Teilnehmenden" */
+const MAX_ZEILEN = 8
 
 /** Woher die Zahlen kommen – wie auf der Seite Arbeitsblätter (FE-01) */
 type Quelle = { art: 'laden' } | { art: 'backend' } | { art: 'beispiel'; grund: string }
@@ -30,8 +29,8 @@ const STATUS_FARBE = {
   archiviert: { bg: '#FAD9C8', color: '#7A2E00' },
 } as const
 
-export function DashboardPage({ participants, onNavigate }: Props) {
-  const [openLevels, setOpenLevels] = useState<Set<Level>>(new Set())
+export function DashboardPage({ participants, onNavigate, lernstandAktiv = false }: Props) {
+  const lernstand = useLernstand(lernstandAktiv)
   const [quelle, setQuelle] = useState<Quelle>({ art: 'laden' })
   const [daten, setDaten] = useState<DashboardDaten | null>(null)
   const [ladeVersuch, setLadeVersuch] = useState(0)
@@ -58,15 +57,6 @@ export function DashboardPage({ participants, onNavigate }: Props) {
 
   const laedt = quelle.art === 'laden' || daten === null
   const gesamt = daten?.gesamt ?? 0
-
-  function toggleLevel(level: Level) {
-    setOpenLevels((prev) => {
-      const next = new Set(prev)
-      if (next.has(level)) next.delete(level)
-      else next.add(level)
-      return next
-    })
-  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -128,106 +118,7 @@ export function DashboardPage({ participants, onNavigate }: Props) {
         </div>
       </section>
 
-      <section className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} aria-label="Anonyme Teilnehmende">
-        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <h2 className="font-display text-lg font-semibold">Anonyme Teilnehmende</h2>
-            <div className="text-xs font-mono mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-              Aufgeteilt nach Niveaustufe und Barrierefreiheitsbedarf · § 60 SGB IX
-            </div>
-          </div>
-          <button type="button" onClick={() => onNavigate('teilnehmer')} className="text-xs font-medium hover:opacity-70" style={{ color: 'var(--accent-text)' }}>
-            Alle Teilnehmenden →
-          </button>
-        </div>
-
-        <div className="flex flex-col p-4 gap-2">
-          {LEVELS.map((level) => {
-            const s = LEVEL_STYLES[level]
-            const isOpen = openLevels.has(level)
-            const letters = FORMAT_OPTIONS.map((f) => PERSONA_MAP[level][f.id])
-            return (
-              <div key={level} className="rounded-lg overflow-hidden" style={{ border: `1px solid ${isOpen ? s.text : 'var(--border)'}` }}>
-                <button
-                  type="button"
-                  aria-expanded={isOpen}
-                  onClick={() => toggleLevel(level)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:opacity-90"
-                  style={{ backgroundColor: isOpen ? s.bg : 'var(--muted)' }}
-                >
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-mono font-bold flex-shrink-0"
-                      style={{ backgroundColor: s.text, color: 'white' }}
-                    >
-                      {level}
-                    </span>
-                    <span className="text-sm font-semibold" style={{ color: isOpen ? s.text : 'var(--foreground)' }}>
-                      {s.label}
-                    </span>
-                  </div>
-                  <p className="text-xs leading-snug flex-1" style={{ color: isOpen ? s.text : 'var(--muted-foreground)' }}>
-                    {s.beschreibung}
-                  </p>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ backgroundColor: s.bg, color: s.text }}>
-                      Personas {letters[0]}–{letters[letters.length - 1]}
-                    </span>
-                    <span
-                      className="text-xs font-mono"
-                      aria-hidden="true"
-                      style={{ color: isOpen ? s.text : 'var(--foreground)', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
-                    >
-                      ▾
-                    </span>
-                  </div>
-                </button>
-
-                {isOpen && (
-                  <div className="grid grid-cols-2 gap-2 p-3" style={{ borderTop: `1px solid ${s.text}20` }}>
-                    {FORMAT_OPTIONS.map((fmt) => {
-                      const letter = PERSONA_MAP[level][fmt.id]
-                      const fc = FORMAT_BADGE_COLORS[fmt.id]
-                      return (
-                        <div key={fmt.id} className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}>
-                          <div className="px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: 'var(--muted)' }}>
-                            <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                              style={{ backgroundColor: s.bg, color: s.text, border: `1.5px solid ${s.text}` }}
-                            >
-                              {letter}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-semibold">Persona {letter}</div>
-                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                <span className="text-xs font-mono font-bold">
-                                  {level} – {s.label}
-                                </span>
-                                <span style={{ color: 'var(--muted-foreground)' }} aria-hidden="true">·</span>
-                                <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
-                                  {fmt.icon} {fmt.label}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="px-3 py-2.5 flex flex-col gap-1.5">
-                            <NeedLine marker="N" bg={s.bg} color={s.text} text={s.beschreibung} />
-                            <NeedLine marker="B" bg={fc.bg} color={fc.color} text={FORMAT_NEEDS[fmt.id]} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          <div className="rounded px-4 py-3 text-xs" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-            <strong style={{ color: 'var(--foreground)' }}>N</strong> = Niveaustufe · <strong style={{ color: 'var(--foreground)' }}>B</strong> = Barrierefreiheitsbedarf · Alle
-            Personas sind anonymisiert nach § 60 SGB IX.
-          </div>
-        </div>
-      </section>
+      <LernstandUebersicht participants={participants} lernstand={lernstand} onNavigate={onNavigate} />
 
       <section className="rounded-lg" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} aria-label="Zuletzt bearbeitet">
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -287,19 +178,132 @@ export function DashboardPage({ participants, onNavigate }: Props) {
   )
 }
 
-function NeedLine({ marker, bg, color, text }: { marker: string; bg: string; color: string; text: string }) {
+type ZeileDaten = {
+  p: Participant
+  offen: number
+  erledigt: number
+  gesamt: number | null
+  fortschritt: number
+  naechstes: string | null
+}
+
+/**
+ * FE-30: "Lernstand der Teilnehmenden" – who has open worksheets and what is next.
+ * Same numbers as on the page Teilnehmende (learning progress from the backend);
+ * with sample data the stored progress of the active station is shown.
+ */
+function LernstandUebersicht({
+  participants,
+  lernstand,
+  onNavigate,
+}: {
+  participants: readonly Participant[]
+  lernstand: ReturnType<typeof useLernstand>
+  onNavigate: (item: NavItem) => void
+}) {
+  const ausBackend = lernstand.quelle.art === 'bereit'
+  const zeilen: ZeileDaten[] = participants.map((p) => {
+    const station = activeStation(p)
+    const daten = ausBackend ? (lernstand.je[p.id] ?? null) : undefined
+    const stand = station ? stationsStand(station, daten, WORKSHEETS) : null
+    return {
+      p,
+      offen: daten?.anzahl.offen ?? 0,
+      erledigt: ausBackend ? (daten?.anzahl.erledigt ?? 0) : (stand?.erledigt ?? 0),
+      gesamt: ausBackend ? (daten?.anzahl.gesamt ?? 0) : null,
+      fortschritt: stand?.fortschritt ?? 0,
+      naechstes: daten?.alsNaechstes?.arbeitsblatt.titel ?? null,
+    }
+  })
+  // People without an open worksheet first – they need a new one
+  const sortiert = ausBackend ? [...zeilen].sort((a, b) => Number(a.offen > 0) - Number(b.offen > 0)) : zeilen
+  const ohneOffene = zeilen.filter((z) => z.offen === 0).length
+
   return (
-    <div className="flex gap-1.5 items-start">
-      <span
-        className="flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold mt-0.5"
-        style={{ backgroundColor: bg, color, fontSize: 7 }}
-        aria-hidden="true"
-      >
-        {marker}
-      </span>
-      <p className="text-xs leading-snug" style={{ color: 'var(--foreground)' }}>
-        {text}
-      </p>
-    </div>
+    <section className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} aria-label="Lernstand der Teilnehmenden">
+      <div className="px-6 py-4 flex items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div>
+          <h2 className="font-display text-lg font-semibold">Lernstand der Teilnehmenden</h2>
+          <div className="text-xs font-mono mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+            {ausBackend
+              ? `${ohneOffene} von ${zeilen.length} ohne offenes Arbeitsblatt · anonymisiert nach § 60 SGB IX`
+              : 'Aktiver Bereich im Lernweg · anonymisiert nach § 60 SGB IX'}
+          </div>
+        </div>
+        <button type="button" onClick={() => onNavigate('teilnehmer')} className="text-xs font-medium hover:opacity-70 flex-shrink-0" style={{ color: 'var(--accent-text)' }}>
+          Alle Teilnehmenden →
+        </button>
+      </div>
+
+      {lernstand.quelle.art === 'laden' && (
+        <div role="status" className="px-6 py-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+          Lernstand wird geladen …
+        </div>
+      )}
+      {lernstand.quelle.art === 'fehler' && (
+        <div role="alert" className="mx-6 my-4 rounded px-3 py-2 text-sm flex items-center gap-3" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
+          <span className="flex-1">Der Lernstand konnte nicht geladen werden: {lernstand.quelle.grund}</span>
+          <button type="button" onClick={lernstand.neuLaden} className="text-xs underline flex-shrink-0">
+            Erneut laden
+          </button>
+        </div>
+      )}
+      {lernstand.quelle.art !== 'laden' && zeilen.length === 0 && (
+        <div className="px-6 py-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+          Noch keine Teilnehmenden angelegt.
+        </div>
+      )}
+
+      {lernstand.quelle.art !== 'laden' && zeilen.length > 0 && (
+        <ul>
+          {sortiert.slice(0, MAX_ZEILEN).map((z, i) => (
+            <LernstandZeile key={z.p.id} zeile={z} ausBackend={ausBackend} letzte={i === Math.min(sortiert.length, MAX_ZEILEN) - 1} />
+          ))}
+        </ul>
+      )}
+      {sortiert.length > MAX_ZEILEN && (
+        <div className="px-6 py-3 text-xs" style={{ borderTop: '1px solid var(--border)', color: 'var(--muted-foreground)' }}>
+          und {sortiert.length - MAX_ZEILEN} weitere unter „Teilnehmende“
+        </div>
+      )}
+    </section>
+  )
+}
+
+function LernstandZeile({ zeile: z, ausBackend, letzte }: { zeile: ZeileDaten; ausBackend: boolean; letzte: boolean }) {
+  const station = activeStation(z.p)
+  const zahlen = z.gesamt === null ? `${z.erledigt} AB erledigt` : z.gesamt === 0 ? 'noch keine AB zugeordnet' : `${z.erledigt} von ${z.gesamt} erledigt`
+  return (
+    <li className="px-6 py-3 flex items-center gap-4" style={{ borderBottom: letzte ? 'none' : '1px solid var(--border)' }} aria-label={`Lernstand ${z.p.id}`}>
+      <div className="w-28 flex-shrink-0">
+        <div className="text-sm font-mono font-medium">{z.p.id}</div>
+        {station && <LevelBadge level={station.level} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm truncate">
+          {station ? (
+            <>
+              {station.berufsbild}
+              <span style={{ color: 'var(--muted-foreground)' }}> · {formatOption(station.format).label}</span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--muted-foreground)' }}>Kein aktiver Bereich im Lernweg</span>
+          )}
+        </div>
+        <div className="mt-1 max-w-xs">
+          <ProgressBar value={z.fortschritt} label={`Fortschritt ${z.p.id}`} />
+        </div>
+      </div>
+      <div className="w-64 flex-shrink-0 text-right">
+        <div className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
+          {zahlen} · {z.fortschritt} %
+        </div>
+        {ausBackend && (
+          <div className="text-xs mt-1 truncate" style={{ color: z.naechstes ? 'var(--foreground)' : '#7A5C00' }}>
+            {z.naechstes ? `als Nächstes: ${z.naechstes}` : 'kein Blatt offen – neues zuweisen'}
+          </div>
+        )}
+      </div>
+    </li>
   )
 }

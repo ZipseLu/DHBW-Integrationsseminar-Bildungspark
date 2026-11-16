@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, type GespeichertesArbeitsblatt, type Lernstand, type Zuordnung } from '@/lib/api'
 import { zuordnungFehlertext } from '@/lib/lernstand'
 import { useTeilnehmende, type Teilnehmer } from '@/lib/teilnehmende'
+import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { TeilnehmendePage } from '@/pages/teilnehmende/TeilnehmendePage'
 
 /**
@@ -207,5 +208,52 @@ describe('zuordnungFehlertext', () => {
     expect(zuordnungFehlertext(new ApiError('x', 409, 'conflict', undefined, 'bereits_zugeordnet'))).toBe('Dieses Arbeitsblatt ist der Person schon zugeordnet.')
     expect(zuordnungFehlertext(new ApiError('x', 404, 'not_found'))).toContain('gibt es nicht mehr')
     expect(zuordnungFehlertext(new Error('x'))).toBe('Nicht gespeichert: unbekannter Fehler.')
+  })
+})
+
+describe('Lernstand einheitlich (FE-30)', () => {
+  it('berechnet den Lernweg aus dem Lernstand statt aus Beispieldaten', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt'), zuordnung('z2', ETIKETT, 'offen')])
+    render(<Seite />)
+    await screen.findByText('1 von 2 erledigt · 50 %')
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+
+    // Same numbers in the learning path as above
+    expect(within(karte).getByText('1 von 2 AB erledigt')).toBeInTheDocument()
+    expect(within(karte).getByText('50 % erledigt')).toBeInTheDocument()
+    fireEvent.click(within(karte).getByRole('button', { name: '2 Arbeitsblätter anzeigen' }))
+    expect(within(karte).getAllByText('Einen LKW melden')).toHaveLength(2)
+    expect(within(karte).getAllByText('Etiketten kleben')).toHaveLength(2)
+    expect(within(karte).queryByText(/Persona/)).not.toBeInTheDocument()
+  })
+
+  it('zeigt den Lernstand auf der Übersicht mit denselben Zahlen', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt'), zuordnung('z2', ETIKETT, 'offen')])
+    function Uebersicht() {
+      const teilnehmende = useTeilnehmende(true)
+      return <DashboardPage participants={teilnehmende.participants} onNavigate={() => {}} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />
+    }
+    render(<Uebersicht />)
+
+    await screen.findByText('als Nächstes: Etiketten kleben')
+    const zeile = screen.getByRole('listitem', { name: 'Lernstand IW3-4421' })
+    expect(zeile).toHaveTextContent('1 von 2 erledigt · 50 %')
+    expect(zeile).toHaveTextContent('als Nächstes: Etiketten kleben')
+    expect(screen.getByText('0 von 1 ohne offenes Arbeitsblatt · anonymisiert nach § 60 SGB IX')).toBeInTheDocument()
+  })
+
+  it('weist auf der Übersicht auf Personen ohne offenes Blatt hin', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt')])
+    function Uebersicht() {
+      const teilnehmende = useTeilnehmende(true)
+      return <DashboardPage participants={teilnehmende.participants} onNavigate={() => {}} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />
+    }
+    render(<Uebersicht />)
+
+    await screen.findByText('kein Blatt offen – neues zuweisen')
+    const zeile = screen.getByRole('listitem', { name: 'Lernstand IW3-4421' })
+    expect(zeile).toHaveTextContent('1 von 1 erledigt · 100 %')
+    expect(zeile).toHaveTextContent('kein Blatt offen – neues zuweisen')
   })
 })

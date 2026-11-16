@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { stufeTextVar } from '@/lib/settings'
 import { Modal } from '@/components/Modal'
 import { ErrorNote, fieldLabelClass, inputStyle } from '@/components/Widgets'
-import { BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
+import { BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { moveItem, pruefeKennung, type StationDraft } from '@/lib/participants'
 import type { Format, Participant } from '@/types'
 
@@ -114,7 +114,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
                     </span>
                     <span className="text-xs font-mono font-medium flex-1">{i === 0 ? 'Erster Bereich (startet aktiv)' : `Bereich ${i + 1} (ausstehend)`}</span>
                     <span className="text-xs font-mono px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: s.bg, color: s.text }}>
-                      Persona {PERSONA_MAP[station.level][station.format]}
+                      Stufe {station.level} · {formatOption(station.format).label}
                     </span>
                     <div className="flex gap-0.5">
                       <button

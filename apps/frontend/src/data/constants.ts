@@ -46,14 +46,6 @@ export const FORMAT_BADGE_COLORS: Record<Format, { bg: string; color: string }> 
   'piktogramm-mathefrei': { bg: '#FAD9C8', color: '#7A2E00' },
 }
 
-/** Persona-Buchstabe je (Niveau, Format) – 4×4-Raster aus der Projektkonzeption des Teams (keine Vorgabe des Bildungsparks) */
-export const PERSONA_MAP: Record<Level, Record<Format, string>> = {
-  T: { text: 'A', piktogramm: 'B', mathefrei: 'C', 'piktogramm-mathefrei': 'D' },
-  A: { text: 'E', piktogramm: 'F', mathefrei: 'G', 'piktogramm-mathefrei': 'H' },
-  F: { text: 'I', piktogramm: 'J', mathefrei: 'K', 'piktogramm-mathefrei': 'L' },
-  B: { text: 'M', piktogramm: 'N', mathefrei: 'O', 'piktogramm-mathefrei': 'P' },
-}
-
 export const SPRACHEN: readonly Sprache[] = ['Leichte Sprache', 'Standardsprache']
 
 /**

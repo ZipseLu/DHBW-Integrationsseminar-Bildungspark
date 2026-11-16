@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProgressBar } from '@/components/Widgets'
-import { LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
+import { LEVEL_STYLES, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
-import { activeStation, doneCount, worksheetsFor } from '@/lib/participants'
+import { activeStation, doneCount, stationsStand, stationsStandText, worksheetsFor } from '@/lib/participants'
 import type { Lernstand, Zuordnung, ZuordnungStatus } from '@/lib/api'
+import type { StationsStand } from '@/lib/participants'
 import type { BerufStation, Participant } from '@/types'
 import { LernstandListe } from './LernstandListe'
 
@@ -37,6 +38,9 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
   const finished = p.berufsbilder.filter((b) => b.status === 'abgeschlossen').length
   const anzahl = lernstand?.daten?.anzahl ?? { erledigt: 0, offen: 0, gesamt: 0 }
   const naechstes = lernstand?.daten?.alsNaechstes ?? null
+  // FE-30: one source for all numbers – the learning progress from the backend if available
+  const daten = lernstand ? lernstand.daten : undefined
+  const balken = active ? stationsStand(active, daten, WORKSHEETS).fortschritt : p.progress
   const erledigtText = lernstand ? `${anzahl.erledigt} von ${anzahl.gesamt} Arbeitsblättern erledigt` : active ? `${doneCount(active, WORKSHEETS)} Arbeitsblätter erledigt` : ''
 
   return (
@@ -93,7 +97,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
       </div>
 
       <div style={{ height: 3, backgroundColor: 'var(--muted)' }}>
-        <div style={{ height: 3, width: `${p.progress}%`, backgroundColor: p.progress === 100 ? DONE_STRONG : 'var(--primary)', transition: 'width 0.3s' }} />
+        <div style={{ height: 3, width: `${balken}%`, backgroundColor: balken === 100 ? DONE_STRONG : 'var(--primary)', transition: 'width 0.3s' }} />
       </div>
 
       {lernstand && <LernstandListe lernstand={lernstand.daten} onStatus={lernstand.onStatus} onEntfernen={lernstand.onEntfernen} />}
@@ -110,7 +114,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
             </div>
             <ol className="flex flex-col gap-2">
               {p.berufsbilder.map((b, i) => (
-                <TimelineEntry key={i} station={b} index={i} isLast={i === p.berufsbilder.length - 1} />
+                <TimelineEntry key={i} station={b} index={i} isLast={i === p.berufsbilder.length - 1} stand={stationsStand(b, daten, WORKSHEETS)} />
               ))}
             </ol>
           </div>
@@ -192,7 +196,7 @@ function StationChip({ station: b }: { station: BerufStation }) {
   return (
     <div
       className="flex items-center gap-1 px-2 py-1 rounded text-xs font-mono"
-      title={`${b.berufsbild} · ${b.status}`}
+      title={`${b.berufsbild} · Stufe ${b.level} · ${formatOption(b.format).label} · ${b.status}`}
       style={{ backgroundColor: bg, color, border: b.status === 'ausstehend' ? '1px dashed var(--border)' : '1px solid transparent' }}
     >
       <span className={b.status === 'aktiv' ? 'inline-block animate-pulse' : undefined}>{icon}</span>
@@ -201,7 +205,7 @@ function StationChip({ station: b }: { station: BerufStation }) {
         className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center font-bold"
         style={{ fontSize: 9, backgroundColor: b.status === 'abgeschlossen' ? DONE_TEXT : ls.text, color: 'white' }}
       >
-        {PERSONA_MAP[b.level][b.format]}
+        {b.level}
       </span>
     </div>
   )
@@ -226,7 +230,7 @@ function ActiveWorksheets({ station, collapsed, onToggle }: { station: BerufStat
           {station.berufsbild} · {station.level}
         </span>
         <span className="px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: s.text, color: 'white', fontSize: 10 }}>
-          Persona {PERSONA_MAP[station.level][station.format]}
+          {formatOption(station.format).label}
         </span>
         <span className="ml-auto">{done} erledigt</span>
         <span aria-hidden="true" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>
@@ -288,11 +292,10 @@ const STATUS_BADGE: Record<BerufStation['status'], (levelText: string) => { bg: 
   ausstehend: () => ({ bg: 'var(--muted)', color: 'var(--muted-foreground)' }),
 }
 
-function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; index: number; isLast: boolean }) {
+function TimelineEntry({ station: b, index, isLast, stand }: { station: BerufStation; index: number; isLast: boolean; stand: StationsStand }) {
   const [open, setOpen] = useState(false)
   const ls = LEVEL_STYLES[b.level]
-  const list = worksheetsFor(WORKSHEETS, b.berufsbild)
-  const done = doneCount(b, WORKSHEETS)
+  const list = stand.blaetter
   const badge = STATUS_BADGE[b.status](ls.text)
   const opt = formatOption(b.format)
 
@@ -332,24 +335,23 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
                 style={{ backgroundColor: ls.bg, color: ls.text, border: `1px solid ${ls.text}` }}
                 title={`${ls.label} · ${opt.label}`}
               >
-                <span style={{ fontWeight: 700 }}>Persona {PERSONA_MAP[b.level][b.format]}</span>
                 <span>
-                  · {opt.icon} {opt.label}
+                  {opt.icon} {opt.label}
                 </span>
               </span>
             )}
           </div>
           <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>
-            {done} AB erledigt
+            {stationsStandText(stand)}
           </span>
         </div>
 
         {b.status !== 'ausstehend' && (
           <>
-            <ProgressBar value={b.progress} label={`Fortschritt ${b.berufsbild}`} />
+            <ProgressBar value={stand.fortschritt} label={`Fortschritt ${b.berufsbild}`} />
             <div className="flex items-center justify-between mt-1.5 text-xs font-mono" style={{ color: 'var(--muted-foreground)' }}>
               <span>Start: {b.startDate}</span>
-              <span>{b.endDate ? `Abschluss: ${b.endDate}` : `${b.progress}% abgeschlossen`}</span>
+              <span>{b.endDate ? `Abschluss: ${b.endDate}` : `${stand.fortschritt} % erledigt`}</span>
             </div>
             {list.length > 0 && (
               <button
@@ -368,18 +370,20 @@ function TimelineEntry({ station: b, index, isLast }: { station: BerufStation; i
             {open && (
               <ul className="mt-2 flex flex-col gap-1">
                 {list.map((w, i) => {
-                  const isDone = i < done
+                  const isDone = w.erledigt
                   return (
                     <li
-                      key={w.id}
+                      key={w.key}
                       className="flex items-center gap-2 py-1 px-2 rounded text-xs"
                       style={{ backgroundColor: isDone ? 'var(--tint-success)' : 'var(--muted)' }}
                     >
                       <span style={{ color: isDone ? 'var(--success)' : 'var(--muted-foreground)', fontWeight: 700 }}>{isDone ? '✓' : i + 1}</span>
-                      <span className="flex-1 truncate">{w.title}</span>
-                      <span className="font-mono" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
-                        BS {w.baustein}
-                      </span>
+                      <span className="flex-1 truncate">{w.titel}</span>
+                      {w.baustein !== null && (
+                        <span className="font-mono" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
+                          BS {w.baustein}
+                        </span>
+                      )}
                     </li>
                   )
                 })}
