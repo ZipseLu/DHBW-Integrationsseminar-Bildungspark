@@ -5,6 +5,7 @@ import { buildStations, normalisiereKennung, pruefeKennung, schliesseStationAb, 
 import { useLernstand } from '@/lib/lernstand'
 import type { TeilnehmendeState } from '@/lib/teilnehmende'
 import type { Lernstand } from '@/lib/api'
+import type { KiVorauswahl } from '@/lib/lehrplaene'
 import type { Participant } from '@/types'
 import { AssignWorksheetModal } from './AssignWorksheetModal'
 import { ZuordnenModal } from './ZuordnenModal'
@@ -15,6 +16,8 @@ type Props = {
   /** Profiles and actions from useTeilnehmende() (FE-12) */
   teilnehmende: TeilnehmendeState
   defaultBerufsbild: string
+  /** FE-33: opens the KI-Erstellung when no worksheet fits the person yet */
+  onErstellen?: (vorauswahl: KiVorauswahl) => void
 }
 
 /** IDs of all worksheets already assigned to a person (open and done) */
@@ -25,7 +28,7 @@ function zugeordneteIds(l: Lernstand | undefined): Set<string> {
 /** Dialogzustand: geschlossen, neue Person oder Bearbeiten */
 type EditState = { mode: 'closed' } | { mode: 'new' } | { mode: 'edit'; participant: Participant }
 
-export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
+export function TeilnehmendePage({ teilnehmende, defaultBerufsbild, onErstellen }: Props) {
   const { participants, quelle } = teilnehmende
   // FE-11: learning progress only for profiles from the backend
   const lernstand = useLernstand(quelle.art === 'backend')
@@ -186,6 +189,7 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
           participant={assignFor}
           zugeordnet={zugeordneteIds(lernstand.je[assignFor.id])}
           onClose={() => setAssignFor(null)}
+          onErstellen={onErstellen}
           onZuordnen={async (blatt) => {
             const meldung = await lernstand.zuordnen(assignFor.id, blatt.id)
             if (meldung) return meldung

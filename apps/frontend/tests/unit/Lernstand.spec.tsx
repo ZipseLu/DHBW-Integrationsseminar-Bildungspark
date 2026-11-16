@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, type GespeichertesArbeitsblatt, type Lernstand, type Zuordnung } from '@/lib/api'
+import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { zuordnungFehlertext } from '@/lib/lernstand'
 import { useTeilnehmende, type Teilnehmer } from '@/lib/teilnehmende'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
@@ -60,7 +61,14 @@ function lernstand(offen: Zuordnung[], erledigt: Zuordnung[]): Lernstand {
 }
 
 /** Small in-memory backend: assignments of one person */
-function backend(start: Zuordnung[], { postFehler, person = TN }: { postFehler?: Response; person?: Teilnehmer } = {}) {
+function backend(
+  start: Zuordnung[],
+  {
+    postFehler,
+    blaetter = () => [LKW, ETIKETT, REGAL],
+    person = TN,
+  }: { postFehler?: Response; blaetter?: (query: URLSearchParams) => GespeichertesArbeitsblatt[]; person?: Teilnehmer } = {},
+) {
   let tn = person
   let liste = [...start]
   const stand = () => lernstand(liste.filter((z) => z.status === 'offen'), liste.filter((z) => z.status === 'erledigt'))
@@ -73,7 +81,10 @@ function backend(start: Zuordnung[], { postFehler, person = TN }: { postFehler?:
     }
     if (url === '/api/teilnehmende/lernstand') return json({ eintraege: [stand()], gesamt: 1 })
     if (url === `/api/teilnehmende/${TN.kennung}/lernstand`) return json({ lernstand: stand() })
-    if (url.startsWith('/api/arbeitsblaetter?')) return json({ eintraege: [LKW, ETIKETT, REGAL], seite: 1, proSeite: 100, gesamt: 3, seiten: 1 })
+    if (url.startsWith('/api/arbeitsblaetter?')) {
+      const eintraege = blaetter(new URLSearchParams(url.split('?')[1]))
+      return json({ eintraege, seite: 1, proSeite: 100, gesamt: eintraege.length, seiten: 1 })
+    }
     const z = url.match(/zuordnungen\/([^/?]+)$/)?.[1]
     if (method === 'POST') {
       if (postFehler) return postFehler
@@ -97,9 +108,9 @@ function backend(start: Zuordnung[], { postFehler, person = TN }: { postFehler?:
   return fetchMock
 }
 
-function Seite() {
+function Seite({ onErstellen }: { onErstellen?: (vorauswahl: KiVorauswahl) => void }) {
   const teilnehmende = useTeilnehmende(true)
-  return <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={LAGER} />
+  return <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={LAGER} onErstellen={onErstellen} />
 }
 
 const aufrufe = (fetchMock: ReturnType<typeof vi.fn>, method: string) =>
@@ -164,6 +175,49 @@ describe('Lernstand und Zuordnung (FE-11)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(aufrufe(fetchMock, 'POST')).toEqual([['/api/teilnehmende/IW3-4421/zuordnungen', JSON.stringify({ arbeitsblattId: 'b2' })]])
     expect(await screen.findByText('1 von 2 erledigt · 50 %')).toBeInTheDocument()
+  })
+
+  it('lädt nur Blätter in Stufe und Format der Person, auf Wunsch auch andere (FE-33)', async () => {
+    const fetchMock = backend([])
+    render(<Seite />)
+    await screen.findByText(/Noch keine Arbeitsblätter zugeordnet/)
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+    fireEvent.click(within(karte).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
+    const dialog = screen.getByRole('dialog')
+    await within(dialog).findByRole('option', { name: /Etiketten kleben/ })
+    expect(dialog).toHaveTextContent('IW3-4421 · Lagerlogistik, Handel & Versand · Stufe A · Standard-Text')
+
+    const listenAufrufe = () =>
+      fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith('/api/arbeitsblaetter?')).map((url) => new URLSearchParams(url.split('?')[1]))
+    expect(listenAufrufe()).toHaveLength(1)
+    expect(Object.fromEntries(listenAufrufe()[0])).toMatchObject({ berufsfeld: LAGER, stufe: 'A', format: 'text' })
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Auch andere Stufen und Formate zeigen' }))
+    await waitFor(() => expect(listenAufrufe()).toHaveLength(2))
+    expect(listenAufrufe()[1].get('berufsfeld')).toBe(LAGER)
+    expect(listenAufrufe()[1].has('stufe')).toBe(false)
+    expect(listenAufrufe()[1].has('format')).toBe(false)
+  })
+
+  it('zeigt einen Hinweis und den Weg zur KI-Erstellung, wenn kein Blatt passt (FE-33)', async () => {
+    backend([], { blaetter: (query) => (query.has('stufe') ? [] : [REGAL]) })
+    const onErstellen = vi.fn()
+    render(<Seite onErstellen={onErstellen} />)
+    await screen.findByText(/Noch keine Arbeitsblätter zugeordnet/)
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+    fireEvent.click(within(karte).getByRole('button', { name: '✦ Arbeitsblatt zuweisen' }))
+    const dialog = screen.getByRole('dialog')
+
+    expect(await within(dialog).findByText('Für Stufe A · Standard-Text gibt es in „Lagerlogistik, Handel & Versand“ noch kein Arbeitsblatt.')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('option')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: '✦ In der KI-Erstellung erstellen' }))
+    expect(onErstellen).toHaveBeenCalledWith({ berufsfeld: LAGER, stufe: 'A', format: 'text' })
+
+    // Exceptions stay possible
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Auch andere Stufen und Formate zeigen' }))
+    expect(await within(dialog).findByRole('option', { name: /Ins Regal einräumen/ })).toBeInTheDocument()
   })
 
   it('zeigt Fehler beim Zuweisen im Dialog', async () => {
