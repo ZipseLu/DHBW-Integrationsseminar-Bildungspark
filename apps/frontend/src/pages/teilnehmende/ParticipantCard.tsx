@@ -17,11 +17,14 @@ type Props = {
   participant: Participant
   expanded: boolean
   onToggleExpand: () => void
-  onAssign: () => void
+  /** Opens "Arbeitsblatt zuweisen"; with an index for that Bereich (FE-30: record done sheets) */
+  onAssign: (stationIndex?: number) => void
   onEdit: () => void
   onDelete: () => void
   /** FE-30: closes the station with this index; returns an error message or null */
   onAbschliessen?: (index: number, erledigt: number) => Promise<string | null>
+  /** FE-30: reopens a closed station; returns an error message or null */
+  onWiederOeffnen?: (index: number) => Promise<string | null>
   /**
    * FE-11: learning progress from the backend. Without it (sample data) the card
    * keeps the prototype list of the sample worksheets.
@@ -33,7 +36,7 @@ type Props = {
   }
 }
 
-export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, onAbschliessen, lernstand }: Props) {
+export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, onAbschliessen, onWiederOeffnen, lernstand }: Props) {
   const [listCollapsed, setListCollapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = activeStation(p)
@@ -124,6 +127,9 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
                   stand={stationsStand(b, daten, WORKSHEETS)}
                   naechster={p.berufsbilder.find((x, j) => j > i && x.status === 'ausstehend')?.berufsbild ?? null}
                   onAbschliessen={onAbschliessen && b.status === 'aktiv' ? (erledigt) => onAbschliessen(i, erledigt) : undefined}
+                  aktiverBereich={active?.berufsbild ?? null}
+                  onWiederOeffnen={onWiederOeffnen && b.status === 'abgeschlossen' ? () => onWiederOeffnen(i) : undefined}
+                  onNachtragen={lernstand && b.status === 'abgeschlossen' ? () => onAssign(i) : undefined}
                 />
               ))}
             </ol>
@@ -150,7 +156,7 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
           <div className="flex gap-2 flex-wrap items-center">
             <button
               type="button"
-              onClick={onAssign}
+              onClick={() => onAssign()}
               className="text-xs px-3 py-2 rounded font-medium hover:opacity-90 transition-opacity"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
             >
@@ -310,18 +316,40 @@ type TimelineProps = {
   /** next pending Berufsfeld, started when this one is closed */
   naechster: string | null
   onAbschliessen?: (erledigt: number) => Promise<string | null>
+  /** currently active Berufsfeld; it becomes pending when a closed one is reopened */
+  aktiverBereich: string | null
+  onWiederOeffnen?: () => Promise<string | null>
+  /** opens "Arbeitsblatt zuweisen" for this closed Bereich */
+  onNachtragen?: () => void
 }
 
-function TimelineEntry({ station: b, index, isLast, stand, naechster, onAbschliessen }: TimelineProps) {
+function TimelineEntry({ station: b, index, isLast, stand, naechster, onAbschliessen, aktiverBereich, onWiederOeffnen, onNachtragen }: TimelineProps) {
   const [open, setOpen] = useState(false)
   const [frage, setFrage] = useState(false)
   const [speichert, setSpeichert] = useState(false)
   const [fehler, setFehler] = useState('')
 
-  async function abschliessen() {
-    if (!onAbschliessen) return
+  // One confirmable action per station: close the active one or reopen a closed one
+  const aktion = onAbschliessen
+    ? {
+        knopf: '✓ Bereich abschließen',
+        frage: `„${b.berufsbild}“ abschließen?${naechster ? ` Danach ist „${naechster}“ aktiv.` : ' Es folgt kein weiterer Bereich.'}`,
+        ja: 'Ja, abschließen',
+        ausfuehren: () => onAbschliessen(stand.erledigt),
+      }
+    : onWiederOeffnen
+      ? {
+          knopf: '↺ Wieder öffnen',
+          frage: `„${b.berufsbild}“ wieder öffnen?${aktiverBereich ? ` „${aktiverBereich}“ ist dann wieder ausstehend.` : ''}`,
+          ja: 'Ja, wieder öffnen',
+          ausfuehren: onWiederOeffnen,
+        }
+      : null
+
+  async function bestaetigen() {
+    if (!aktion) return
     setSpeichert(true)
-    const meldung = await onAbschliessen(stand.erledigt)
+    const meldung = await aktion.ausfuehren()
     setSpeichert(false)
     setFehler(meldung ?? '')
     if (!meldung) setFrage(false)
@@ -421,35 +449,47 @@ function TimelineEntry({ station: b, index, isLast, stand, naechster, onAbschlie
                 })}
               </ul>
             )}
-            {onAbschliessen && (
+            {(aktion || onNachtragen) && (
               <div className="mt-3 flex items-center gap-2 flex-wrap">
-                {frage ? (
+                {aktion && frage ? (
                   <>
-                    <span className="text-xs">
-                      „{b.berufsbild}“ abschließen?{naechster ? ` Danach ist „${naechster}“ aktiv.` : ' Es folgt kein weiterer Bereich.'}
-                    </span>
+                    <span className="text-xs">{aktion.frage}</span>
                     <button
                       type="button"
-                      onClick={() => void abschliessen()}
+                      onClick={() => void bestaetigen()}
                       disabled={speichert}
                       className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
                       style={{ backgroundColor: DONE_STRONG, color: 'white' }}
                     >
-                      {speichert ? 'Wird gespeichert …' : 'Ja, abschließen'}
+                      {speichert ? 'Wird gespeichert …' : aktion.ja}
                     </button>
                     <button type="button" onClick={() => setFrage(false)} className="text-xs px-3 py-1.5 rounded" style={{ border: '1px solid var(--border)' }}>
                       Abbrechen
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setFrage(true)}
-                    className="text-xs px-3 py-1.5 rounded font-medium hover:opacity-80"
-                    style={{ border: `1px solid ${DONE_STRONG}`, color: DONE_TEXT }}
-                  >
-                    ✓ Bereich abschließen
-                  </button>
+                  <>
+                    {onNachtragen && (
+                      <button
+                        type="button"
+                        onClick={onNachtragen}
+                        className="text-xs px-3 py-1.5 rounded font-medium hover:opacity-80"
+                        style={{ border: '1px solid var(--primary-text)', color: 'var(--primary-text)' }}
+                      >
+                        + Bearbeitete Blätter nachtragen
+                      </button>
+                    )}
+                    {aktion && (
+                      <button
+                        type="button"
+                        onClick={() => setFrage(true)}
+                        className="text-xs px-3 py-1.5 rounded font-medium hover:opacity-80"
+                        style={{ border: `1px solid ${DONE_STRONG}`, color: DONE_TEXT }}
+                      >
+                        {aktion.knopf}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

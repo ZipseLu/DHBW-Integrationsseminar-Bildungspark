@@ -16,6 +16,8 @@ export type LernstandState = {
   je: Record<string, Lernstand>
   /** Each action returns an error message or null */
   zuordnen: (kennung: string, arbeitsblattId: string) => Promise<string | null>
+  /** FE-30: assigns a worksheet and marks it as done right away (closed Bereich) */
+  nachtragen: (kennung: string, arbeitsblattId: string) => Promise<string | null>
   setStatus: (kennung: string, zuordnungId: string, status: ZuordnungStatus) => Promise<string | null>
   entfernen: (kennung: string, zuordnungId: string) => Promise<string | null>
   neuLaden: () => void
@@ -88,6 +90,11 @@ export function useLernstand(aktiv: boolean): LernstandState {
     quelle,
     je,
     zuordnen: (kennung, arbeitsblattId) => ausfuehren(kennung, () => zuordnen(kennung, arbeitsblattId)),
+    nachtragen: (kennung, arbeitsblattId) =>
+      ausfuehren(kennung, async () => {
+        const zuordnung = await zuordnen(kennung, arbeitsblattId)
+        await setZuordnungStatus(kennung, zuordnung.id, 'erledigt')
+      }),
     setStatus: (kennung, zuordnungId, status) => ausfuehren(kennung, () => setZuordnungStatus(kennung, zuordnungId, status)),
     entfernen: (kennung, zuordnungId) => ausfuehren(kennung, () => deleteZuordnung(kennung, zuordnungId)),
     neuLaden: useCallback(() => setLadeVersuch((n) => n + 1), []),

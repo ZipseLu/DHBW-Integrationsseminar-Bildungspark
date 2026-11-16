@@ -85,6 +85,19 @@ export function schliesseStationAb(p: Participant, index: number, today: string,
   return { ...p, berufsbilder, level: naechste >= 0 ? p.berufsbilder[naechste].level : p.level, lastActive: today }
 }
 
+/**
+ * FE-30: reopens a closed station. Only one station may be active, so the currently
+ * active one goes back to "ausstehend" (its dates and numbers stay).
+ */
+export function oeffneStationWieder(p: Participant, index: number, today: string): Participant {
+  const berufsbilder = p.berufsbilder.map((b, i): BerufStation => {
+    if (i === index) return { ...b, status: 'aktiv', endDate: undefined, startDate: b.startDate || today }
+    if (b.status === 'aktiv') return { ...b, status: 'ausstehend' }
+    return b
+  })
+  return { ...p, berufsbilder, level: p.berufsbilder[index].level, lastActive: today }
+}
+
 export function activeStation(p: Participant): BerufStation | undefined {
   return p.berufsbilder.find((b) => b.status === 'aktiv')
 }
