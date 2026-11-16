@@ -112,6 +112,22 @@ describe('„✦ Anpassen“ (FE-23)', () => {
   })
 })
 
+describe('KI-Erstellung aus „Arbeitsblatt zuweisen“ (FE-33)', () => {
+  it('wählt Berufsfeld, Stufe und Format der Person vor', () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ anzahl: 0, lernziele: [] })))
+    render(<KiErstellungPage vorauswahl={{ berufsfeld: 'Lagerlogistik, Handel & Versand', stufe: 'F', format: 'mathefrei' }} />)
+
+    expect(screen.getByRole('note')).toHaveTextContent('Für die Zuweisung vorausgewählt: Lagerlogistik, Handel & Versand · Stufe F · Ohne Rechnen.')
+    const gedrueckt = (gruppe: string) =>
+      within(screen.getByRole('group', { name: gruppe }))
+        .getAllByRole('button')
+        .filter((b) => b.getAttribute('aria-pressed') === 'true')
+        .map((b) => b.textContent)
+    expect(gedrueckt('Niveaustufen')).toEqual([expect.stringContaining('F')])
+    expect(gedrueckt('Barrierefreiheits-Formate')).toEqual([expect.stringContaining('Ohne Rechnen')])
+  })
+})
+
 describe('vorlageText', () => {
   it('fasst Titel, Einleitung, Aufgaben mit Optionen und Wörterbuch zusammen', () => {
     expect(vorlageText(INHALT)).toBe(

@@ -1,6 +1,7 @@
 import { BERUFSBILDER, BERUFSBILD_GASTRO, BERUFSBILD_LAGER, BERUFSBILD_METALL } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { lernzielFromWorksheet, type LehrplanLernziel, type LernzielInput } from '@/lib/api'
+import type { Format, Level } from '@/types'
 
 /** Ein Lehrplan-Dokument (eine DOCX-Datei des Bildungsparks) mit seinen Lernzielen */
 export type LehrplanDokument = {
@@ -100,6 +101,9 @@ export type KiVorauswahl = {
   /** FE-05: topic and text of an uploaded worksheet that the KI should adapt */
   thema?: string
   vorlage?: { name: string; text: string }
+  /** FE-33: level and format of a participant (from "Arbeitsblatt zuweisen") */
+  stufe?: Level
+  format?: Format
 }
 
 export function vorauswahlFor(doc: LehrplanDokument, ziel: LernzielInput = doc.lernziele[0]): KiVorauswahl {

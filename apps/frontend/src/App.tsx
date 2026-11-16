@@ -121,10 +121,10 @@ export default function App() {
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} onStand={meldeKiStand} />
+            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}-${kiVorauswahl.stufe ?? ''}-${kiVorauswahl.format ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} onStand={meldeKiStand} />
           )}
           {activeNav === 'teilnehmer' && (
-            <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} />
+            <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} onErstellen={createFromLehrplan} />
           )}
           {activeNav === 'benutzerverwaltung' && user.role === 'admin' && (
             <BenutzerverwaltungPage currentUser={user} users={staffUsers} onChange={setStaffUsers} />
