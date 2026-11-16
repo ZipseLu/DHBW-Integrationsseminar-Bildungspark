@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
-import { buildStations, normalisiereKennung, pruefeKennung, type StationDraft } from '@/lib/participants'
+import { buildStations, normalisiereKennung, pruefeKennung, schliesseStationAb, type StationDraft } from '@/lib/participants'
 import { useLernstand } from '@/lib/lernstand'
 import type { TeilnehmendeState } from '@/lib/teilnehmende'
 import type { Lernstand } from '@/lib/api'
@@ -147,6 +147,12 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild }: Props) {
           onAssign={() => setAssignFor(p)}
           onEdit={() => setEdit({ mode: 'edit', participant: p })}
           onDelete={() => void handleDelete(p.id)}
+          onAbschliessen={async (index, erledigt) => {
+            const station = p.berufsbilder[index]
+            const meldung = await teilnehmende.speichern(p.id, schliesseStationAb(p, index, todayIso(), erledigt))
+            if (!meldung) setNotice(`Bereich „${station.berufsbild}“ für ${p.id} abgeschlossen.`)
+            return meldung
+          }}
           lernstand={
             lernstand.quelle.art === 'bereit'
               ? {

@@ -20,6 +20,8 @@ type Props = {
   onAssign: () => void
   onEdit: () => void
   onDelete: () => void
+  /** FE-30: closes the station with this index; returns an error message or null */
+  onAbschliessen?: (index: number, erledigt: number) => Promise<string | null>
   /**
    * FE-11: learning progress from the backend. Without it (sample data) the card
    * keeps the prototype list of the sample worksheets.
@@ -31,7 +33,7 @@ type Props = {
   }
 }
 
-export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, lernstand }: Props) {
+export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAssign, onEdit, onDelete, onAbschliessen, lernstand }: Props) {
   const [listCollapsed, setListCollapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = activeStation(p)
@@ -114,7 +116,15 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
             </div>
             <ol className="flex flex-col gap-2">
               {p.berufsbilder.map((b, i) => (
-                <TimelineEntry key={i} station={b} index={i} isLast={i === p.berufsbilder.length - 1} stand={stationsStand(b, daten, WORKSHEETS)} />
+                <TimelineEntry
+                  key={i}
+                  station={b}
+                  index={i}
+                  isLast={i === p.berufsbilder.length - 1}
+                  stand={stationsStand(b, daten, WORKSHEETS)}
+                  naechster={p.berufsbilder.find((x, j) => j > i && x.status === 'ausstehend')?.berufsbild ?? null}
+                  onAbschliessen={onAbschliessen && b.status === 'aktiv' ? (erledigt) => onAbschliessen(i, erledigt) : undefined}
+                />
               ))}
             </ol>
           </div>
@@ -292,8 +302,30 @@ const STATUS_BADGE: Record<BerufStation['status'], (levelText: string) => { bg: 
   ausstehend: () => ({ bg: 'var(--muted)', color: 'var(--muted-foreground)' }),
 }
 
-function TimelineEntry({ station: b, index, isLast, stand }: { station: BerufStation; index: number; isLast: boolean; stand: StationsStand }) {
+type TimelineProps = {
+  station: BerufStation
+  index: number
+  isLast: boolean
+  stand: StationsStand
+  /** next pending Berufsfeld, started when this one is closed */
+  naechster: string | null
+  onAbschliessen?: (erledigt: number) => Promise<string | null>
+}
+
+function TimelineEntry({ station: b, index, isLast, stand, naechster, onAbschliessen }: TimelineProps) {
   const [open, setOpen] = useState(false)
+  const [frage, setFrage] = useState(false)
+  const [speichert, setSpeichert] = useState(false)
+  const [fehler, setFehler] = useState('')
+
+  async function abschliessen() {
+    if (!onAbschliessen) return
+    setSpeichert(true)
+    const meldung = await onAbschliessen(stand.erledigt)
+    setSpeichert(false)
+    setFehler(meldung ?? '')
+    if (!meldung) setFrage(false)
+  }
   const ls = LEVEL_STYLES[b.level]
   const list = stand.blaetter
   const badge = STATUS_BADGE[b.status](ls.text)
@@ -364,7 +396,7 @@ function TimelineEntry({ station: b, index, isLast, stand }: { station: BerufSta
                 <span aria-hidden="true" style={{ transform: open ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>
                   ▶
                 </span>
-                {open ? 'Arbeitsblätter ausblenden' : `${list.length} Arbeitsblätter anzeigen`}
+                {open ? 'Arbeitsblätter ausblenden' : `${list.length} ${list.length === 1 ? 'Arbeitsblatt' : 'Arbeitsblätter'} anzeigen`}
               </button>
             )}
             {open && (
@@ -388,6 +420,43 @@ function TimelineEntry({ station: b, index, isLast, stand }: { station: BerufSta
                   )
                 })}
               </ul>
+            )}
+            {onAbschliessen && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                {frage ? (
+                  <>
+                    <span className="text-xs">
+                      „{b.berufsbild}“ abschließen?{naechster ? ` Danach ist „${naechster}“ aktiv.` : ' Es folgt kein weiterer Bereich.'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void abschliessen()}
+                      disabled={speichert}
+                      className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-60"
+                      style={{ backgroundColor: DONE_STRONG, color: 'white' }}
+                    >
+                      {speichert ? 'Wird gespeichert …' : 'Ja, abschließen'}
+                    </button>
+                    <button type="button" onClick={() => setFrage(false)} className="text-xs px-3 py-1.5 rounded" style={{ border: '1px solid var(--border)' }}>
+                      Abbrechen
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setFrage(true)}
+                    className="text-xs px-3 py-1.5 rounded font-medium hover:opacity-80"
+                    style={{ border: `1px solid ${DONE_STRONG}`, color: DONE_TEXT }}
+                  >
+                    ✓ Bereich abschließen
+                  </button>
+                )}
+              </div>
+            )}
+            {fehler && (
+              <div role="alert" className="mt-2 text-xs rounded px-3 py-2" style={{ backgroundColor: '#FAD9C8', color: '#7A2E00' }}>
+                {fehler}
+              </div>
             )}
           </>
         )}

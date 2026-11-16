@@ -31,6 +31,15 @@ export function stationsStand(station: BerufStation, lernstand: Lernstand | null
   if (lernstand !== undefined) {
     const feld = lernstand?.berufsfelder.find((b) => b.berufsfeld === station.berufsbild)
     const erledigt = [...(feld?.erledigt ?? [])].reverse()
+    // Worksheets done before assignments existed are only stored as a number on the station
+    if (!feld?.anzahl.gesamt && station.worksheetsDone > 0) {
+      return {
+        erledigt: station.worksheetsDone,
+        gesamt: null,
+        fortschritt: station.status === 'abgeschlossen' ? 100 : station.progress,
+        blaetter: [],
+      }
+    }
     return {
       erledigt: feld?.anzahl.erledigt ?? 0,
       gesamt: feld?.anzahl.gesamt ?? 0,
@@ -58,6 +67,22 @@ export function stationsStandText(stand: StationsStand): string {
   if (stand.gesamt === null) return `${stand.erledigt} AB erledigt`
   if (stand.gesamt === 0) return 'keine AB zugeordnet'
   return `${stand.erledigt} von ${stand.gesamt} AB erledigt`
+}
+
+/**
+ * FE-30: closes station `index` (100 %, end date today) and starts the next pending one.
+ * `erledigt` = worksheets done according to the learning progress; it is kept on the station.
+ */
+export function schliesseStationAb(p: Participant, index: number, today: string, erledigt = 0): Participant {
+  const naechste = p.berufsbilder.findIndex((b, i) => i > index && b.status === 'ausstehend')
+  const berufsbilder = p.berufsbilder.map((b, i): BerufStation => {
+    if (i === index) {
+      return { ...b, status: 'abgeschlossen', progress: 100, endDate: today, worksheetsDone: Math.max(b.worksheetsDone, erledigt) }
+    }
+    if (i === naechste) return { ...b, status: 'aktiv', startDate: b.startDate || today }
+    return b
+  })
+  return { ...p, berufsbilder, level: naechste >= 0 ? p.berufsbilder[naechste].level : p.level, lastActive: today }
 }
 
 export function activeStation(p: Participant): BerufStation | undefined {
