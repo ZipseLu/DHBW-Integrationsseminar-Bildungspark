@@ -7,6 +7,7 @@ import { seedArbeitsblaetter, waehleLernziele, FALLBACK_LERNZIELE } from '../../
 import { count } from '../../src/arbeitsblaetter/repository.js'
 import { REQUEST_T_TEXT, WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 import { api, TEST_KONTEN } from '../helpers/auth.js'
+import { erstelleToken } from '../../src/auth/token.js'
 
 /**
  * Routen der Arbeitsblatt-Verwaltung gegen eine echte MySQL.
@@ -379,6 +380,8 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const response = await api(app, 'dozent').post('/api/arbeitsblaetter').send(blatt({ erstelltVon: 'Jemand Anderes' }))
       expect(response.status).toBe(201)
       expect(response.body.arbeitsblatt.erstelltVon).toBe(TEST_KONTEN.dozent.name)
+      expect(response.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.dozent.name)
+      expect(JSON.stringify(response.body)).not.toContain('Jemand Anderes')
       const verlauf = await request(app).get(`/api/arbeitsblaetter/${response.body.arbeitsblatt.id}/verlauf`)
       expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'erstellt', autor: TEST_KONTEN.dozent.name })
     })
@@ -387,9 +390,17 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       const { id } = await speichern(app)
       const neu = { ...WORKSHEET_T_TEXT, baustein: 1, ausbildungsbaustein: 'Wareneingang', titel: 'Geändert' }
 
-      expect((await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ worksheet: neu, autor: 'Gefälscht' })).status).toBe(200)
-      expect((await api(app, 'dozent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben', autor: 'Gefälscht', notiz: 'passt' })).status).toBe(200)
-      expect((await api(app, 'admin').delete(`/api/arbeitsblaetter/${id}`).send({ autor: 'Gefälscht' })).status).toBe(200)
+      const bearbeitet = await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ worksheet: neu, autor: 'Gefälscht' })
+      expect(bearbeitet.status).toBe(200)
+      expect(bearbeitet.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.assistent.name)
+
+      const freigegeben = await api(app, 'dozent').patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben', autor: 'Gefälscht', notiz: 'passt' })
+      expect(freigegeben.status).toBe(200)
+      expect(freigegeben.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.dozent.name)
+
+      const archiviert = await api(app, 'admin').delete(`/api/arbeitsblaetter/${id}`).send({ autor: 'Gefälscht' })
+      expect(archiviert.status).toBe(200)
+      expect(archiviert.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.admin.name)
 
       const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
       expect(verlauf.status).toBe(200)
@@ -404,11 +415,37 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(JSON.stringify(verlauf.body)).not.toContain('Gefälscht')
     })
 
+    it('setzt geaendertVon auch bei einer reinen Favoritenänderung ohne neue Version', async () => {
+      const angelegt = await api(app, 'dozent').post('/api/arbeitsblaetter').send(blatt())
+      expect(angelegt.status).toBe(201)
+      const { id } = angelegt.body.arbeitsblatt
+
+      const favorit = await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ favorit: true, autor: 'Gefälscht' })
+      expect(favorit.status).toBe(200)
+      expect(favorit.body.arbeitsblatt.version).toBe(1)
+      expect(favorit.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.assistent.name)
+      const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
+      expect(verlauf.body.eintraege).toHaveLength(1)
+      expect(JSON.stringify(verlauf.body)).not.toContain('Gefälscht')
+    })
+
+    it('lässt auch bei einem Token ohne name-Claim keinen Body-Namen zu', async () => {
+      const token = erstelleToken({ ...TEST_KONTEN.dozent, name: null }).token
+      const response = await request(app)
+        .post('/api/arbeitsblaetter')
+        .set('Authorization', `Bearer ${token}`)
+        .send(blatt({ erstelltVon: 'Gefälscht' }))
+      expect(response.status).toBe(201)
+      expect(response.body.arbeitsblatt.erstelltVon).toBeNull()
+      expect(response.body.arbeitsblatt.geaendertVon).toBeNull()
+    })
+
     it('ohne Token gilt bis BE-06 weiter der Name aus dem Body', async () => {
       const { id } = await speichern(app, {}, { erstelltVon: 'C. Hager' })
       await request(app).patch(`/api/arbeitsblaetter/${id}`).send({ status: 'freigegeben', autor: 'C. Hager' })
       const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
       expect(verlauf.body.eintraege.map((v) => v.autor)).toEqual(['C. Hager', 'C. Hager'])
+      expect((await request(app).get(`/api/arbeitsblaetter/${id}`)).body.arbeitsblatt.geaendertVon).toBe('C. Hager')
     })
 
     it('Freigeben und auf Entwurf zurücksetzen nur für admin und dozent', async () => {

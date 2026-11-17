@@ -14,9 +14,10 @@
  * Ohne erreichbare MySQL antworten alle Routen mit 503 `db_unavailable`.
  * Details und Beispiele: docs/persistenz-arbeitsblaetter.md
  *
- * Bearbeiter (BE-05): Mit Anmeldung stehen in `erstelltVon` und im Verlauf (`autor`) der Name aus
- * dem Token; `autor`/`erstelltVon` im Body werden dann ignoriert. Status ändern und archivieren nur
- * admin/dozent, endgültig löschen nur admin (mit Token; ohne Token bis BE-06 offen).
+ * Bearbeiter (BE-05): Mit Anmeldung stehen in `erstelltVon`, `geaendertVon` und im Verlauf (`autor`)
+ * der Name aus dem Token; `autor`/`erstelltVon` im Body werden dann immer ignoriert. Ohne `name`-Claim
+ * bleibt der Bearbeiter `null`. Status ändern und archivieren nur admin/dozent, endgültig löschen nur
+ * admin (mit Token; ohne Token bis BE-06 offen).
  */
 import { Router } from 'express'
 import { arbeitsblattFileName, buildArbeitsblattDocx, DOCX_MIME } from '../arbeitsblatt/docx.js'

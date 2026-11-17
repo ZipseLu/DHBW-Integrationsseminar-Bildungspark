@@ -251,6 +251,7 @@ export type GespeichertesArbeitsblatt = {
   elternId: string | null
   version: number
   erstelltVon: string | null
+  geaendertVon?: string | null
   erstelltAm: string
   geaendertAm: string
 }
