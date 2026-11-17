@@ -94,8 +94,9 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
   const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
   const [katalogQuelle, setKatalogQuelle] = useState<'beispiele' | 'import'>('beispiele')
   const [sprache, setSprache] = useState<Sprache>('Leichte Sprache')
-  const [levels, setLevels] = useState<Level[]>(['A'])
-  const [formats, setFormats] = useState<Format[]>(['text'])
+  // FE-33: from "Arbeitsblatt zuweisen" the level and format of the person are preselected
+  const [levels, setLevels] = useState<Level[]>([vorauswahl?.stufe ?? 'A'])
+  const [formats, setFormats] = useState<Format[]>([vorauswahl?.format ?? 'text'])
 
   const [progress, setProgress] = useState<Progress | null>(null)
   const [results, setResults] = useState<ArbeitsblattResult[]>([])
@@ -193,6 +194,13 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
             📄 Vorlage „{vorauswahl.vorlage.name}“ übernommen: Der Text steht unter „Erwartungen an das Arbeitsblatt“
             {vorlage?.gekuerzt ? ' (gekürzt auf 2000 Zeichen – mehr nimmt die KI-Schnittstelle nicht an)' : ''}.{' '}
             {vorauswahl.baustein !== undefined ? 'Lernziel ist vorausgewählt – bitte Stufen und Formate wählen.' : 'Bitte noch das passende Lernziel wählen.'}
+          </div>
+        )}
+
+        {vorauswahl?.stufe && !vorauswahl.vorlage && (
+          <div className="text-xs px-3 py-2 rounded mb-4" style={{ backgroundColor: '#DCEAF7', color: '#1A3A5C' }} role="note">
+            Für die Zuweisung vorausgewählt: {vorauswahl.berufsfeld} · Stufe {vorauswahl.stufe}
+            {vorauswahl.format ? ` · ${formatOption(vorauswahl.format)?.label ?? vorauswahl.format}` : ''}. Bitte noch das passende Lernziel wählen.
           </div>
         )}
 
