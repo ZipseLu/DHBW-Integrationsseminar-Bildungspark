@@ -74,10 +74,15 @@ describe('Druckansicht (FE-04)', () => {
     expect(html).toContain('counter(page)')
   })
 
-  it('versetzt die rechte Spalte beim Zuordnen, damit kein Paar nebeneinander steht', () => {
+  it('zeigt Zuordnen als Karten zum Verbinden, rechte Spalte versetzt (FE-37)', () => {
     const html = arbeitsblattDruckHtml(BLATT)
-    expect(html).toContain('<td class="links">LKW</td><td>☐&nbsp;&nbsp;Hilft dir</td>')
-    expect(html).toContain('<td class="links">Anleiter</td><td>☐&nbsp;&nbsp;Bringt Ware</td>')
+    expect(html).toContain(
+      '<tr><td class="karte"><span class="marke">1</span>LKW</td><td class="punkt">●</td><td class="frei"></td><td class="punkt">●</td><td class="karte"><span class="marke">A</span>Hilft dir</td></tr>',
+    )
+    expect(html).toContain('<td class="karte"><span class="marke">2</span>Anleiter</td>')
+    expect(html).toContain('<span class="marke">B</span>Bringt Ware</td>')
+    expect(html).toContain('Oder schreib den Buchstaben dazu:')
+    expect(html).toContain('1 = ____')
   })
 
   it('hängt auf Wunsch einen Lösungsteil für die Lehrkraft an (FE-25)', () => {
@@ -95,7 +100,7 @@ describe('Druckansicht (FE-04)', () => {
     expect(html).toContain('NUR FÜR DIE LEHRKRAFT – NICHT AN TEILNEHMENDE AUSGEBEN')
     expect(html).toContain('<h4>Aufgabe 1: Ankreuzen</h4><p>Ich sage Bescheid.</p>')
     // Matching task: the correct pairs, not the shifted print order
-    expect(html).toContain('<li>LKW → Bringt Ware</li><li>Anleiter → Hilft dir</li>')
+    expect(html).toContain('<li><b>1 → B</b>&nbsp;&nbsp;LKW → Bringt Ware</li><li><b>2 → A</b>&nbsp;&nbsp;Anleiter → Hilft dir</li>')
     expect(html).toContain('<h4>Aufgabe 5: Nach-denken</h4><p class="ohne">Keine Lösung angegeben – bitte selbst prüfen.</p>')
   })
 

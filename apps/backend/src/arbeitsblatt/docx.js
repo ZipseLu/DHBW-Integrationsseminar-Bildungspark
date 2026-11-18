@@ -23,6 +23,7 @@ import {
   TableCell,
   TableRow,
   TextRun,
+  VerticalAlign,
   WidthType,
   convertInchesToTwip,
   convertMillimetersToTwip,
@@ -132,7 +133,14 @@ function checkboxLines(options) {
   return options.map((option) => para([run('☐  ', { size: 26 }), run(option)], { spacing: { after: 100 }, indent: { left: convertInchesToTwip(0.2) } }))
 }
 
-/** Zwei Spalten: links die Begriffe in Originalreihenfolge, rechts die Zuordnungen um eins versetzt (damit nichts nebeneinander steht) */
+const BUCHSTABEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+/**
+ * FE-37: matching task as cards to connect – left 1, 2, 3 …, right A, B, C …, each with a
+ * dot to draw a line between. The right column is shifted by one so no pair stands side
+ * by side. Below a line for writing the letters (for those who cannot draw lines).
+ * Same layout as zuordnenAufbau() in apps/frontend/src/lib/druck.ts.
+ */
 function matchingTable(options) {
   const pairs = options.map((option) => {
     const [left, right = ''] = option.split('|').map((s) => s.trim())
@@ -141,18 +149,47 @@ function matchingTable(options) {
   const rights = pairs.map((p) => p.right)
   const rotated = rights.length > 1 ? [...rights.slice(1), rights[0]] : rights
 
-  const cell = (text, align) =>
+  const ohne = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
+  const karteRand = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder }
+  const karte = (marke, text) =>
     new TableCell({
-      width: { size: 50, type: WidthType.PERCENTAGE },
-      borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
-      margins: { top: 80, bottom: 80, left: 100, right: 100 },
-      children: [para([run(align === 'right' ? '☐  ' : '', { size: 26 }), run(text)], { alignment: align === 'right' ? AlignmentType.LEFT : AlignmentType.RIGHT })],
+      width: { size: 36, type: WidthType.PERCENTAGE },
+      borders: karteRand,
+      shading: { type: ShadingType.CLEAR, color: 'auto', fill: COLOR_PAPER },
+      verticalAlign: VerticalAlign.CENTER,
+      margins: { top: 70, bottom: 70, left: 120, right: 120 },
+      children: [para([run(`${marke}   `, { bold: true, color: COLOR_PRIMARY }), run(text)], { alignment: AlignmentType.LEFT })],
+    })
+  const punkt = () =>
+    new TableCell({
+      width: { size: 4, type: WidthType.PERCENTAGE },
+      borders: ohne,
+      verticalAlign: VerticalAlign.CENTER,
+      children: [para(run('●', { size: 26, color: COLOR_PRIMARY }), { alignment: AlignmentType.CENTER })],
+    })
+  const frei = (size) => new TableCell({ width: { size, type: WidthType.PERCENTAGE }, borders: ohne, children: [para(run(''))] })
+  const abstand = () =>
+    new TableRow({
+      height: { value: 110, rule: HeightRule.EXACT },
+      children: [frei(36), frei(4), frei(20), frei(4), frei(36)],
     })
 
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: pairs.map((pair, index) => new TableRow({ children: [cell(pair.left, 'left'), cell(rotated[index] ?? '', 'right')] })),
+  const rows = []
+  pairs.forEach((pair, index) => {
+    if (index > 0) rows.push(abstand())
+    rows.push(
+      new TableRow({
+        cantSplit: true,
+        children: [karte(String(index + 1), pair.left), punkt(), frei(20), punkt(), karte(BUCHSTABEN[index] ?? String(index + 1), rotated[index] ?? '')],
+      }),
+    )
   })
+
+  const eintrag = pairs.map((_, i) => `${i + 1} = ____`).join('      ')
+  return [
+    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }, rows }),
+    para(run(`Oder schreib den Buchstaben dazu:   ${eintrag}`, { size: 20, color: COLOR_MUTED }), { spacing: { before: 120, after: 60 } }),
+  ]
 }
 
 function drawingBox() {
@@ -192,7 +229,7 @@ function aufgabeBlock(aufgabe) {
       blocks.push(...checkboxLines(optionen))
       break
     case 'zuordnen':
-      blocks.push(matchingTable(optionen))
+      blocks.push(...matchingTable(optionen))
       break
     case 'malen':
       blocks.push(drawingBox())

@@ -3,7 +3,7 @@ import { AUFGABEN_TYP_LABEL, PIKTOGRAMM_SYMBOL } from '@/data/aufgaben'
 import { LEVEL_STYLES, formatOption } from '@/data/constants'
 import { fetchArbeitsblatt, type Arbeitsblatt, type Aufgabe } from '@/lib/api'
 import { BRIEFKOPF_PNG } from '@/assets/briefkopf'
-import { CD, versetztePaare } from '@/lib/druck'
+import { CD, eintragZeile, zuordnenAufbau } from '@/lib/druck'
 import { fehlertext } from '@/lib/gespeicherteArbeitsblaetter'
 
 /**
@@ -50,19 +50,41 @@ function AufgabeInhalt({ aufgabe }: { aufgabe: Aufgabe }) {
           ))}
         </ul>
       )
-    case 'zuordnen':
+    case 'zuordnen': {
+      // FE-37: cards with dots to connect, plus the letters to write down
+      const { zeilen } = zuordnenAufbau(optionen)
+      const karte: CSSProperties = { width: '36%', backgroundColor: '#FFFFFF', border: '1px solid #BFBFBF', borderRadius: 4, padding: '4px 8px' }
+      const marke: CSSProperties = { fontWeight: 700, color: CD.blau, display: 'inline-block', minWidth: 14 }
+      const punkt: CSSProperties = { width: '3%', textAlign: 'center', color: CD.blau, fontSize: 14, padding: '0 3px' }
       return (
-        <table style={{ width: '100%', borderCollapse: 'collapse', margin: '2px 0 6px' }}>
-          <tbody>
-            {versetztePaare(optionen).map(([links, rechts], i) => (
-              <tr key={i}>
-                <td style={{ width: '50%', textAlign: 'right', padding: '3px 6px' }}>{links}</td>
-                <td style={{ width: '50%', padding: '3px 6px' }}>☐ {rechts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <table aria-label="Zuordnung" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px', margin: '0 0 2px' }}>
+            <tbody>
+              {zeilen.map((z) => (
+                <tr key={z.nr}>
+                  <td style={karte}>
+                    <span style={marke}>{z.nr}</span>
+                    {z.links}
+                  </td>
+                  <td style={punkt} aria-hidden="true">
+                    ●
+                  </td>
+                  <td style={{ width: '22%' }} />
+                  <td style={punkt} aria-hidden="true">
+                    ●
+                  </td>
+                  <td style={karte}>
+                    <span style={marke}>{z.buchstabe}</span>
+                    {z.rechts}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p style={{ margin: '0 0 6px', fontSize: 11, color: muted, whiteSpace: 'pre' }}>Oder schreib den Buchstaben dazu:  {eintragZeile(zeilen.length)}</p>
+        </>
       )
+    }
     case 'malen':
       return <div aria-label="Malrahmen" style={{ height: 120, border: `1.5px solid ${CD.text}`, backgroundColor: '#FFFFFF', margin: '4px 0 8px' }} />
     case 'praxis':

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { arbeitsblattFileName, buildArbeitsblattDocx, DOCX_MIME } from '../../src/arbeitsblatt/docx.js'
+import { docxText } from '../../src/uploads/text.js'
 import { WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 
 describe('DOCX-Export', () => {
@@ -20,6 +21,18 @@ describe('DOCX-Export', () => {
     }))
     const buffer = await buildArbeitsblattDocx({ ...WORKSHEET_T_TEXT, format: 'piktogramm', aufgaben, hinweisAnleiter: '' })
     expect(buffer.subarray(0, 2).toString()).toBe('PK')
+  })
+
+  it('gestaltet Zuordnen als Karten mit Zahlen, Buchstaben und Eintragzeile (FE-37)', async () => {
+    const aufgaben = [{ nr: 1, typ: 'zuordnen', anweisung: 'Verbinde.', optionen: ['Handschuhe | Hände schützen', 'Liste | Arbeit auf-schreiben', 'Hub-wagen | Schwere Sachen fahren'] }]
+    const text = docxText(await buildArbeitsblattDocx({ ...WORKSHEET_T_TEXT, aufgaben }))
+    // Left numbered in original order, right lettered and shifted by one
+    expect(text).toMatch(/1\s+Handschuhe[\s\S]*A\s+Arbeit auf-schreiben/)
+    expect(text).toMatch(/2\s+Liste[\s\S]*B\s+Schwere Sachen fahren/)
+    expect(text).toMatch(/3\s+Hub-wagen[\s\S]*C\s+Hände schützen/)
+    expect(text).toContain('●')
+    expect(text).toContain('Oder schreib den Buchstaben dazu:')
+    expect(text).toContain('3 = ____')
   })
 
   it('hat den richtigen MIME-Typ', () => {
