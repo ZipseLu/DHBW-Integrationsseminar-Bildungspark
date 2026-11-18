@@ -91,9 +91,15 @@ function renderPage(user: StaffUser = CURRENT_USER) {
   render(<ArbeitsblaetterPage user={user} onKiAnpassen={() => {}} favoriteIds={[]} onFavoriteIdsChange={() => {}} />)
 }
 
+/** FE-31: card actions live in the "⋯" menu */
+function menuePunkt(card: HTMLElement, name: string | RegExp) {
+  fireEvent.click(within(card).getByRole('button', { name: /Weitere Aktionen/ }))
+  return screen.getByRole('menuitem', { name })
+}
+
 async function oeffneBearbeiten() {
   const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
-  fireEvent.click(within(card).getByRole('button', { name: /Bearbeiten/ }))
+  fireEvent.click(menuePunkt(card, '✎ Bearbeiten'))
   const dialog = screen.getByRole('dialog')
   await within(dialog).findByLabelText('Titel')
   return dialog
@@ -208,7 +214,7 @@ describe('Freigeben und Archivieren (FE-10)', () => {
     const { patches, fetchMock } = backend()
     renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Verlauf/ }))
+    fireEvent.click(menuePunkt(card, '🕓 Verlauf'))
     const dialog = screen.getByRole('dialog')
     await within(dialog).findByText('T. Neumann')
 
