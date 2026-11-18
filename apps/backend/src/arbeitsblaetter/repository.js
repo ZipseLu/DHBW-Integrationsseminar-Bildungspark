@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { getPool, query, queryOne, withConnection } from '../db.js'
 
 const SPALTEN = `a.id, a.titel, a.berufsfeld, a.baustein, a.ausbildungsbaustein, a.lernziel, a.stufe, a.format,
-  a.sprache, a.status, a.ki_generiert, a.favorit, a.eltern_id, a.version, a.erstellt_von, a.erstellt_am, a.geaendert_am`
+  a.sprache, a.status, a.ki_generiert, a.favorit, a.eltern_id, a.version, a.erstellt_von, a.geaendert_von, a.erstellt_am, a.geaendert_am`
 
 // --- Hilfsfunktionen --------------------------------------------------------
 
@@ -49,6 +49,7 @@ export function toApi(row, inhalt) {
     elternId: row.eltern_id ?? null,
     version: Number(row.version),
     erstelltVon: row.erstellt_von ?? null,
+    geaendertVon: row.geaendert_von ?? null,
     erstelltAm: toIso(row.erstellt_am),
     geaendertAm: toIso(row.geaendert_am),
   }
@@ -214,11 +215,12 @@ export async function create(input) {
       await connection.execute(
         `INSERT INTO arbeitsblaetter
            (id, titel, berufsfeld, baustein, ausbildungsbaustein, lernziel, stufe, format, sprache, status,
-            ki_generiert, favorit, eltern_id, version, erstellt_von, erstellt_am, geaendert_am)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+            ki_generiert, favorit, eltern_id, version, erstellt_von, geaendert_von, erstellt_am, geaendert_am)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
         [
           id, w.titel, w.berufsfeld, w.baustein ?? null, w.ausbildungsbaustein ?? null, w.lernziel, w.stufe, w.format, w.sprache,
-          input.status, input.meta ? 1 : 0, input.favorit ? 1 : 0, input.elternId ?? null, input.erstelltVon ?? null, jetzt, jetzt,
+          input.status, input.meta ? 1 : 0, input.favorit ? 1 : 0, input.elternId ?? null, input.erstelltVon ?? null,
+          input.erstelltVon ?? null, jetzt, jetzt,
         ],
       )
       await insertVersion(connection, {
@@ -277,7 +279,7 @@ export async function update(id, patch) {
 
       if (!aktion) {
         // Nur Markierung: Version und Listenspalten bleiben, wie sie sind
-        await connection.execute('UPDATE arbeitsblaetter SET favorit = ?, geaendert_am = ? WHERE id = ?', [favorit ? 1 : 0, jetzt, id])
+        await connection.execute('UPDATE arbeitsblaetter SET favorit = ?, geaendert_von = ?, geaendert_am = ? WHERE id = ?', [favorit ? 1 : 0, patch.autor ?? null, jetzt, id])
       } else {
         const version = aktuell.version + 1
         const kiMeta = patch.worksheet ? (patch.meta ?? null) : null
@@ -285,11 +287,11 @@ export async function update(id, patch) {
         await connection.execute(
           `UPDATE arbeitsblaetter
               SET titel = ?, berufsfeld = ?, baustein = ?, ausbildungsbaustein = ?, lernziel = ?, stufe = ?, format = ?, sprache = ?,
-                  status = ?, ki_generiert = ?, favorit = ?, version = ?, geaendert_am = ?
+                  status = ?, ki_generiert = ?, favorit = ?, version = ?, geaendert_von = ?, geaendert_am = ?
             WHERE id = ?`,
           [
             inhalt.titel, inhalt.berufsfeld, inhalt.baustein ?? null, inhalt.ausbildungsbaustein ?? null, inhalt.lernziel, inhalt.stufe,
-            inhalt.format, inhalt.sprache, status, kiGeneriert ? 1 : 0, favorit ? 1 : 0, version, jetzt, id,
+            inhalt.format, inhalt.sprache, status, kiGeneriert ? 1 : 0, favorit ? 1 : 0, version, patch.autor ?? null, jetzt, id,
           ],
         )
         await insertVersion(connection, { arbeitsblattId: id, version, aktion, inhalt, kiMeta, autor: patch.autor, notiz: patch.notiz, zeitpunkt: jetzt })

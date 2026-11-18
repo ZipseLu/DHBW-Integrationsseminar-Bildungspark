@@ -29,6 +29,11 @@ describe('Migrationsdateien', () => {
     expect(statements.some((s) => /CREATE TABLE IF NOT EXISTS `users`/.test(s))).toBe(true)
   })
 
+  it('006 ergänzt die Spalte geaendert_von an den Arbeitsblättern', async () => {
+    const statements = splitStatements(await readFile(join(MIGRATIONS_DIR, '006_geaendert_von.sql'), 'utf8'))
+    expect(statements).toEqual(['ALTER TABLE `arbeitsblaetter` ADD COLUMN `geaendert_von` VARCHAR(120) NULL AFTER `erstellt_von`'])
+  })
+
   it('bestehen nur aus wiederholbaren Anweisungen (IF NOT EXISTS / IF EXISTS)', async () => {
     for (const name of await listMigrationFiles(MIGRATIONS_DIR)) {
       const statements = splitStatements(await readFile(join(MIGRATIONS_DIR, name), 'utf8'))

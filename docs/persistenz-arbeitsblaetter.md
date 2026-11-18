@@ -34,6 +34,7 @@ erDiagram
         char36 eltern_id FK
         int version "aktuelle Version"
         varchar erstellt_von
+        varchar geaendert_von
         datetime erstellt_am
         datetime geaendert_am
     }
@@ -59,6 +60,8 @@ Die vier Beispieltabellen vom 16.10. (`worksheets`, `level_contents`, `history_e
 `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` / `DROP TABLE IF EXISTS`. Bestehende Dateien nie ändern,
 immer eine neue Nummer. Angewendet wird automatisch beim Backend-Start oder per `npm run db:migrate`
 (Protokoll in `schema_migrations`). `docker/mysql/init/01-init.sql` legt nur noch Datenbanken und Rechte an.
+`geaendert_von` kam mit Migration `006_geaendert_von.sql` dazu; bestehende Zeilen bleiben dort `NULL`,
+bis sie erneut geändert werden.
 
 ---
 
@@ -110,6 +113,24 @@ Basis `/api/arbeitsblaetter`. Fehler wie überall: `{ error, message, details? }
 **Versionsregeln von `PATCH`:** neuer `worksheet` → Version +1 mit Aktion `bearbeitet` (oder
 `KI-angepasst`, wenn `aktion` so gesetzt ist); neuer `status` → Version +1 mit Aktion `freigegeben` /
 `archiviert` / `bearbeitet` (zurück auf Entwurf); nur `favorit` → keine neue Version.
+
+**Bearbeiter und Rollen (BE-05):** Kommt ein gültiges Token mit (`Authorization: Bearer …`, BE-01), stehen in
+`erstelltVon`, `geaendertVon` und im Verlauf (`autor`) der Name aus dem Token. `erstelltVon` bzw. `autor` im Body
+werden dann immer ignoriert – auch wenn dem Token der `name`-Claim fehlt (dann bleibt der Bearbeiter `null`) –,
+niemand kann eine Änderung unter fremdem Namen eintragen. `geaendertVon` wird bei jeder Änderung gesetzt, auch bei
+einer reinen Favoritenänderung ohne neue Version. Der Verlauf liefert je Eintrag Person (`autor`), Aktion (`aktion`)
+und Datum (`erstelltAm`).
+
+| Aktion | admin | dozent | assistent |
+| --- | --- | --- | --- |
+| Speichern, Inhalt bearbeiten, Favorit | ja | ja | ja |
+| Status ändern (`PATCH` mit `status`: freigeben, zurück auf Entwurf, archivieren) | ja | ja | `403` |
+| Archivieren (`DELETE /:id`) | ja | ja | `403` |
+| Endgültig löschen (`DELETE /:id?endgueltig=true`) | ja | `403` | `403` |
+
+**Übergang bis BE-06:** Ohne Token gilt wie bei allen Rollenprüfungen (`src/auth/rollen.js`) noch nichts davon –
+dann zählen `erstelltVon`/`autor` aus dem Body (auch für `geaendertVon`), und die Rolle wird nicht geprüft. Sobald
+BE-06 die Anmeldung zur Pflicht macht, kommt der Bearbeiter immer aus dem Token.
 `kiGeneriert` ist wahr, sobald beim Speichern `meta` mitkommt oder eine Version `KI-angepasst` (bzw. mit `meta`) angelegt wird – auch im Mock-Modus; `kiMeta.mocked` sagt, ob es eine Beispielantwort war. Gleichzeitige Änderungen am selben Blatt werden per Zeilensperre nacheinander ausgeführt.
 
 **Beispiel – Ergebnis der Generierung speichern** (Frontend: `saveArbeitsblatt()` in `lib/api.ts`):
@@ -145,10 +166,10 @@ Funktionen in `apps/frontend/src/lib/api.ts`: `fetchArbeitsblaetter(filter)`, `f
 
 ## 5. Tests und Dateien
 
-- `tests/integration/arbeitsblaetter-routes.test.js` – 28 Fälle gegen echte MySQL (bricht ab, wenn die verbundene Datenbank nicht auf `_test` endet) (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft.
-- `tests/unit/arbeitsblaetter-schema.test.js`, `arbeitsblaetter-repository.test.js`, `migrate.test.js` – ohne Datenbank.
-- Code: `src/routes/arbeitsblaetter.js` (HTTP), `src/arbeitsblaetter/schema.js` (zod), `src/arbeitsblaetter/repository.js` (SQL), `src/arbeitsblaetter/seed.js`, `src/db/migrate.js`, `db/migrations/001_arbeitsblaetter.sql`.
+- `tests/integration/arbeitsblaetter-routes.test.js` – Fälle gegen echte MySQL (bricht ab, wenn die verbundene Datenbank nicht auf `_test` endet) (CI-Job `backend-integration`, lokal mit `DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=bildungspark_test DB_USER=bildungspark DB_PASSWORD=bildungspark-dev npm run test:run`); ohne `DB_HOST` übersprungen, dafür wird das 503-Verhalten geprüft. Block „Bearbeiter aus der Anmeldung (BE-05)": Name aus dem Token, `geaendertVon` bei Speichern/Ändern/Freigeben/Archivieren/Favorit, kein Body-Name auch ohne `name`-Claim, Verlauf, Rollen, Übergang ohne Token.
+- `tests/unit/bearbeiter.test.js`, `arbeitsblaetter-schema.test.js`, `arbeitsblaetter-repository.test.js`, `migrate.test.js` – ohne Datenbank; letzteres prüft auch die neue Migration `006_geaendert_von.sql`.
+- Code: `src/routes/arbeitsblaetter.js` (HTTP), `src/arbeitsblaetter/schema.js` (zod), `src/arbeitsblaetter/repository.js` (SQL), `src/auth/bearbeiter.js`, `src/arbeitsblaetter/seed.js`, `src/db/migrate.js`, `db/migrations/001_arbeitsblaetter.sql`, `db/migrations/006_geaendert_von.sql`.
 
-**Offen:** Anmeldung (`erstelltVon` ist bis dahin ein freier Name), Upload von Originaldokumenten
+**Offen:** Pflicht-Anmeldung (BE-06; bis dahin ist `erstelltVon` ohne Token ein freier Name), Upload von Originaldokumenten
 (`stored_documents` kommt mit dem Upload-Ticket als Migration 002 zurück), Volltextsuche statt `LIKE`,
 Teilnehmer-Zuordnung.

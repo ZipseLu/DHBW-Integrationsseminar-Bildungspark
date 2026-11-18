@@ -13,12 +13,19 @@
  *
  * Ohne erreichbare MySQL antworten alle Routen mit 503 `db_unavailable`.
  * Details und Beispiele: docs/persistenz-arbeitsblaetter.md
+ *
+ * Bearbeiter (BE-05): Mit Anmeldung stehen in `erstelltVon`, `geaendertVon` und im Verlauf (`autor`)
+ * der Name aus dem Token; `autor`/`erstelltVon` im Body werden dann immer ignoriert. Ohne `name`-Claim
+ * bleibt der Bearbeiter `null`. Status ändern und archivieren nur admin/dozent, endgültig löschen nur
+ * admin (mit Token; ohne Token bis BE-06 offen).
  */
 import { Router } from 'express'
 import { arbeitsblattFileName, buildArbeitsblattDocx, DOCX_MIME } from '../arbeitsblatt/docx.js'
 import { formatZodError, zodIssues } from '../arbeitsblatt/schema.js'
 import * as repo from '../arbeitsblaetter/repository.js'
 import { ArchivSchema, CreateSchema, ListQuerySchema, PatchSchema, isUuid } from '../arbeitsblaetter/schema.js'
+import { bearbeiter } from '../auth/bearbeiter.js'
+import { erfordereRolle } from '../auth/rollen.js'
 
 const DB_FEHLER = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'PROTOCOL_CONNECTION_LOST', 'ER_ACCESS_DENIED_ERROR', 'ER_BAD_DB_ERROR', 'ER_NO_SUCH_TABLE'])
 
@@ -79,7 +86,8 @@ export function createArbeitsblaetterRouter() {
       if (parsed.data.elternId && !(await repo.findById(parsed.data.elternId))) {
         return res.status(400).json({ error: 'validation_error', message: `elternId ${parsed.data.elternId} verweist auf kein vorhandenes Arbeitsblatt` })
       }
-      const arbeitsblatt = await repo.create(parsed.data)
+      // BE-05: mit Anmeldung kommt der Bearbeiter aus dem Token, nicht aus dem Body
+      const arbeitsblatt = await repo.create({ ...parsed.data, erstelltVon: bearbeiter(req, parsed.data.erstelltVon) })
       res.status(201).location(`/api/arbeitsblaetter/${arbeitsblatt.id}`).json({ arbeitsblatt })
     }),
   )
@@ -96,12 +104,21 @@ export function createArbeitsblaetterRouter() {
     }),
   )
 
+  // BE-05: Freigeben, auf Entwurf zurücksetzen, archivieren und löschen nur für admin und dozent.
+  // Wie alle Rollenprüfungen greift das, sobald ein Token mitkommt (src/auth/rollen.js);
+  // ohne Token gilt bis BE-06 die Übergangsregel.
+  const nurVerantwortliche = erfordereRolle('admin', 'dozent')
+  const nurAdmin = erfordereRolle('admin')
+  const istEndgueltig = (req) => req.query.endgueltig === 'true' || req.query.endgueltig === '1'
+
   router.patch(
     '/:id',
+    // Statuswechsel nur für admin/dozent – Inhalt bearbeiten und Favorit für alle Rollen
+    (req, res, next) => (req.body?.status !== undefined ? nurVerantwortliche(req, res, next) : next()),
     wrap(async (req, res) => {
       const parsed = PatchSchema.safeParse(req.body ?? {})
       if (!parsed.success) return validationError(res, parsed.error, 'Die Änderung ist ungültig:')
-      const arbeitsblatt = await repo.update(req.params.id, parsed.data)
+      const arbeitsblatt = await repo.update(req.params.id, { ...parsed.data, autor: bearbeiter(req, parsed.data.autor) })
       if (!arbeitsblatt) return notFound(res, req.params.id)
       res.json({ arbeitsblatt })
     }),
@@ -109,15 +126,16 @@ export function createArbeitsblaetterRouter() {
 
   router.delete(
     '/:id',
+    (req, res, next) => (istEndgueltig(req) ? nurAdmin : nurVerantwortliche)(req, res, next),
     wrap(async (req, res) => {
-      const endgueltig = req.query.endgueltig === 'true' || req.query.endgueltig === '1'
+      const endgueltig = istEndgueltig(req)
       if (endgueltig) {
         if (!(await repo.remove(req.params.id))) return notFound(res, req.params.id)
         return res.status(204).end()
       }
       const parsed = ArchivSchema.safeParse(req.body ?? {})
       if (!parsed.success) return validationError(res, parsed.error, 'Die Archivierung ist ungültig:')
-      const arbeitsblatt = await repo.update(req.params.id, { status: 'archiviert', ...parsed.data })
+      const arbeitsblatt = await repo.update(req.params.id, { status: 'archiviert', ...parsed.data, autor: bearbeiter(req, parsed.data.autor) })
       if (!arbeitsblatt) return notFound(res, req.params.id)
       res.json({ arbeitsblatt })
     }),

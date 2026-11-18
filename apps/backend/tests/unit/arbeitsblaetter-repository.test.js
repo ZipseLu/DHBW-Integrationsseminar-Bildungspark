@@ -24,15 +24,19 @@ describe('toApi', () => {
   const row = {
     id: 'id-1', titel: 'T', berufsfeld: 'B', baustein: 2, ausbildungsbaustein: 'AB', lernziel: 'L', stufe: 'T', format: 'text',
     sprache: 'Leichte Sprache', status: 'entwurf', ki_generiert: 1, favorit: 0, eltern_id: null, version: '3', erstellt_von: null,
-    erstellt_am: '2026-10-28 09:00:00.000', geaendert_am: '2026-10-28 10:00:00.000',
+    geaendert_von: 'T. Neumann', erstellt_am: '2026-10-28 09:00:00.000', geaendert_am: '2026-10-28 10:00:00.000',
   }
 
   it('wandelt Spalten in camelCase, Booleans und ISO-Zeiten', () => {
     expect(toApi(row)).toEqual({
       id: 'id-1', titel: 'T', berufsfeld: 'B', baustein: 2, ausbildungsbaustein: 'AB', lernziel: 'L', stufe: 'T', format: 'text',
       sprache: 'Leichte Sprache', status: 'entwurf', kiGeneriert: true, favorit: false, elternId: null, version: 3, erstelltVon: null,
-      erstelltAm: '2026-10-28T09:00:00.000Z', geaendertAm: '2026-10-28T10:00:00.000Z',
+      geaendertVon: 'T. Neumann', erstelltAm: '2026-10-28T09:00:00.000Z', geaendertAm: '2026-10-28T10:00:00.000Z',
     })
+  })
+
+  it('liefert geaendertVon auch ohne gesetzte Spalte als null', () => {
+    expect(toApi({ ...row, geaendert_von: null }).geaendertVon).toBeNull()
   })
 
   it('haengt den Inhalt nur an, wenn er uebergeben wird – auch als JSON-String', () => {
