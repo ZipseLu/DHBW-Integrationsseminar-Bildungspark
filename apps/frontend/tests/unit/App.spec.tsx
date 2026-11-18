@@ -128,13 +128,54 @@ describe('Arbeitsblätter', () => {
     await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
     expect(within(card).queryByRole('button', { name: /Aufbau/ })).not.toBeInTheDocument()
-    expect(within(card).getByRole('button', { name: /Vorschau/ })).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Begleitpapiere prüfen öffnen' })).toBeInTheDocument()
+  })
+
+  it('zeigt die Filter als Auswahllisten und setzt sie zurück (FE-31)', async () => {
+    await renderArbeitsblaetter()
+    const alle = screen.getAllByRole('article').length
+    expect(screen.queryByRole('group', { name: 'Niveau' })).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('NIVEAU'), { target: { value: 'T' } })
+    expect(screen.getAllByRole('article').length).toBeLessThan(alle)
+    fireEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen (1)' }))
+    expect(screen.getByLabelText('NIVEAU')).toHaveValue('Alle')
+    expect(screen.getAllByRole('article')).toHaveLength(alle)
+  })
+
+  it('hat je Karte nur „Öffnen“ und ein Menü, das per Tastatur bedienbar ist (FE-31)', async () => {
+    await renderArbeitsblaetter()
+    const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
+    expect(within(card).getAllByRole('button').map((b) => b.textContent)).toEqual(['☆', 'Öffnen', '⋯'])
+
+    const knopf = within(card).getByRole('button', { name: 'Weitere Aktionen für Begleitpapiere prüfen' })
+    fireEvent.keyDown(knopf, { key: 'ArrowDown' })
+    const menue = screen.getByRole('menu', { name: 'Weitere Aktionen für Begleitpapiere prüfen' })
+    const punkte = within(menue).getAllByRole('menuitem')
+    expect(punkte.map((p) => p.textContent)).toEqual(['🕓 Verlauf', '📄 Als Word (.docx)', '✦ Mit KI anpassen'])
+    expect(punkte[0]).toHaveFocus()
+    fireEvent.keyDown(menue, { key: 'ArrowDown' })
+    expect(punkte[1]).toHaveFocus()
+    fireEvent.keyDown(menue, { key: 'ArrowUp' })
+    fireEvent.keyDown(menue, { key: 'ArrowUp' })
+    expect(punkte[2]).toHaveFocus()
+    fireEvent.keyDown(menue, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(knopf).toHaveFocus()
+    expect(knopf).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('öffnet den Upload erst über „↑ Hochladen“ (FE-31)', async () => {
+    await renderArbeitsblaetter()
+    expect(screen.queryByText('Datei auswählen')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '↑ Hochladen' }))
+    expect(screen.getByRole('dialog', { name: 'Vorhandenes Arbeitsblatt hochladen & anpassen' })).toBeInTheDocument()
   })
 
   it('oeffnet Vorschau und Verlauf im Seitenpanel', async () => {
     await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Begleitpapiere prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Verlauf/ }))
+    fireEvent.click(menuePunkt(card, '🕓 Verlauf'))
 
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText('3 Versionen · Neueste zuerst')).toBeInTheDocument()
@@ -159,7 +200,7 @@ describe('Arbeitsblätter', () => {
   it('öffnet bei „Anpassen“ die KI-Erstellung mit vorausgewähltem Lernziel', async () => {
     await renderArbeitsblaetter()
     const card = screen.getByRole('article', { name: 'Güter entladen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Anpassen/ }))
+    fireEvent.click(menuePunkt(card, '✦ Mit KI anpassen'))
 
     expect(await screen.findByRole('heading', { name: 'KI-Erstellung', level: 1 })).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -211,3 +252,9 @@ describe('KI-Erstellung', () => {
     expect(await screen.findByText('1 Ergebnisse für „Hygiene"')).toBeInTheDocument()
   })
 })
+
+/** FE-31: further card actions sit in the "⋯" menu */
+function menuePunkt(card: HTMLElement, name: string | RegExp) {
+  fireEvent.click(within(card).getByRole('button', { name: /Weitere Aktionen/ }))
+  return screen.getByRole('menuitem', { name })
+}

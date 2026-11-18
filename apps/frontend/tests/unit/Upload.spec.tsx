@@ -12,6 +12,12 @@ function renderArbeitsblaetter() {
   fireEvent.click(within(nav).getByRole('button', { name: /Arbeitsblätter/ }))
 }
 
+/** FE-31: the upload opens in a dialog */
+function oeffneUpload() {
+  fireEvent.click(screen.getByRole('button', { name: '↑ Hochladen' }))
+  return screen.getByRole('dialog', { name: 'Vorhandenes Arbeitsblatt hochladen & anpassen' })
+}
+
 /**
  * FE-05: upload an existing worksheet, store it in the backend (/api/uploads)
  * and hand it to the KI-Erstellung. fetch is a small in-memory backend that
@@ -147,6 +153,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('lädt eine Word-Datei hoch und zeigt sie in der Liste', async () => {
     const { anfragen } = uploadBackend()
     renderArbeitsblaetter()
+    oeffneUpload()
 
     fireEvent.change(screen.getByLabelText('BERUFSFELD (optional)'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
     waehleDatei(docx())
@@ -167,6 +174,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('lehnt nicht erlaubte Dateien ab, ohne etwas zu senden', () => {
     const { anfragen } = uploadBackend()
     renderArbeitsblaetter()
+    oeffneUpload()
     waehleDatei(new File(['MZ'], 'virus.exe'))
     expect(screen.getByText(/Dateityp „.exe“ wird nicht unterstützt/)).toHaveAttribute('role', 'alert')
     expect(anfragen.some((a) => a.method === 'POST')).toBe(false)
@@ -175,6 +183,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('meldet, wenn das Backend nicht erreichbar ist', async () => {
     uploadBackend({ fehler: 503 })
     renderArbeitsblaetter()
+    oeffneUpload()
     waehleDatei(docx())
     expect(await screen.findByText('Der Upload ist gerade nicht möglich: Die Datenbank ist nicht verfügbar.')).toHaveAttribute('role', 'alert')
   })
@@ -182,6 +191,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('ergänzt bei einem PDF den Text und übergibt ihn an die KI-Erstellung', async () => {
     const { anfragen } = uploadBackend()
     renderArbeitsblaetter()
+    oeffneUpload()
     waehleDatei(new File(['%PDF'], 'Lieferschein.pdf', { type: 'application/pdf' }))
 
     expect(await screen.findByText(/wird kein Text gelesen/)).toBeInTheDocument()
@@ -207,6 +217,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
   it('speichert eingefügten Text', async () => {
     const { anfragen } = uploadBackend()
     renderArbeitsblaetter()
+    oeffneUpload()
     fireEvent.click(screen.getByRole('tab', { name: '📋 Text einfügen' }))
     fireEvent.change(screen.getByLabelText(/^THEMA/), { target: { value: 'Hygiene' } })
     fireEvent.change(screen.getByLabelText('TEXT DES ARBEITSBLATTS'), { target: { value: 'Wasche die Hände.' } })

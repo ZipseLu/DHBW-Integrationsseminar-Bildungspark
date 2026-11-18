@@ -15,6 +15,8 @@ type Props = {
   onUploaded: (upload: UploadMitText) => void
   /** Opens the KI-Erstellung with the uploaded text as template */
   onKiAnpassen: (vorauswahl: KiVorauswahl) => void
+  /** FE-31: shown inside the upload dialog – the dialog already has the title and frame */
+  imDialog?: boolean
 }
 
 type Phase = { art: 'bereit' } | { art: 'laeuft'; name: string } | { art: 'fertig'; antwort: UploadAntwort }
@@ -47,7 +49,7 @@ export function pruefeDatei(datei: File): string | null {
  * FE-05: upload an existing worksheet (or paste its text), store it in the backend
  * (POST /api/uploads) and hand it to the KI-Erstellung for adapting it to the levels.
  */
-export function UploadSection({ savedBy, onUploaded, onKiAnpassen }: Props) {
+export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = false }: Props) {
   const [modus, setModus] = useState<'datei' | 'text'>('datei')
   const [dragging, setDragging] = useState(false)
   const [berufsfeld, setBerufsfeld] = useState('')
@@ -111,15 +113,21 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen }: Props) {
   }
 
   return (
-    <section className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)' }} aria-labelledby="upload-titel">
-      <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span style={{ color: 'var(--accent-text)' }} aria-hidden="true">
-          ↑
-        </span>
-        <h2 id="upload-titel" className="font-display text-base font-semibold">
-          Vorhandenes Arbeitsblatt hochladen & anpassen
-        </h2>
-      </div>
+    <section
+      className={imDialog ? 'overflow-y-auto' : 'rounded-lg overflow-hidden'}
+      style={imDialog ? undefined : { border: '1px solid var(--border)', backgroundColor: 'var(--card)' }}
+      aria-labelledby={imDialog ? undefined : 'upload-titel'}
+    >
+      {!imDialog && (
+        <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
+          <span style={{ color: 'var(--accent-text)' }} aria-hidden="true">
+            ↑
+          </span>
+          <h2 id="upload-titel" className="font-display text-base font-semibold">
+            Vorhandenes Arbeitsblatt hochladen & anpassen
+          </h2>
+        </div>
+      )}
 
       <div className="p-5 flex flex-col gap-4">
         {phase.art !== 'fertig' && (
