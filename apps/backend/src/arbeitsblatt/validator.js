@@ -14,6 +14,9 @@
  *   - Verbotsliste: verniedlichende oder diskriminierende Begriffe
  *   - Answer options: reihenfolge/ankreuzen/zuordnen need at least 2 options,
  *     zuordnen pairs need a "|" (QS-04: the model sometimes drops them)
+ *   - BE-14: Leichte Sprache only hyphenates compound words – a hyphen in front
+ *     of an inflection or suffix syllable ("Heb-en", "ge-fähr-lich", "im-mer")
+ *     is reported
  */
 import { AUFGABEN_ANZAHL } from './schema.js'
 
@@ -66,6 +69,53 @@ export function fehlendeOptionen(worksheet) {
     }
   }
   return hinweise
+}
+
+/**
+ * BE-12: hint if the worksheet has fewer tasks than its level requires.
+ * Also used by generate.js to ask the model once more (too many tasks are only
+ * reported by validateWorksheet, the sheet is still usable).
+ *
+ * @param {object} worksheet  Arbeitsblatt (WorksheetSchema)
+ * @returns {string[]}
+ */
+export function zuWenigeAufgaben(worksheet) {
+  const range = AUFGABEN_ANZAHL[worksheet.stufe]
+  if (!range) return []
+  const anzahl = (worksheet.aufgaben ?? []).length
+  const [min, max] = range
+  return anzahl < min ? [`Aufgabenanzahl: ${anzahl} Aufgaben, für Stufe ${worksheet.stufe} sind ${min} bis ${max} vorgesehen.`] : []
+}
+
+/**
+ * BE-14: endings that never stand alone after a hyphen in Leichte Sprache.
+ * Found in QS-04: "Heb-en", "ge-fähr-lich", "im-mer", "da-bei", "Manch-mal".
+ * Real compound parts ("Klebe-band", "Arbeits-platz", "ver-packen") are not in
+ * the list, so the Bildungspark style with a lower-case second part stays valid.
+ */
+export const ENDSILBEN = [
+  'e', 'el', 'em', 'en', 'end', 'er', 'ern', 'es', 'n', 'st', 't', 'te', 'ten', 'tet',
+  'bar', 'bei', 'chen', 'haft', 'heit', 'ig', 'in', 'isch', 'keit', 'le', 'len', 'lich', 'ling',
+  'mal', 'mer', 'nis', 'sam', 'schaft', 'ung', 'ungen',
+]
+
+const TRENNUNG_RE = /[\p{L}]+(?:-[\p{L}]+)+/gu
+const ENDSILBEN_SET = new Set(ENDSILBEN)
+
+/**
+ * Hyphenated words whose second or later part is only an ending.
+ * Only lower-case parts count: "End-Kontrolle" or "LKW-Fahrer" are fine.
+ *
+ * @param {string} text
+ * @returns {string[]} the wrongly hyphenated words, e.g. ["Heb-en"]
+ */
+export function falscheTrennungen(text) {
+  const treffer = []
+  for (const wort of allMatches(TRENNUNG_RE, text)) {
+    const teile = wort.split('-')
+    if (teile.slice(1).some((teil) => ENDSILBEN_SET.has(teil))) treffer.push(wort)
+  }
+  return [...new Set(treffer)]
 }
 
 const wordBoundary = (words) =>
@@ -123,6 +173,7 @@ export function validateWorksheet(worksheet) {
       hinweise.push(`Aufgabenanzahl: ${aufgaben.length} Aufgaben, für Stufe ${stufe} sind ${min} bis ${max} vorgesehen.`)
     }
   }
+  const istLeichteSprache = worksheet.sprache === 'Leichte Sprache'
 
   // Texte, die Teilnehmende lesen (Hinweis fuer den Anleiter zaehlt nicht)
   // Jede Option zaehlt als eigener Text; Zuordnen-Paare "links | rechts" werden getrennt gemessen
@@ -175,7 +226,17 @@ export function validateWorksheet(worksheet) {
   // 5. Answer options (an empty "Kreuze an." task cannot be solved)
   hinweise.push(...fehlendeOptionen(worksheet))
 
-  // 6. Verbotsliste – alle Texte inklusive Titel und Anleiter-Hinweis
+  // 6. Hyphenation in Leichte Sprache (title included, it is printed in large letters)
+  if (istLeichteSprache) {
+    for (const { ort, text } of [{ ort: 'Titel', text: worksheet.titel ?? '' }, ...lesetexte]) {
+      const falsch = falscheTrennungen(text)
+      if (falsch.length) {
+        hinweise.push(`${ort}: Trennstrich mitten im Wort: ${falsch.map((w) => `„${w}“`).join(', ')} – in Leichter Sprache nur zusammengesetzte Wörter trennen.`)
+      }
+    }
+  }
+
+  // 7. Verbotsliste – alle Texte inklusive Titel und Anleiter-Hinweis
   const alleTexte = [
     { ort: 'Titel', text: worksheet.titel ?? '' },
     ...lesetexte,
