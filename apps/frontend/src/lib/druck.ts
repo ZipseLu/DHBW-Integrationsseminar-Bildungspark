@@ -59,11 +59,43 @@ export function versetztePaare(optionen: readonly string[]): [string, string][] 
   return paare.map((p, i) => [p.links, versetzt[i] ?? ''])
 }
 
+/** One row of a matching task: numbered term on the left, lettered partner on the right */
+export type ZuordnenZeile = { nr: number; links: string; buchstabe: string; rechts: string }
+
+const BUCHSTABEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+/**
+ * FE-37: layout of a matching task – left 1, 2, 3 …, right A, B, C … (shifted, see
+ * versetztePaare) – plus the solution as "1 → C". The same layout is used for the
+ * preview, the print view and the Word file (backend).
+ */
+export function zuordnenAufbau(optionen: readonly string[]): { zeilen: ZuordnenZeile[]; loesung: ZuordnenZeile[] } {
+  const zeilen = versetztePaare(optionen).map(([links, rechts], i) => ({ nr: i + 1, links, buchstabe: BUCHSTABEN[i] ?? String(i + 1), rechts }))
+  const vergeben = new Set<number>()
+  const loesung = optionen.map((option, i) => {
+    const [links, rechts = ''] = option.split('|').map((s) => s.trim())
+    const ziel = zeilen.findIndex((z, j) => !vergeben.has(j) && z.rechts === rechts)
+    if (ziel >= 0) vergeben.add(ziel)
+    return { nr: i + 1, links, buchstabe: ziel >= 0 ? zeilen[ziel].buchstabe : '?', rechts }
+  })
+  return { zeilen, loesung }
+}
+
+/** "Oder schreib den Buchstaben dazu: 1 = ___  2 = ___" for those who cannot draw lines */
+export function eintragZeile(anzahl: number): string {
+  return Array.from({ length: anzahl }, (_, i) => `${i + 1} = ____`).join('     ')
+}
+
 function zuordnenTabelle(optionen: string[]): string {
-  const zeilen = versetztePaare(optionen)
-    .map(([links, rechts]) => `<tr><td class="links">${escape(links)}</td><td>☐&nbsp;&nbsp;${escape(rechts)}</td></tr>`)
+  const { zeilen } = zuordnenAufbau(optionen)
+  const html = zeilen
+    .map(
+      (z) =>
+        `<tr><td class="karte"><span class="marke">${z.nr}</span>${escape(z.links)}</td><td class="punkt">●</td><td class="frei"></td>` +
+        `<td class="punkt">●</td><td class="karte"><span class="marke">${z.buchstabe}</span>${escape(z.rechts)}</td></tr>`,
+    )
     .join('')
-  return `<table class="zuordnen">${zeilen}</table>`
+  return `<table class="zuordnen">${html}</table><p class="eintragen">Oder schreib den Buchstaben dazu:&nbsp;&nbsp; ${escape(eintragZeile(zeilen.length)).replace(/ {5}/g, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;')}</p>`
 }
 
 function aufgabeHtml(aufgabe: Aufgabe): string {
@@ -104,10 +136,9 @@ function loesungHtml(aufgabe: Aufgabe): string {
   if (aufgabe.loesung?.trim()) teile.push(absaetze(aufgabe.loesung))
   // The worksheet shows the right column shifted; the original options are the correct pairs
   if (aufgabe.typ === 'zuordnen' && aufgabe.optionen?.length) {
-    const paare = aufgabe.optionen.map((option) => {
-      const [links, rechts = ''] = option.split('|').map((s) => s.trim())
-      return `<li>${escape(links)} → ${escape(rechts)}</li>`
-    })
+    const paare = zuordnenAufbau(aufgabe.optionen).loesung.map(
+      (z) => `<li><b>${z.nr} → ${z.buchstabe}</b>&nbsp;&nbsp;${escape(z.links)} → ${escape(z.rechts)}</li>`,
+    )
     teile.push(`<ul class="paare">${paare.join('')}</ul>`)
   }
   if (teile.length === 0) teile.push('<p class="ohne">Keine Lösung angegeben – bitte selbst prüfen.</p>')
@@ -167,9 +198,12 @@ export function arbeitsblattDruckHtml(w: Arbeitsblatt, datum = new Date(), optio
   .aufgabe { break-inside: avoid; background: ${CD.aufgabe}; padding: 6pt 8pt 4pt; margin: 12pt 0; }
   h3 { font-size: 11pt; font-weight: 700; margin: 0 0 6pt; break-after: avoid; }
   .option { margin: 0 0 5pt 12pt; }
-  table.zuordnen { width: 100%; border-collapse: collapse; margin: 2pt 0 6pt; }
-  table.zuordnen td { width: 50%; padding: 4pt 6pt; }
-  table.zuordnen td.links { text-align: right; }
+  table.zuordnen { width: 100%; border-collapse: separate; border-spacing: 0 6pt; margin: 2pt 0 2pt; }
+  table.zuordnen td.karte { width: 36%; background: #FFFFFF; border: 1px solid #BFBFBF; border-radius: 4pt; padding: 5pt 8pt; }
+  table.zuordnen td.punkt { width: 3%; text-align: center; color: ${CD.blau}; font-size: 13pt; padding: 0 3pt; }
+  table.zuordnen td.frei { width: 22%; }
+  table.zuordnen .marke { display: inline-block; min-width: 14pt; font-weight: 700; color: ${CD.blau}; }
+  .eintragen { margin: 2pt 0 4pt; font-size: 10.5pt; color: ${COLOR_MUTED}; }
   .malrahmen { height: 55mm; border: 1.5px solid ${CD.text}; background: #FFFFFF; margin: 4pt 0 8pt; }
   .linie { border-bottom: 1px solid ${COLOR_BORDER}; height: 22pt; }
   .woerterbuch { break-inside: avoid; background: ${CD.woerterbuch}; padding: 6pt 8pt 4pt; margin: 14pt 0; }

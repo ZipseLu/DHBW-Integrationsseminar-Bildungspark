@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_USER } from '@/data/users'
 import { WORKSHEETS } from '@/data/worksheets'
 import type { Arbeitsblatt, GespeichertesArbeitsblatt } from '@/lib/api'
-import { versetztePaare } from '@/lib/druck'
+import { versetztePaare, zuordnenAufbau } from '@/lib/druck'
 import { worksheetAusGespeichertem } from '@/lib/gespeicherteArbeitsblaetter'
 import { WorksheetDetailPanel } from '@/pages/arbeitsblaetter/WorksheetDetailPanel'
 import type { Worksheet } from '@/types'
@@ -79,8 +79,12 @@ describe('Vorschau gespeicherter Arbeitsblätter (FE-22)', () => {
     expect(within(seite).getByText('Achtung: Sicherheits-messer benutzen.')).toBeInTheDocument()
     expect(within(seite).getByText(/Aufgabe 1: Ankreuzen/)).toBeInTheDocument()
     expect(within(seite).getByText('☐ Der Name')).toBeInTheDocument()
-    // Matching: right column shifted by one
-    expect(within(seite).getByText('☐ Lagerplatz')).toBeInTheDocument()
+    // Matching (FE-37): cards with numbers and letters, right column shifted by one
+    const zuordnung = within(seite).getByRole('table', { name: 'Zuordnung' })
+    const zeilen = within(zuordnung).getAllByRole('row')
+    expect(zeilen[0]).toHaveTextContent('1Etikett●●ALagerplatz')
+    expect(zeilen[1]).toHaveTextContent('2Regal●●BAufkleber')
+    expect(within(seite).getByText(/Oder schreib den Buchstaben dazu:/)).toHaveTextContent('1 = ____')
     expect(within(seite).getByLabelText('Malrahmen')).toBeInTheDocument()
     expect(within(seite).getByText(/\( \) Ja/)).toBeInTheDocument()
     expect(within(seite).getByLabelText('Schreiblinien')).toBeInTheDocument()
@@ -142,6 +146,22 @@ describe('Vorschau gespeicherter Arbeitsblätter (FE-22)', () => {
     await screen.findByRole('article', { name: 'Vorschau Güter richtig aus-zeichnen' })
     expect(screen.getByRole('button', { name: 'PDF' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'PDF mit Lösungen' })).toBeInTheDocument()
+  })
+})
+
+describe('zuordnenAufbau (FE-37)', () => {
+  it('nummeriert links, vergibt rechts Buchstaben und kennt die Lösung', () => {
+    const { zeilen, loesung } = zuordnenAufbau(['Handschuhe | Hände schützen', 'Liste | Arbeit auf-schreiben', 'Hub-wagen | Schwere Sachen fahren'])
+    expect(zeilen.map((z) => `${z.nr} ${z.links} | ${z.buchstabe} ${z.rechts}`)).toEqual([
+      '1 Handschuhe | A Arbeit auf-schreiben',
+      '2 Liste | B Schwere Sachen fahren',
+      '3 Hub-wagen | C Hände schützen',
+    ])
+    expect(loesung.map((z) => `${z.nr}${z.buchstabe}`)).toEqual(['1C', '2A', '3B'])
+  })
+
+  it('kommt mit gleichen Zuordnungen zurecht', () => {
+    expect(zuordnenAufbau(['A | x', 'B | x']).loesung.map((z) => z.buchstabe)).toEqual(['A', 'B'])
   })
 })
 
