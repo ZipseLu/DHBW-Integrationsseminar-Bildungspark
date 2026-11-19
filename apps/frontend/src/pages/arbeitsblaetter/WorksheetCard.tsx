@@ -1,4 +1,5 @@
 import { FORMAT_BADGE_COLORS, LEVEL_STYLES, formatOption, niveausOf } from '@/data/constants'
+import { AktionsMenue } from '@/components/AktionsMenue'
 import type { Worksheet } from '@/types'
 
 type Props = {
@@ -14,8 +15,6 @@ type Props = {
   onPdf?: () => void
   onAdapt: () => void
 }
-
-const secondaryButton = { backgroundColor: 'var(--muted)', color: 'var(--foreground)', border: '1px solid var(--border)' }
 
 export function WorksheetCard({
   worksheet: w,
@@ -34,7 +33,7 @@ export function WorksheetCard({
 
   return (
     <article
-      className="rounded-lg overflow-hidden"
+      className="rounded-lg"
       aria-label={w.title}
       style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
     >
@@ -92,7 +91,7 @@ export function WorksheetCard({
           </div>
         </div>
 
-        <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+        <div className="flex gap-1.5 flex-shrink-0 items-center">
           <button
             type="button"
             onClick={onToggleFavorite}
@@ -108,45 +107,26 @@ export function WorksheetCard({
           >
             {isFavorite ? '★' : '☆'}
           </button>
-          <button type="button" onClick={onPreview} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
-            👁 Vorschau
-          </button>
-          <button type="button" onClick={onHistory} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
-            🕓 Verlauf
-          </button>
-          {w.backend && onEdit && (
-            <button type="button" onClick={onEdit} className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80" style={secondaryButton}>
-              ✎ Bearbeiten
-            </button>
-          )}
+          {/* FE-31: one main action, everything else in the "⋯" menu (formerly 8 buttons per row) */}
           <button
             type="button"
-            onClick={onDownload}
-            className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80"
-            style={secondaryButton}
-            title="Als Word-Datei herunterladen"
+            onClick={onPreview}
+            aria-label={`${w.title} öffnen`}
+            className="text-xs px-3 py-1.5 rounded font-medium hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
-            📄 .docx
+            Öffnen
           </button>
-          {w.backend && onPdf && (
-            <button
-              type="button"
-              onClick={onPdf}
-              className="text-xs px-2.5 py-1.5 rounded font-medium transition-all hover:opacity-80"
-              style={secondaryButton}
-              title="Druckansicht öffnen – dort „Als PDF speichern“ wählen"
-            >
-              🖨 PDF
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onAdapt}
-            className="text-xs px-2.5 py-1.5 rounded font-medium hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
-          >
-            ✦ Anpassen
-          </button>
+          <AktionsMenue
+            label={`Weitere Aktionen für ${w.title}`}
+            punkte={[
+              { label: '🕓 Verlauf', onSelect: onHistory },
+              ...(w.backend && onEdit ? [{ label: '✎ Bearbeiten', onSelect: onEdit }] : []),
+              { label: '📄 Als Word (.docx)', onSelect: onDownload, title: 'Als Word-Datei herunterladen' },
+              ...(w.backend && onPdf ? [{ label: '🖨 PDF / Drucken', onSelect: onPdf, title: 'Druckansicht öffnen – dort „Als PDF speichern“ wählen' }] : []),
+              { label: '✦ Mit KI anpassen', onSelect: onAdapt },
+            ]}
+          />
         </div>
       </div>
 

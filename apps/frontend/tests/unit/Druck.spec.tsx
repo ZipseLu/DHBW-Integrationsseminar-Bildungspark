@@ -177,13 +177,15 @@ describe('PDF-Knöpfe', () => {
 
   it('Arbeitsblätter: „PDF“ gibt es nur für gespeicherte Blätter', () => {
     karte()
-    expect(screen.queryByRole('button', { name: '🖨 PDF' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Weitere Aktionen/ }))
+    expect(screen.queryByRole('menuitem', { name: '🖨 PDF / Drucken' })).not.toBeInTheDocument()
   })
 
   it('Arbeitsblätter: „PDF“ bei einem gespeicherten Blatt', () => {
     const gespeichert = { ...WORKSHEETS[0], backend: { id: 'abc', status: 'entwurf' as const, version: 1, favorit: false, geaendertAm: '2026-11-12T10:00:00.000Z' } }
     const onPdf = karte(gespeichert)
-    fireEvent.click(screen.getByRole('button', { name: '🖨 PDF' }))
+    fireEvent.click(screen.getByRole('button', { name: /Weitere Aktionen/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '🖨 PDF / Drucken' }))
     expect(onPdf).toHaveBeenCalledTimes(1)
   })
 })

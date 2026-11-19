@@ -148,7 +148,7 @@ describe('Arbeitsblätter aus dem Backend', () => {
     )
     renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Verlauf/ }))
+    fireEvent.click(menuePunkt(card, '🕓 Verlauf'))
 
     const dialog = screen.getByRole('dialog')
     expect(await within(dialog).findByText('2 Versionen · Neueste zuerst')).toBeInTheDocument()
@@ -210,3 +210,9 @@ describe('gespeicherteArbeitsblaetter (Hilfsfunktionen)', () => {
     ])
   })
 })
+
+/** FE-31: further card actions sit in the "⋯" menu */
+function menuePunkt(card: HTMLElement, name: string | RegExp) {
+  fireEvent.click(within(card).getByRole('button', { name: /Weitere Aktionen/ }))
+  return screen.getByRole('menuitem', { name })
+}

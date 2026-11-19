@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { ALLE_BERUFSBILDER, BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
-import type { WorksheetFilter } from '@/lib/worksheetFilter'
+import { EMPTY_FILTER, type WorksheetFilter } from '@/lib/worksheetFilter'
 import type { Format, Level, Sprache } from '@/types'
 
 type Props = {
@@ -10,30 +11,24 @@ type Props = {
   onlyFavorites: boolean
   onOnlyFavoritesChange: (value: boolean) => void
   resultCount: number
+  /** FE-31: e.g. the upload button, shown at the end of the search row */
+  aktionen?: ReactNode
 }
 
-type ChipOption<T extends string> = { value: T | 'Alle'; label: string }
+const feldStil = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
 
-const NIVEAU_OPTIONS: ChipOption<Level>[] = [
-  { value: 'Alle', label: 'Alle' },
-  ...LEVELS.map((l) => ({ value: l, label: `${l} · ${LEVEL_STYLES[l].label}` })),
-]
+/** Number of filters that differ from "Alle" (search not counted) */
+function aktiveFilter(filter: WorksheetFilter): number {
+  return (['berufsbild', 'baustein', 'ausbildungsbaustein', 'niveau', 'sprache', 'format'] as const).filter((k) => filter[k] !== EMPTY_FILTER[k]).length
+}
 
-const SPRACHE_OPTIONS: ChipOption<Sprache>[] = [{ value: 'Alle', label: 'Alle' }, ...SPRACHEN.map((s) => ({ value: s, label: s }))]
-
-const FORMAT_CHIP_OPTIONS: ChipOption<Format>[] = [
-  { value: 'Alle', label: 'Alle' },
-  ...FORMAT_OPTIONS.map((o) => ({ value: o.id, label: `${o.icon} ${o.label}` })),
-]
-
-const chipStyle = (active: boolean) => ({
-  backgroundColor: active ? 'var(--primary)' : 'var(--muted)',
-  color: active ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
-  border: '1px solid var(--border)',
-})
-
-export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbausteine, onlyFavorites, onOnlyFavoritesChange, resultCount }: Props) {
+/**
+ * FE-31: search row plus all filters as dropdowns in one row (formerly six rows of chips),
+ * so the list starts right below. "Filter zurücksetzen" appears as soon as one is set.
+ */
+export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbausteine, onlyFavorites, onOnlyFavoritesChange, resultCount, aktionen }: Props) {
   const update = (patch: Partial<WorksheetFilter>) => onChange({ ...filter, ...patch })
+  const anzahlAktiv = aktiveFilter(filter)
 
   return (
     <div className="rounded-lg p-4 flex flex-col gap-3" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -45,122 +40,109 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
           value={filter.search}
           onChange={(e) => update({ search: e.target.value })}
           className="px-3 py-2 rounded text-sm outline-none flex-1"
-          style={{ border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)', minWidth: 200 }}
+          style={{ ...feldStil, minWidth: 200 }}
         />
         <button
           type="button"
           aria-pressed={onlyFavorites}
           onClick={() => onOnlyFavoritesChange(!onlyFavorites)}
-          className="px-2.5 py-1.5 rounded text-xs font-medium transition-all"
-          style={chipStyle(onlyFavorites)}
+          className="px-2.5 py-2 rounded text-xs font-medium transition-all"
+          style={{
+            backgroundColor: onlyFavorites ? 'var(--primary)' : 'var(--muted)',
+            color: onlyFavorites ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+            border: '1px solid var(--border)',
+          }}
         >
           ★ Nur Favoriten
         </button>
-        <span className="text-xs font-mono ml-auto" style={{ color: 'var(--muted-foreground)' }} aria-live="polite">
+        {aktionen}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
+        <Auswahl id="filter-berufsbild" label="BERUFSBILD" value={filter.berufsbild} onChange={(berufsbild) => update({ berufsbild, ausbildungsbaustein: 'Alle' })}>
+          {[ALLE_BERUFSBILDER, ...BERUFSBILDER].map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </Auswahl>
+        <Auswahl id="filter-baustein" label="BAUSTEIN" value={String(filter.baustein)} onChange={(b) => update({ baustein: b === 'Alle' ? 'Alle' : Number(b) })}>
+          <option value="Alle">Alle</option>
+          {bausteine.map((b) => (
+            <option key={b} value={b}>
+              BS {b}
+            </option>
+          ))}
+        </Auswahl>
+        <Auswahl id="filter-ausbildungsbaustein" label="AUSBILDUNGSBAUSTEIN" value={filter.ausbildungsbaustein} onChange={(ausbildungsbaustein) => update({ ausbildungsbaustein })}>
+          {['Alle', ...ausbildungsbausteine].map((ab) => (
+            <option key={ab} value={ab}>
+              {ab}
+            </option>
+          ))}
+        </Auswahl>
+        <Auswahl id="filter-niveau" label="NIVEAU" value={filter.niveau} onChange={(niveau) => update({ niveau: niveau as Level | 'Alle' })}>
+          <option value="Alle">Alle</option>
+          {LEVELS.map((l) => (
+            <option key={l} value={l}>
+              {l} · {LEVEL_STYLES[l].label}
+            </option>
+          ))}
+        </Auswahl>
+        <Auswahl id="filter-sprache" label="SPRACHE" value={filter.sprache} onChange={(sprache) => update({ sprache: sprache as Sprache | 'Alle' })}>
+          <option value="Alle">Alle</option>
+          {SPRACHEN.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Auswahl>
+        <Auswahl id="filter-format" label="FORMAT" value={filter.format} onChange={(format) => update({ format: format as Format | 'Alle' })}>
+          <option value="Alle">Alle</option>
+          {FORMAT_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.icon} {o.label}
+            </option>
+          ))}
+        </Auswahl>
+
+      </div>
+
+      <div className="flex items-center justify-end gap-3 -mt-1">
+        {anzahlAktiv > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange({ ...EMPTY_FILTER, search: filter.search })}
+            className="text-xs underline underline-offset-2"
+            style={{ color: 'var(--accent-text)' }}
+          >
+            Filter zurücksetzen ({anzahlAktiv})
+          </button>
+        )}
+        <span className="text-xs font-mono" style={{ color: 'var(--muted-foreground)' }} aria-live="polite">
           {resultCount} Ergebnisse
         </span>
-      </div>
-
-      <div className="flex flex-wrap gap-3 items-center">
-        <div>
-          <label htmlFor="filter-berufsbild" className="block text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
-            BERUFSBILD
-          </label>
-          <select
-            id="filter-berufsbild"
-            value={filter.berufsbild}
-            onChange={(e) => update({ berufsbild: e.target.value, ausbildungsbaustein: 'Alle' })}
-            className="px-3 py-1.5 rounded text-xs outline-none"
-            style={{ border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
-          >
-            {[ALLE_BERUFSBILDER, ...BERUFSBILDER].map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
-            BAUSTEIN
-          </div>
-          <div className="flex gap-1" role="group" aria-label="Baustein">
-            {(['Alle', ...bausteine] as (number | 'Alle')[]).map((b) => (
-              <button
-                key={String(b)}
-                type="button"
-                aria-pressed={filter.baustein === b}
-                onClick={() => update({ baustein: b })}
-                className="px-2.5 py-1.5 rounded text-xs font-mono font-medium transition-all"
-                style={chipStyle(filter.baustein === b)}
-              >
-                {b === 'Alle' ? 'Alle' : `BS ${b}`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
-            AUSBILDUNGSBAUSTEIN
-          </div>
-          <div className="flex gap-1 flex-wrap" role="group" aria-label="Ausbildungsbaustein">
-            {['Alle', ...ausbildungsbausteine].map((ab) => (
-              <button
-                key={ab}
-                type="button"
-                aria-pressed={filter.ausbildungsbaustein === ab}
-                onClick={() => update({ ausbildungsbaustein: ab })}
-                className="px-2.5 py-1.5 rounded text-xs font-medium transition-all"
-                style={chipStyle(filter.ausbildungsbaustein === ab)}
-              >
-                {ab}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3 items-start">
-        <ChipGroup title="NIVEAU" ariaLabel="Niveau" options={NIVEAU_OPTIONS} value={filter.niveau} onChange={(niveau) => update({ niveau })} />
-        <ChipGroup title="SPRACHE" ariaLabel="Sprache" options={SPRACHE_OPTIONS} value={filter.sprache} onChange={(sprache) => update({ sprache })} />
-        <ChipGroup title="FORMAT" ariaLabel="Format" options={FORMAT_CHIP_OPTIONS} value={filter.format} onChange={(format) => update({ format })} />
       </div>
     </div>
   )
 }
 
-function ChipGroup<T extends string>({
-  title,
-  ariaLabel,
-  options,
-  value,
-  onChange,
-}: {
-  title: string
-  ariaLabel: string
-  options: ChipOption<T>[]
-  value: T | 'Alle'
-  onChange: (value: T | 'Alle') => void
-}) {
+function Auswahl({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+  const gesetzt = value !== 'Alle' && value !== ALLE_BERUFSBILDER
   return (
-    <div>
-      <div className="text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
-        {title}
-      </div>
-      <div className="flex gap-1 flex-wrap" role="group" aria-label={ariaLabel}>
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={value === o.value}
-            onClick={() => onChange(o.value)}
-            className="px-2.5 py-1.5 rounded text-xs font-medium transition-all"
-            style={chipStyle(value === o.value)}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+    <div className="min-w-0">
+      <label htmlFor={id} className="block text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2 py-1.5 rounded text-xs outline-none"
+        style={{ ...feldStil, ...(gesetzt ? { borderColor: 'var(--primary)', fontWeight: 600 } : {}) }}
+      >
+        {children}
+      </select>
     </div>
   )
 }

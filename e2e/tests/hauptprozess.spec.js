@@ -61,7 +61,8 @@ test.describe('Hauptprozess: Arbeitsblatt erstellen, speichern, in der Liste fin
     await expect(page.getByText('es werden Beispieldaten angezeigt', { exact: false })).toHaveCount(0)
 
     // 4) The history shows the creation with the author
-    await karte.getByRole('button', { name: /Verlauf/ }).click()
+    await karte.getByRole('button', { name: /Weitere Aktionen/ }).click()
+    await page.getByRole('menuitem', { name: '🕓 Verlauf' }).click()
     const panel = page.getByRole('dialog')
     await expect(panel.getByText('1 Versionen · Neueste zuerst')).toBeVisible()
     await expect(panel.getByText('erstellt', { exact: true })).toBeVisible()

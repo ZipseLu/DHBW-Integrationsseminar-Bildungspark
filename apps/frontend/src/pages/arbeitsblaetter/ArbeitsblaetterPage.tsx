@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Modal } from '@/components/Modal'
 import { WORKSHEETS } from '@/data/worksheets'
 import { downloadGespeichertesDocx, fetchArbeitsblatt, updateArbeitsblatt, type GespeichertesArbeitsblatt } from '@/lib/api'
 import { uebernehmeGespeichertes } from '@/lib/arbeitsblattBearbeiten'
@@ -52,6 +53,8 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
   const [detail, setDetail] = useState<{ worksheet: Worksheet; tab: DetailTab } | null>(null)
   // Bumped after each upload so the list of uploaded documents reloads
   const [uploadVersion, setUploadVersion] = useState(0)
+  // FE-31: the upload opens in a dialog instead of pushing the list down
+  const [uploadOffen, setUploadOffen] = useState(false)
 
   /** True only on the first load, so the loading state does not hide the
    *  already displayed list on every search/filter change. */
@@ -172,8 +175,6 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
 
   return (
     <div className="flex flex-col gap-6">
-      <UploadSection savedBy={user.name} onUploaded={() => setUploadVersion((n) => n + 1)} onKiAnpassen={onKiAnpassen} />
-
       <WorksheetFilters
         filter={filter}
         onChange={setFilter}
@@ -182,7 +183,31 @@ export function ArbeitsblaetterPage({ user, onKiAnpassen, favoriteIds, onFavorit
         onlyFavorites={onlyFavorites}
         onOnlyFavoritesChange={setOnlyFavorites}
         resultCount={visible.length}
+        aktionen={
+          <button
+            type="button"
+            onClick={() => setUploadOffen(true)}
+            className="px-3 py-2 rounded text-xs font-medium hover:opacity-90"
+            style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
+          >
+            ↑ Hochladen
+          </button>
+        }
       />
+
+      {uploadOffen && (
+        <Modal title="Vorhandenes Arbeitsblatt hochladen & anpassen" width="max-w-2xl" onClose={() => setUploadOffen(false)}>
+          <UploadSection
+            imDialog
+            savedBy={user.name}
+            onUploaded={() => setUploadVersion((n) => n + 1)}
+            onKiAnpassen={(vorauswahl) => {
+              setUploadOffen(false)
+              onKiAnpassen(vorauswahl)
+            }}
+          />
+        </Modal>
+      )}
 
       {quelle.art === 'sample' && (
         <div

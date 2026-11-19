@@ -78,7 +78,7 @@ describe('„✦ Anpassen“ (FE-23)', () => {
     backend(() => json({ arbeitsblatt: { ...BLATT, inhalt: INHALT } }))
     const onKiAnpassen = renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Anpassen/ }))
+    fireEvent.click(menuePunkt(card, '✦ Mit KI anpassen'))
 
     await waitFor(() => expect(onKiAnpassen).toHaveBeenCalledTimes(1))
     const vorauswahl = onKiAnpassen.mock.calls[0][0]
@@ -93,7 +93,7 @@ describe('„✦ Anpassen“ (FE-23)', () => {
     backend(() => json({ error: 'db_unavailable', message: 'Die Datenbank ist nicht verfügbar.' }, 503))
     const onKiAnpassen = renderPage()
     const card = await screen.findByRole('article', { name: 'Lieferschein prüfen' })
-    fireEvent.click(within(card).getByRole('button', { name: /Anpassen/ }))
+    fireEvent.click(menuePunkt(card, '✦ Mit KI anpassen'))
 
     expect(await screen.findByText('Anpassen nicht möglich: Die Datenbank ist nicht verfügbar.')).toBeInTheDocument()
     expect(onKiAnpassen).not.toHaveBeenCalled()
@@ -141,3 +141,9 @@ describe('vorlageText', () => {
     )
   })
 })
+
+/** FE-31: further card actions sit in the "⋯" menu */
+function menuePunkt(card: HTMLElement, name: string | RegExp) {
+  fireEvent.click(within(card).getByRole('button', { name: /Weitere Aktionen/ }))
+  return screen.getByRole('menuitem', { name })
+}
