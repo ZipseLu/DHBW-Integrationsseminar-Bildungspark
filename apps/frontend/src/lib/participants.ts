@@ -1,3 +1,4 @@
+import type { Lernstand } from '@/lib/api'
 import type { BerufStation, Format, Level, Participant, Worksheet } from '@/types'
 
 /** Arbeitsblaetter, die zu einem Berufsfeld gehoeren (Reihenfolge = Lernreihenfolge) */
@@ -9,6 +10,92 @@ export function worksheetsFor(worksheets: readonly Worksheet[], berufsbild: stri
 export function doneCount(station: BerufStation, worksheets: readonly Worksheet[]): number {
   const total = worksheetsFor(worksheets, station.berufsbild).length
   return station.status === 'abgeschlossen' ? total : Math.min(station.worksheetsDone, total)
+}
+
+/** FE-30: progress of one station in the learning path, the same numbers everywhere */
+export type StationsStand = {
+  erledigt: number
+  /** null with sample data (the sample worksheets have no fixed total per person) */
+  gesamt: number | null
+  /** percent for the progress bar */
+  fortschritt: number
+  blaetter: { key: string; titel: string; baustein: number | null; erledigt: boolean }[]
+}
+
+/**
+ * With participants from the backend (`lernstand` given, null = nothing assigned yet) the
+ * numbers come from the learning progress (BE-04); a closed station counts as 100 %.
+ * Without the backend the prototype keeps the sample worksheets and the stored progress.
+ */
+export function stationsStand(station: BerufStation, lernstand: Lernstand | null | undefined, worksheets: readonly Worksheet[]): StationsStand {
+  if (lernstand !== undefined) {
+    const feld = lernstand?.berufsfelder.find((b) => b.berufsfeld === station.berufsbild)
+    const erledigt = [...(feld?.erledigt ?? [])].reverse()
+    // Worksheets done before assignments existed are only stored as a number on the station
+    if (!feld?.anzahl.gesamt && station.worksheetsDone > 0) {
+      return {
+        erledigt: station.worksheetsDone,
+        gesamt: null,
+        fortschritt: station.status === 'abgeschlossen' ? 100 : station.progress,
+        blaetter: [],
+      }
+    }
+    return {
+      erledigt: feld?.anzahl.erledigt ?? 0,
+      gesamt: feld?.anzahl.gesamt ?? 0,
+      fortschritt: station.status === 'abgeschlossen' ? 100 : (feld?.fortschritt ?? 0),
+      blaetter: [...erledigt, ...(feld?.offen ?? [])].map((z) => ({
+        key: z.id,
+        titel: z.arbeitsblatt.titel,
+        baustein: z.arbeitsblatt.baustein,
+        erledigt: z.status === 'erledigt',
+      })),
+    }
+  }
+  const liste = worksheetsFor(worksheets, station.berufsbild)
+  const done = doneCount(station, worksheets)
+  return {
+    erledigt: done,
+    gesamt: null,
+    fortschritt: station.progress,
+    blaetter: liste.map((w, i) => ({ key: String(w.id), titel: w.title, baustein: w.baustein, erledigt: i < done })),
+  }
+}
+
+/** "2 von 3 AB erledigt", "keine AB zugeordnet" or – with sample data – "3 AB erledigt" */
+export function stationsStandText(stand: StationsStand): string {
+  if (stand.gesamt === null) return `${stand.erledigt} AB erledigt`
+  if (stand.gesamt === 0) return 'keine AB zugeordnet'
+  return `${stand.erledigt} von ${stand.gesamt} AB erledigt`
+}
+
+/**
+ * FE-30: closes station `index` (100 %, end date today) and starts the next pending one.
+ * `erledigt` = worksheets done according to the learning progress; it is kept on the station.
+ */
+export function schliesseStationAb(p: Participant, index: number, today: string, erledigt = 0): Participant {
+  const naechste = p.berufsbilder.findIndex((b, i) => i > index && b.status === 'ausstehend')
+  const berufsbilder = p.berufsbilder.map((b, i): BerufStation => {
+    if (i === index) {
+      return { ...b, status: 'abgeschlossen', progress: 100, endDate: today, worksheetsDone: Math.max(b.worksheetsDone, erledigt) }
+    }
+    if (i === naechste) return { ...b, status: 'aktiv', startDate: b.startDate || today }
+    return b
+  })
+  return { ...p, berufsbilder, level: naechste >= 0 ? p.berufsbilder[naechste].level : p.level, lastActive: today }
+}
+
+/**
+ * FE-30: reopens a closed station. Only one station may be active, so the currently
+ * active one goes back to "ausstehend" (its dates and numbers stay).
+ */
+export function oeffneStationWieder(p: Participant, index: number, today: string): Participant {
+  const berufsbilder = p.berufsbilder.map((b, i): BerufStation => {
+    if (i === index) return { ...b, status: 'aktiv', endDate: undefined, startDate: b.startDate || today }
+    if (b.status === 'aktiv') return { ...b, status: 'ausstehend' }
+    return b
+  })
+  return { ...p, berufsbilder, level: p.berufsbilder[index].level, lastActive: today }
 }
 
 export function activeStation(p: Participant): BerufStation | undefined {

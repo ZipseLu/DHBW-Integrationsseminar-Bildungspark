@@ -11,8 +11,13 @@ type Props = {
   participant: Participant
   /** IDs of worksheets that are already assigned to this person */
   zugeordnet: ReadonlySet<string>
-  /** Returns an error message or null */
-  onZuordnen: (blatt: GespeichertesArbeitsblatt) => Promise<string | null>
+  /**
+   * Returns an error message or null. `erledigt`: a closed Bereich was chosen, so the
+   * worksheet is recorded as already done.
+   */
+  onZuordnen: (blatt: GespeichertesArbeitsblatt, optionen: { erledigt: boolean }) => Promise<string | null>
+  /** Index of the Bereich (station) to start with; default: the active one */
+  startIndex?: number
   onClose: () => void
   /** FE-33: opens the KI-Erstellung with Berufsfeld, level and format of the person */
   onErstellen?: (vorauswahl: KiVorauswahl) => void
@@ -27,8 +32,19 @@ type Zustand = { art: 'laden' } | { art: 'fehler'; text: string } | { art: 'bere
  * "Auch andere Stufen und Formate zeigen" loads the whole Berufsfeld for exceptions
  * (matching ones first).
  */
-export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, onErstellen }: Props) {
-  const active = activeStation(participant)
+export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, onErstellen, startIndex }: Props) {
+  // FE-30: besides the active Bereich, closed ones can be chosen to record finished worksheets
+  const waehlbar = participant.berufsbilder
+    .map((station, index) => ({ station, index }))
+    .filter(({ station }) => station.status !== 'ausstehend')
+  const [bereichIndex, setBereichIndex] = useState<number>(() => {
+    if (startIndex !== undefined) return startIndex
+    const aktivIndex = participant.berufsbilder.findIndex((b) => b.status === 'aktiv')
+    // All Bereiche closed: start with the last one
+    return aktivIndex >= 0 ? aktivIndex : (waehlbar[waehlbar.length - 1]?.index ?? -1)
+  })
+  const active = participant.berufsbilder[bereichIndex] ?? activeStation(participant)
+  const nachtragen = active?.status === 'abgeschlossen'
   const [alleZeigen, setAlleZeigen] = useState(false)
   const [zustand, setZustand] = useState<Zustand>({ art: 'laden' })
   const [auswahl, setAuswahl] = useState<string | null>(null)
@@ -70,7 +86,7 @@ export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, on
   async function zuweisen() {
     if (!gewaehlt) return
     setSpeichert(true)
-    const meldung = await onZuordnen(gewaehlt)
+    const meldung = await onZuordnen(gewaehlt, { erledigt: nachtragen })
     setSpeichert(false)
     if (meldung) setFehler(meldung)
   }
@@ -81,6 +97,30 @@ export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, on
       subtitle={`${participant.id} · ${active ? `${active.berufsbild} · Stufe ${active.level} · ${formatName}` : 'Alle Berufsfelder'}`}
       onClose={onClose}
     >
+      {waehlbar.length > 1 && (
+        <label className="mx-4 mt-3 flex items-center gap-2 text-xs">
+          <span className="font-mono" style={{ color: 'var(--muted-foreground)' }}>
+            BEREICH
+          </span>
+          <select
+            value={bereichIndex}
+            onChange={(e) => setBereichIndex(Number(e.target.value))}
+            className="flex-1 px-2 py-1.5 rounded text-sm"
+            style={{ border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+          >
+            {waehlbar.map(({ station, index }) => (
+              <option key={index} value={index}>
+                {station.berufsbild} · {station.status === 'aktiv' ? 'aktiv' : 'abgeschlossen'}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {nachtragen && (
+        <div className="mx-4 mt-3 text-xs rounded px-3 py-2" role="note" style={{ backgroundColor: 'var(--tint-success)', color: 'var(--foreground)' }}>
+          Abgeschlossener Bereich: Das gewählte Blatt wird als <strong>erledigt</strong> nachgetragen und erscheint im Lernweg.
+        </div>
+      )}
       {active && (
         <label className="mx-4 mt-3 flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--muted-foreground)' }}>
           <input type="checkbox" checked={alleZeigen} onChange={(e) => setAlleZeigen(e.target.checked)} />
@@ -160,7 +200,7 @@ export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, on
           className="flex-1 py-2.5 rounded font-medium text-sm transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
         >
-          {speichert ? 'Wird zugewiesen …' : 'Zuweisen'}
+          {speichert ? (nachtragen ? 'Wird nachgetragen …' : 'Wird zugewiesen …') : nachtragen ? 'Als erledigt nachtragen' : 'Zuweisen'}
         </button>
         <button type="button" onClick={onClose} className="px-4 py-2.5 rounded text-sm hover:opacity-70" style={{ border: '1px solid var(--border)' }}>
           Abbrechen

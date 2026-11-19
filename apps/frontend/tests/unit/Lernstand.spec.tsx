@@ -4,6 +4,7 @@ import { ApiError, type GespeichertesArbeitsblatt, type Lernstand, type Zuordnun
 import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { zuordnungFehlertext } from '@/lib/lernstand'
 import { useTeilnehmende, type Teilnehmer } from '@/lib/teilnehmende'
+import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { TeilnehmendePage } from '@/pages/teilnehmende/TeilnehmendePage'
 
 /**
@@ -44,6 +45,8 @@ function zuordnung(id: string, b: GespeichertesArbeitsblatt, status: 'offen' | '
 const LKW = blatt('b1', 'Einen LKW melden')
 const ETIKETT = blatt('b2', 'Etiketten kleben')
 const REGAL = blatt('b3', 'Ins Regal einräumen')
+const GASTRO = 'Gastronomie & Hauswirtschaft'
+const HAENDE = blatt('b4', 'Hände richtig waschen', { berufsfeld: GASTRO, stufe: 'T' })
 
 function lernstand(offen: Zuordnung[], erledigt: Zuordnung[]): Lernstand {
   const anzahl = { erledigt: erledigt.length, offen: offen.length, gesamt: offen.length + erledigt.length }
@@ -51,24 +54,40 @@ function lernstand(offen: Zuordnung[], erledigt: Zuordnung[]): Lernstand {
     kennung: TN.kennung,
     anzahl,
     alsNaechstes: offen[0] ?? null,
-    berufsfelder: [{
-      berufsfeld: LAGER, station: { position: 1, status: 'aktiv', stufe: 'A', format: 'text' },
-      fortschritt: anzahl.gesamt ? Math.round((erledigt.length / anzahl.gesamt) * 100) : 0,
-      anzahl, alsNaechstes: offen[0] ?? null, offen, erledigt,
-    }],
+    // Grouped by the Berufsfeld of the worksheet, like the backend does
+    berufsfelder: [...new Set([LAGER, ...[...offen, ...erledigt].map((z) => z.arbeitsblatt.berufsfeld)])].map((berufsfeld) => {
+      const o = offen.filter((z) => z.arbeitsblatt.berufsfeld === berufsfeld)
+      const e = erledigt.filter((z) => z.arbeitsblatt.berufsfeld === berufsfeld)
+      const a = { erledigt: e.length, offen: o.length, gesamt: o.length + e.length }
+      return {
+        berufsfeld,
+        station: berufsfeld === LAGER ? { position: 1, status: 'aktiv' as const, stufe: 'A' as const, format: 'text' as const } : null,
+        fortschritt: a.gesamt ? Math.round((e.length / a.gesamt) * 100) : 0,
+        anzahl: a, alsNaechstes: o[0] ?? null, offen: o, erledigt: e,
+      }
+    }),
   }
 }
 
 /** Small in-memory backend: assignments of one person */
 function backend(
   start: Zuordnung[],
-  { postFehler, blaetter = () => [LKW, ETIKETT, REGAL] }: { postFehler?: Response; blaetter?: (query: URLSearchParams) => GespeichertesArbeitsblatt[] } = {},
+  {
+    postFehler,
+    blaetter = () => [LKW, ETIKETT, REGAL],
+    person = TN,
+  }: { postFehler?: Response; blaetter?: (query: URLSearchParams) => GespeichertesArbeitsblatt[]; person?: Teilnehmer } = {},
 ) {
+  let tn = person
   let liste = [...start]
   const stand = () => lernstand(liste.filter((z) => z.status === 'offen'), liste.filter((z) => z.status === 'erledigt'))
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
-    if (url === '/api/teilnehmende') return json({ eintraege: [TN], gesamt: 1 })
+    if (url === '/api/teilnehmende') return json({ eintraege: [tn], gesamt: 1 })
+    if (url === `/api/teilnehmende/${TN.kennung}` && method === 'PUT') {
+      tn = { ...tn, ...(JSON.parse(String(init?.body)) as Partial<Teilnehmer>) }
+      return json({ teilnehmer: tn })
+    }
     if (url === '/api/teilnehmende/lernstand') return json({ eintraege: [stand()], gesamt: 1 })
     if (url === `/api/teilnehmende/${TN.kennung}/lernstand`) return json({ lernstand: stand() })
     if (url.startsWith('/api/arbeitsblaetter?')) {
@@ -79,7 +98,7 @@ function backend(
     if (method === 'POST') {
       if (postFehler) return postFehler
       const { arbeitsblattId } = JSON.parse(String(init?.body)) as { arbeitsblattId: string }
-      const neu = zuordnung(`z${liste.length + 1}`, [LKW, ETIKETT, REGAL].find((b) => b.id === arbeitsblattId)!, 'offen')
+      const neu = zuordnung(`z${liste.length + 1}`, [LKW, ETIKETT, REGAL, HAENDE].find((b) => b.id === arbeitsblattId)!, 'offen')
       liste.push(neu)
       return json({ zuordnung: neu }, 201)
     }
@@ -257,5 +276,164 @@ describe('zuordnungFehlertext', () => {
     expect(zuordnungFehlertext(new ApiError('x', 409, 'conflict', undefined, 'bereits_zugeordnet'))).toBe('Dieses Arbeitsblatt ist der Person schon zugeordnet.')
     expect(zuordnungFehlertext(new ApiError('x', 404, 'not_found'))).toContain('gibt es nicht mehr')
     expect(zuordnungFehlertext(new Error('x'))).toBe('Nicht gespeichert: unbekannter Fehler.')
+  })
+})
+
+describe('Lernstand einheitlich (FE-30)', () => {
+  it('berechnet den Lernweg aus dem Lernstand statt aus Beispieldaten', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt'), zuordnung('z2', ETIKETT, 'offen')])
+    render(<Seite />)
+    await screen.findByText('1 von 2 erledigt · 50 %')
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+
+    // Same numbers in the learning path as above
+    expect(within(karte).getByText('1 von 2 AB erledigt')).toBeInTheDocument()
+    expect(within(karte).getByText('50 % erledigt')).toBeInTheDocument()
+    fireEvent.click(within(karte).getByRole('button', { name: '2 Arbeitsblätter anzeigen' }))
+    expect(within(karte).getAllByText('Einen LKW melden')).toHaveLength(2)
+    expect(within(karte).getAllByText('Etiketten kleben')).toHaveLength(2)
+    expect(within(karte).queryByText(/Persona/)).not.toBeInTheDocument()
+  })
+
+  it('zeigt den Lernstand auf der Übersicht mit denselben Zahlen', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt'), zuordnung('z2', ETIKETT, 'offen')])
+    function Uebersicht() {
+      const teilnehmende = useTeilnehmende(true)
+      return <DashboardPage participants={teilnehmende.participants} onNavigate={() => {}} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />
+    }
+    render(<Uebersicht />)
+
+    await screen.findByText('als Nächstes: Etiketten kleben')
+    const zeile = screen.getByRole('listitem', { name: 'Lernstand IW3-4421' })
+    expect(zeile).toHaveTextContent('1 von 2 erledigt · 50 %')
+    expect(zeile).toHaveTextContent('als Nächstes: Etiketten kleben')
+    expect(screen.getByText('0 von 1 ohne offenes Arbeitsblatt · anonymisiert nach § 60 SGB IX')).toBeInTheDocument()
+  })
+
+  it('weist auf der Übersicht auf Personen ohne offenes Blatt hin', async () => {
+    backend([zuordnung('z1', LKW, 'erledigt')])
+    function Uebersicht() {
+      const teilnehmende = useTeilnehmende(true)
+      return <DashboardPage participants={teilnehmende.participants} onNavigate={() => {}} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />
+    }
+    render(<Uebersicht />)
+
+    await screen.findByText('kein Blatt offen – neues zuweisen')
+    const zeile = screen.getByRole('listitem', { name: 'Lernstand IW3-4421' })
+    expect(zeile).toHaveTextContent('1 von 1 erledigt · 100 %')
+    expect(zeile).toHaveTextContent('kein Blatt offen – neues zuweisen')
+  })
+})
+
+describe('Bereich abschließen (FE-30)', () => {
+  const ZWEI: Teilnehmer = {
+    ...TN,
+    stationen: [
+      { berufsfeld: LAGER, stufe: 'A', format: 'text', status: 'aktiv', fortschritt: 0, startDatum: '2026-10-01', endDatum: null, blaetterErledigt: 0 },
+      { berufsfeld: 'Gastronomie & Hauswirtschaft', stufe: 'F', format: 'piktogramm', status: 'ausstehend', fortschritt: 0, startDatum: null, endDatum: null, blaetterErledigt: 0 },
+    ],
+  }
+
+  it('schließt den aktiven Bereich ab und startet den nächsten', async () => {
+    const fetchMock = backend([zuordnung('z1', LKW, 'erledigt')], { person: ZWEI })
+    render(<Seite />)
+    await screen.findByText('1 von 1 erledigt · 100 %')
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+
+    fireEvent.click(within(karte).getByRole('button', { name: '✓ Bereich abschließen' }))
+    expect(within(karte).getByText('„Lagerlogistik, Handel & Versand“ abschließen? Danach ist „Gastronomie & Hauswirtschaft“ aktiv.')).toBeInTheDocument()
+    fireEvent.click(within(karte).getByRole('button', { name: 'Ja, abschließen' }))
+
+    expect(await screen.findByText('Bereich „Lagerlogistik, Handel & Versand“ für IW3-4421 abgeschlossen.')).toBeInTheDocument()
+    const put = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')
+    const body = JSON.parse(String((put?.[1] as RequestInit).body)) as Teilnehmer
+    expect(body.stufe).toBe('F')
+    expect(body.stationen[0]).toMatchObject({ status: 'abgeschlossen', fortschritt: 100, blaetterErledigt: 1 })
+    expect(body.stationen[0].endDatum).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(body.stationen[1]).toMatchObject({ status: 'aktiv' })
+    expect(body.stationen[1].startDatum).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('zeigt bei abgeschlossenen Bereichen ohne Zuordnungen die gespeicherte Anzahl', async () => {
+    backend([], {
+      person: {
+        ...TN,
+        stationen: [
+          { berufsfeld: 'Gastronomie & Hauswirtschaft', stufe: 'T', format: 'text', status: 'abgeschlossen', fortschritt: 100, startDatum: '2026-05-15', endDatum: '2026-06-30', blaetterErledigt: 5 },
+          { berufsfeld: LAGER, stufe: 'A', format: 'text', status: 'aktiv', fortschritt: 0, startDatum: '2026-10-01', endDatum: null, blaetterErledigt: 0 },
+        ],
+      },
+    })
+    render(<Seite />)
+    await screen.findByText(/Noch keine Arbeitsblätter zugeordnet/)
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+
+    expect(within(karte).getByText('5 AB erledigt')).toBeInTheDocument()
+    expect(within(karte).getByText('keine AB zugeordnet')).toBeInTheDocument()
+    // Only the active station can be closed
+    expect(within(karte).getAllByRole('button', { name: '✓ Bereich abschließen' })).toHaveLength(1)
+  })
+})
+
+describe('Abgeschlossene Bereiche: nachtragen und wieder öffnen (FE-30)', () => {
+  const MIT_GASTRO: Teilnehmer = {
+    ...TN,
+    stationen: [
+      { berufsfeld: GASTRO, stufe: 'T', format: 'text', status: 'abgeschlossen', fortschritt: 100, startDatum: '2026-05-15', endDatum: '2026-06-30', blaetterErledigt: 5 },
+      { berufsfeld: LAGER, stufe: 'A', format: 'text', status: 'aktiv', fortschritt: 0, startDatum: '2026-10-01', endDatum: null, blaetterErledigt: 0 },
+    ],
+  }
+
+  async function oeffneDetails() {
+    render(<Seite />)
+    await screen.findByText(/Noch keine Arbeitsblätter zugeordnet/)
+    const karte = screen.getByRole('article', { name: 'Teilnehmer IW3-4421' })
+    fireEvent.click(within(karte).getByRole('button', { name: 'Details' }))
+    return karte
+  }
+
+  it('trägt bearbeitete Blätter in einem abgeschlossenen Bereich als erledigt nach', async () => {
+    const fetchMock = backend([], { person: MIT_GASTRO, blaetter: (q) => (q.get('berufsfeld') === GASTRO ? [HAENDE] : [LKW]) })
+    const karte = await oeffneDetails()
+    expect(within(karte).getByText('5 AB erledigt')).toBeInTheDocument()
+
+    fireEvent.click(within(karte).getByRole('button', { name: '+ Bearbeitete Blätter nachtragen' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('combobox')).toHaveValue('0')
+    expect(within(dialog).getByRole('note')).toHaveTextContent('Abgeschlossener Bereich')
+    fireEvent.click(await within(dialog).findByRole('option', { name: /Hände richtig waschen/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Als erledigt nachtragen' }))
+
+    expect(await screen.findByText('Arbeitsblatt „Hände richtig waschen“ wurde für IW3-4421 als erledigt nachgetragen.')).toBeInTheDocument()
+    const query = fetchMock.mock.calls.map(([url]) => String(url)).find((url) => url.startsWith('/api/arbeitsblaetter?'))
+    expect(Object.fromEntries(new URLSearchParams(String(query).split('?')[1]))).toMatchObject({ berufsfeld: GASTRO, stufe: 'T', format: 'text' })
+    expect(aufrufe(fetchMock, 'POST')).toEqual([['/api/teilnehmende/IW3-4421/zuordnungen', JSON.stringify({ arbeitsblattId: 'b4' })]])
+    expect(aufrufe(fetchMock, 'PATCH')).toEqual([['/api/teilnehmende/IW3-4421/zuordnungen/z1', JSON.stringify({ status: 'erledigt' })]])
+
+    // The closed Bereich now lists the worksheet
+    expect(await within(karte).findByText('1 von 1 AB erledigt')).toBeInTheDocument()
+    fireEvent.click(within(karte).getByRole('button', { name: '1 Arbeitsblatt anzeigen' }))
+    expect(within(karte).getAllByText('Hände richtig waschen').length).toBeGreaterThan(0)
+  })
+
+  it('öffnet einen abgeschlossenen Bereich wieder', async () => {
+    const fetchMock = backend([], { person: MIT_GASTRO })
+    const karte = await oeffneDetails()
+
+    fireEvent.click(within(karte).getByRole('button', { name: '↺ Wieder öffnen' }))
+    expect(within(karte).getByText('„Gastronomie & Hauswirtschaft“ wieder öffnen? „Lagerlogistik, Handel & Versand“ ist dann wieder ausstehend.')).toBeInTheDocument()
+    fireEvent.click(within(karte).getByRole('button', { name: 'Ja, wieder öffnen' }))
+
+    expect(await screen.findByText('Bereich „Gastronomie & Hauswirtschaft“ für IW3-4421 wieder geöffnet.')).toBeInTheDocument()
+    const put = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')
+    const body = JSON.parse(String((put?.[1] as RequestInit).body)) as Teilnehmer
+    expect(body.stufe).toBe('T')
+    expect(body.stationen[0]).toMatchObject({ status: 'aktiv', endDatum: null, startDatum: '2026-05-15' })
+    expect(body.stationen[1]).toMatchObject({ status: 'ausstehend', startDatum: '2026-10-01' })
+    // Now the reopened Bereich can be closed again
+    expect(within(karte).getByRole('button', { name: '✓ Bereich abschließen' })).toBeInTheDocument()
   })
 })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SuccessNote } from '@/components/Widgets'
 import { todayIso } from '@/lib/date'
-import { buildStations, normalisiereKennung, pruefeKennung, type StationDraft } from '@/lib/participants'
+import { buildStations, normalisiereKennung, oeffneStationWieder, pruefeKennung, schliesseStationAb, type StationDraft } from '@/lib/participants'
 import { useLernstand } from '@/lib/lernstand'
 import type { TeilnehmendeState } from '@/lib/teilnehmende'
 import type { Lernstand } from '@/lib/api'
@@ -35,6 +35,8 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild, onErstellen 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [edit, setEdit] = useState<EditState>({ mode: 'closed' })
   const [assignFor, setAssignFor] = useState<Participant | null>(null)
+  /** FE-30: Bereich the dialog starts with (closed Bereich = record done sheets) */
+  const [assignIndex, setAssignIndex] = useState<number | undefined>(undefined)
   const [notice, setNotice] = useState('')
   const [fehler, setFehler] = useState('')
 
@@ -147,9 +149,24 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild, onErstellen 
           participant={p}
           expanded={expandedId === p.id}
           onToggleExpand={() => setExpandedId(expandedId === p.id ? null : p.id)}
-          onAssign={() => setAssignFor(p)}
+          onAssign={(index) => {
+            setAssignIndex(index)
+            setAssignFor(p)
+          }}
           onEdit={() => setEdit({ mode: 'edit', participant: p })}
           onDelete={() => void handleDelete(p.id)}
+          onAbschliessen={async (index, erledigt) => {
+            const station = p.berufsbilder[index]
+            const meldung = await teilnehmende.speichern(p.id, schliesseStationAb(p, index, todayIso(), erledigt))
+            if (!meldung) setNotice(`Bereich „${station.berufsbild}“ für ${p.id} abgeschlossen.`)
+            return meldung
+          }}
+          onWiederOeffnen={async (index) => {
+            const station = p.berufsbilder[index]
+            const meldung = await teilnehmende.speichern(p.id, oeffneStationWieder(p, index, todayIso()))
+            if (!meldung) setNotice(`Bereich „${station.berufsbild}“ für ${p.id} wieder geöffnet.`)
+            return meldung
+          }}
           lernstand={
             lernstand.quelle.art === 'bereit'
               ? {
@@ -182,12 +199,17 @@ export function TeilnehmendePage({ teilnehmende, defaultBerufsbild, onErstellen 
         <ZuordnenModal
           participant={assignFor}
           zugeordnet={zugeordneteIds(lernstand.je[assignFor.id])}
+          startIndex={assignIndex}
           onClose={() => setAssignFor(null)}
           onErstellen={onErstellen}
-          onZuordnen={async (blatt) => {
-            const meldung = await lernstand.zuordnen(assignFor.id, blatt.id)
+          onZuordnen={async (blatt, { erledigt }) => {
+            const meldung = erledigt ? await lernstand.nachtragen(assignFor.id, blatt.id) : await lernstand.zuordnen(assignFor.id, blatt.id)
             if (meldung) return meldung
-            setNotice(`Arbeitsblatt „${blatt.titel}“ wurde ${assignFor.id} zugewiesen.`)
+            setNotice(
+              erledigt
+                ? `Arbeitsblatt „${blatt.titel}“ wurde für ${assignFor.id} als erledigt nachgetragen.`
+                : `Arbeitsblatt „${blatt.titel}“ wurde ${assignFor.id} zugewiesen.`,
+            )
             setAssignFor(null)
             return null
           }}
