@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { countWords, splitSentences, validateWorksheet } from '../../src/arbeitsblatt/validator.js'
+import { countWords, falscheTrennungen, splitSentences, validateWorksheet, zuWenigeAufgaben } from '../../src/arbeitsblatt/validator.js'
 import { WORKSHEET_T_TEXT } from '../fixtures/arbeitsblatt.js'
 
 const aufgabe = (nr, patch = {}) => ({ nr, typ: 'offen', anweisung: 'Schreibe es auf.', ...patch })
@@ -136,6 +136,43 @@ describe('validateWorksheet', () => {
     it('verlangt keine Optionen bei offen, malen und praxis', () => {
       const aufgaben = [aufgabe(1), aufgabe(2, { typ: 'malen' }), aufgabe(3, { typ: 'praxis', anweisung: 'Frage deinen Anleiter: Passt das?' })]
       expect(validateWorksheet(worksheet({ aufgaben })).hinweise).toEqual([])
+    })
+  })
+
+  describe('Zu wenige Aufgaben (BE-12)', () => {
+    it('meldet nur zu wenige, nicht zu viele Aufgaben', () => {
+      const zweiA = worksheet({ stufe: 'A', aufgaben: [aufgabe(1), aufgabe(2)] })
+      expect(zuWenigeAufgaben(zweiA)).toEqual(['Aufgabenanzahl: 2 Aufgaben, für Stufe A sind 4 bis 5 vorgesehen.'])
+      expect(zuWenigeAufgaben(worksheet({ stufe: 'A', aufgaben: [1, 2, 3, 4].map((nr) => aufgabe(nr)) }))).toEqual([])
+      expect(zuWenigeAufgaben(worksheet({ stufe: 'T', aufgaben: [1, 2, 3, 4, 5, 6].map((nr) => aufgabe(nr)) }))).toEqual([])
+    })
+  })
+
+  describe('Trennstriche in Leichter Sprache (BE-14)', () => {
+    it('erkennt Trennstriche vor Endsilben (Beispiele aus QS-04)', () => {
+      expect(falscheTrennungen('Heb-en ist ge-fähr-lich. Das machst du im-mer so, auch da-bei. Manch-mal hilft es.')).toEqual([
+        'Heb-en',
+        'ge-fähr-lich',
+        'im-mer',
+        'da-bei',
+        'Manch-mal',
+      ])
+    })
+
+    it('lässt zusammengesetzte Wörter und Vorsilben im Stil des Bildungsparks zu', () => {
+      const text = 'Hub-wagen, Klebe-band, Arbeits-platz, Hohl-raum-aus-füllung, ver-packen, ent-laden, auf-schreiben, End-Kontrolle, LKW-Fahrer, Sicherheits-Schuhe, zer-brechliche Ware'
+      expect(falscheTrennungen(text)).toEqual([])
+    })
+
+    it('meldet falsche Trennungen in Titel und Aufgaben, nur bei Leichter Sprache', () => {
+      const blatt = worksheet({
+        titel: 'Schwere Kisten heb-en',
+        aufgaben: [aufgabe(1, { anweisung: 'Das ist ge-fähr-lich. Frage im-mer.' }), ...WORKSHEET_T_TEXT.aufgaben.slice(1)],
+      })
+      const { hinweise } = validateWorksheet(blatt)
+      expect(hinweise).toContain('Titel: Trennstrich mitten im Wort: „heb-en“ – in Leichter Sprache nur zusammengesetzte Wörter trennen.')
+      expect(hinweise).toContain('Aufgabe 1: Trennstrich mitten im Wort: „ge-fähr-lich“, „im-mer“ – in Leichter Sprache nur zusammengesetzte Wörter trennen.')
+      expect(validateWorksheet({ ...blatt, sprache: 'Standardsprache' }).hinweise.some((h) => h.includes('Trennstrich'))).toBe(false)
     })
   })
 

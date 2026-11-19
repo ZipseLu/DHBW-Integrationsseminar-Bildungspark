@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
-import { ArbeitsblattError, generateArbeitsblatt, parseWorksheet, toArbeitsblattError } from '../../src/arbeitsblatt/generate.js'
+import { ArbeitsblattError, generateArbeitsblatt, korrekturFuerLuecken, parseWorksheet, toArbeitsblattError } from '../../src/arbeitsblatt/generate.js'
 import { buildMockWorksheet, kurzerTitel } from '../../src/arbeitsblatt/mock.js'
 import { PROMPT_VERSION } from '../../src/arbeitsblatt/prompt.js'
 import { WorksheetSchema, formatZodError } from '../../src/arbeitsblatt/schema.js'
@@ -178,6 +178,61 @@ describe('generateArbeitsblatt – mit Provider', () => {
       expect(provider).toHaveBeenCalledTimes(2)
       expect(meta.attempts).toBe(2)
       expect(meta.validation.ok).toBe(false)
+    })
+  })
+
+  describe('zu wenige Aufgaben (BE-12)', () => {
+    // Level A needs 4 to 5 tasks, the model delivered only 2
+    const requestA = { ...REQUEST_T_TEXT, stufe: 'A' }
+    const zweiAufgaben = JSON.stringify({ ...WORKSHEET_T_TEXT, stufe: 'A', aufgaben: WORKSHEET_T_TEXT.aufgaben.slice(0, 2) })
+    const vierAufgaben = JSON.stringify({ ...WORKSHEET_T_TEXT, stufe: 'A' })
+
+    it('fragt einmal mit Korrekturhinweis nach und nimmt das vollständige Blatt', async () => {
+      const provider = fakeProvider(zweiAufgaben, vierAufgaben)
+      const { worksheet, meta } = await generateArbeitsblatt(requestA, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      const prompt = provider.mock.calls[1][0].prompt
+      expect(prompt).toContain('Korrekturhinweis')
+      expect(prompt).toContain('Zu wenige Aufgaben – das Blatt hat 2 Aufgaben, für Stufe A sind 4 bis 5 vorgesehen.')
+      expect(prompt).toContain('bis es mindestens 4 sind')
+      expect(worksheet.aufgaben).toHaveLength(4)
+      expect(meta.attempts).toBe(2)
+      expect(meta.validation.hinweise.some((h) => h.startsWith('Aufgabenanzahl'))).toBe(false)
+    })
+
+    it('fragt nur einmal nach und zeigt sonst den Hinweis', async () => {
+      const provider = fakeProvider(zweiAufgaben, zweiAufgaben)
+      const { worksheet, meta } = await generateArbeitsblatt(requestA, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(2)
+      expect(worksheet.aufgaben).toHaveLength(2)
+      expect(meta.validation.hinweise).toContain('Aufgabenanzahl: 2 Aufgaben, für Stufe A sind 4 bis 5 vorgesehen.')
+    })
+
+    it('liefert das erste Blatt, wenn die Wiederholung kein gültiges JSON bringt', async () => {
+      const provider = fakeProvider(zweiAufgaben, 'kaputt')
+      const { worksheet, meta } = await generateArbeitsblatt(requestA, { provider, configured: true })
+
+      expect(worksheet.aufgaben).toHaveLength(2)
+      expect(meta.attempts).toBe(1)
+    })
+
+    it('fragt bei zu vielen Aufgaben nicht nach', async () => {
+      const sieben = JSON.stringify({ ...WORKSHEET_T_TEXT, aufgaben: [...WORKSHEET_T_TEXT.aufgaben, ...WORKSHEET_T_TEXT.aufgaben.slice(0, 3)] })
+      const provider = fakeProvider(sieben)
+      const { meta } = await generateArbeitsblatt(REQUEST_T_TEXT, { provider, configured: true })
+
+      expect(provider).toHaveBeenCalledTimes(1)
+      expect(meta.validation.hinweise.some((h) => h.startsWith('Aufgabenanzahl'))).toBe(true)
+    })
+
+    it('fasst fehlende Optionen und fehlende Aufgaben in einem Hinweis zusammen', () => {
+      const blatt = { ...WORKSHEET_T_TEXT, stufe: 'A', aufgaben: [{ nr: 1, typ: 'ankreuzen', anweisung: 'Kreuze an.' }] }
+      const hinweis = korrekturFuerLuecken(blatt)
+      expect(hinweis).toContain('Aufgabe 1: Typ „ankreuzen“ braucht mindestens 2 Antwortmöglichkeiten')
+      expect(hinweis).toContain('Zu wenige Aufgaben – das Blatt hat 1 Aufgaben')
+      expect(korrekturFuerLuecken(WORKSHEET_T_TEXT)).toBeNull()
     })
   })
 

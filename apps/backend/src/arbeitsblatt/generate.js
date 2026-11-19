@@ -5,9 +5,10 @@
  *   -> Schema pruefen -> bei Fehler genau EIN Wiederholungsversuch mit
  *   Korrekturhinweis -> Validator -> Ergebnis { worksheet, meta }
  *
- * Tasks without answer options (e.g. "Kreuze an." with nothing to tick) use
- * the same single retry. If that retry fails or times out, the first,
- * incomplete worksheet is returned with validator hints instead of an error.
+ * Tasks without answer options (e.g. "Kreuze an." with nothing to tick) and,
+ * since BE-12, fewer tasks than the level requires use the same single retry.
+ * If that retry fails or times out, the first, incomplete worksheet is returned
+ * with validator hints instead of an error.
  *
  * Ist der Anbieter ueberlastet (HTTP 503), wird einmal kurz gewartet und mit
  * dem Fallback-Modell (GEMINI_FALLBACK_MODEL) erneut aufgerufen.
@@ -22,8 +23,8 @@
 import { config } from '../config.js'
 import { generateText, isAiConfigured } from '../ai/provider.js'
 import { buildPrompt, PROMPT_VERSION } from './prompt.js'
-import { LlmWorksheetSchema, WORKSHEET_JSON_SCHEMA, formatZodError } from './schema.js'
-import { fehlendeOptionen, validateWorksheet } from './validator.js'
+import { AUFGABEN_ANZAHL, LlmWorksheetSchema, WORKSHEET_JSON_SCHEMA, formatZodError } from './schema.js'
+import { fehlendeOptionen, validateWorksheet, zuWenigeAufgaben } from './validator.js'
 import { buildMockWorksheet } from './mock.js'
 
 /** Fehler mit HTTP-Status und Code – die Route gibt ihn als JSON weiter. */
@@ -92,7 +93,7 @@ export async function generateArbeitsblatt(input, deps = {}) {
   let unavailableRetried = false // einmal bei 503 (Anbieter ueberlastet) oder 429 (Kontingent) -> Fallback-Modell
   let jsonRetried = false // einmal bei ungueltigem JSON/Schema -> Korrekturhinweis
   let attempts = 0
-  // First worksheet with missing answer options; returned if the retry fails
+  // First incomplete worksheet (missing answer options or too few tasks); returned if the retry fails
   let unvollstaendig = null
 
   const ergebnis = (worksheet, result, usedModel, attemptCount) => ({
@@ -166,22 +167,20 @@ export async function generateArbeitsblatt(input, deps = {}) {
     const parsed = parseWorksheet(result.text)
     if (parsed.ok) {
       const worksheet = finalizeWorksheet(parsed.worksheet, input)
-      const luecken = fehlendeOptionen(worksheet)
-      if (luecken.length === 0 || jsonRetried || signal.aborted) {
+      const nachbessern = korrekturFuerLuecken(worksheet)
+      if (!nachbessern || jsonRetried || signal.aborted) {
         return ergebnis(worksheet, result, model, attempts)
       }
-      // Answer options missing: ask once more, keep this worksheet as fallback
+      // Incomplete: ask once more, keep this worksheet as fallback
       unvollstaendig = ergebnis(worksheet, result, model, attempts)
-      korrektur =
-        `Aufgaben ohne Antwortmöglichkeiten – ${luecken.join(' ')} ` +
-        'Jede Aufgabe vom Typ reihenfolge, ankreuzen oder zuordnen braucht das Feld optionen mit mindestens 2 Einträgen, auch in Piktogramm-Formaten.'
+      korrektur = nachbessern
     } else {
       korrektur =
         result.finishReason === 'MAX_TOKENS'
           ? 'Die Antwort war zu lang und wurde abgeschnitten. Fasse dich kürzer.'
           : parsed.error
     }
-    console.warn(`[arbeitsblatt] Versuch ${attempt} ungültig (${parsed.ok ? 'fehlende_antwortoptionen' : 'ungueltiges_json'})`)
+    console.warn(`[arbeitsblatt] Versuch ${attempt} ungültig (${parsed.ok ? 'unvollstaendig' : 'ungueltiges_json'})`)
 
     if (jsonRetried || signal.aborted) break
     jsonRetried = true
@@ -193,6 +192,30 @@ export async function generateArbeitsblatt(input, deps = {}) {
     `Die KI-Antwort war auch nach einem zweiten Versuch kein gültiges Arbeitsblatt. Letzter Fehler: ${korrektur}`,
     { code: 'llm_invalid_response' },
   )
+}
+
+/**
+ * Correction hint for a parsed but incomplete worksheet, or null if nothing is missing.
+ * Missing answer options (QS-04) and too few tasks for the level (BE-12) are asked
+ * for together, so there is still only one retry.
+ */
+export function korrekturFuerLuecken(worksheet) {
+  const teile = []
+  const optionen = fehlendeOptionen(worksheet)
+  if (optionen.length) {
+    teile.push(
+      `Aufgaben ohne Antwortmöglichkeiten – ${optionen.join(' ')} ` +
+        'Jede Aufgabe vom Typ reihenfolge, ankreuzen oder zuordnen braucht das Feld optionen mit mindestens 2 Einträgen, auch in Piktogramm-Formaten.',
+    )
+  }
+  if (zuWenigeAufgaben(worksheet).length) {
+    const [min, max] = AUFGABEN_ANZAHL[worksheet.stufe]
+    teile.push(
+      `Zu wenige Aufgaben – das Blatt hat ${worksheet.aufgaben.length} Aufgaben, für Stufe ${worksheet.stufe} sind ${min} bis ${max} vorgesehen. ` +
+        `Behalte die vorhandenen Aufgaben und ergänze passende Aufgaben, bis es mindestens ${min} sind.`,
+    )
+  }
+  return teile.length ? teile.join('\n') : null
 }
 
 /**

@@ -37,6 +37,11 @@ describe('System-Prompt (stabiler Teil)', () => {
     expect(prompt).toContain('optionen bei reihenfolge/ankreuzen/zuordnen nie weglassen')
   })
 
+  it('verbietet Trennstriche vor Endsilben in Leichter Sprache (BE-14)', () => {
+    expect(SYSTEM_PROMPT).toContain('Trenne nie nach Silben und nie vor einer Endung')
+    for (const falsch of ['„Heb-en“', '„ge-fähr-lich“', '„im-mer“', '„da-bei“', '„Manch-mal“']) expect(SYSTEM_PROMPT).toContain(falsch)
+  })
+
   it('enthaelt ein Few-Shot-Beispiel, das dem Schema entspricht und den Validator besteht', () => {
     const match = /```json\r?\n([\s\S]*?)\r?\n```/.exec(SYSTEM_PROMPT)
     expect(match).not.toBeNull()

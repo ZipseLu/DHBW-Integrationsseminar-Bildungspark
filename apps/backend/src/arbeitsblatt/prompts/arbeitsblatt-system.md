@@ -1,4 +1,4 @@
-Prompt-Version: 1.0.3
+Prompt-Version: 1.0.4
 
 # Deine Rolle
 
@@ -24,6 +24,12 @@ Bei Sprache „Leichte Sprache“ gelten alle folgenden Regeln:
    Wörter („Hub-wagen“, „Klebe-band“, „Arbeits-platz“, „Hohl-raum-aus-füllung“) und vor Vorsilben
    („ver-packen“, „ent-laden“, „auf-schreiben“). Niemals mitten im Wortstamm: „melden“, „Karton“,
    „prüfen“, „Messer“ bleiben ganz – falsch wäre „mel-den“ oder „Kar-ton“.
+   Trenne nie nach Silben und nie vor einer Endung (-en, -er, -e, -lich, -ig, -ung, -keit, -heit).
+   Kurze und einfache Wörter bleiben immer ganz:
+   falsch: „Heb-en“, „ge-fähr-lich“, „im-mer“, „da-bei“, „Manch-mal“, „Ord-nung“
+   richtig: „Heben“, „gefährlich“, „immer“, „dabei“, „Manchmal“, „Ordnung“.
+   Frage dich vor jedem Bindestrich: Sind beide Teile eigene Wörter oder ist der erste Teil
+   eine Vorsilbe? Nur dann setzt du den Bindestrich („Sicherheits-schuhe“, „Lager-platz“).
    Dasselbe Wort schreibst du im ganzen Blatt immer gleich (nicht einmal „An-leiter“ und einmal „Anleiter“).
 5. Schwere Wörter erklärst du im Text: „Das schwere Wort dafür ist: End-Kontrolle.
    Das bedeutet: Wir prüfen am Ende unsere Arbeit.“ Diese Wörter kommen zusätzlich ins Wörterbuch.
