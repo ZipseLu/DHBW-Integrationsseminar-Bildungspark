@@ -4,8 +4,9 @@ import { NAV_ITEMS } from '@/data/constants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
 import { Header } from '@/layout/Header'
 import { Sidebar } from '@/layout/Sidebar'
+import { fetchEinstellungen, saveEinstellungen } from '@/lib/api'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
-import { applyTheme, loadSettings, saveSettings } from '@/lib/settings'
+import { applyTheme, loadSettings, mischeEinstellungen, saveSettings } from '@/lib/settings'
 import { useTeilnehmende } from '@/lib/teilnehmende'
 import { ArbeitsblaetterPage } from '@/pages/arbeitsblaetter/ArbeitsblaetterPage'
 import { BenutzerverwaltungPage } from '@/pages/benutzerverwaltung/BenutzerverwaltungPage'
@@ -34,6 +35,8 @@ export default function App() {
   const teilnehmende = useTeilnehmende(activeNav === 'dashboard' || activeNav === 'teilnehmer')
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([...STAFF_USERS])
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
+  // Verhindert, dass ein spaet eintreffendes Laden ein frisch gespeichertes Formular ueberschreibt
+  const settingsGeaendert = useRef(false)
   // Lernziel, das von der Seite Lehrpläne an die KI-Erstellung uebergeben wird
   const [kiVorauswahl, setKiVorauswahl] = useState<KiVorauswahl | null>(null)
 
@@ -87,9 +90,28 @@ export default function App() {
     applyTheme(settings)
   }, [settings])
 
+  // FE-20: beim Start (später: beim Anmelden) die Einstellungen des Kontos aus dem
+  // Backend laden – so gelten sie auf jedem Gerät. Ohne Backend bleibt der lokale Stand.
+  // Sobald FE-08 eine Login-Maske liefert, genügt es, hier auf die E-Mail des
+  // angemeldeten Kontos zu reagieren; das Token schickt apiFetch bereits mit.
+  useEffect(() => {
+    let aktiv = true
+    void fetchEinstellungen(user.email).then((fern) => {
+      if (!aktiv || !fern || settingsGeaendert.current) return
+      const geladen = mischeEinstellungen(fern)
+      setSettings(geladen)
+      saveSettings(geladen)
+    })
+    return () => {
+      aktiv = false
+    }
+  }, [user.email])
+
   function handleSaveSettings(next: AppSettings) {
     setSettings(next)
-    saveSettings(next)
+    saveSettings(next) // lokaler Cache: Theme steht sofort, auch ohne Backend
+    settingsGeaendert.current = true
+    void saveEinstellungen(user.email, next)
   }
 
   const title = NAV_ITEMS.find((item) => item.id === activeNav)?.title ?? ''
