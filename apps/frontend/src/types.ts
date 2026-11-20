@@ -61,6 +61,8 @@ export type GespeichertInfo = {
   favorit: boolean
   /** ISO timestamp of the last change (shown in the detail panel) */
   geaendertAm?: string
+  /** Name of the person who made the last change (BE-05); null for older sheets (FE-38) */
+  geaendertVon?: string | null
 }
 
 export type HistoryAction = 'erstellt' | 'bearbeitet' | 'KI-angepasst' | 'freigegeben' | 'archiviert'

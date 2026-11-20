@@ -103,7 +103,14 @@ export function worksheetAusGespeichertem(blatt: GespeichertesArbeitsblatt, numm
     format: blatt.format,
     sprache: blatt.sprache,
     niveaus: [blatt.stufe],
-    backend: { id: blatt.id, status: blatt.status, version: blatt.version, favorit: blatt.favorit, geaendertAm: blatt.geaendertAm },
+    backend: {
+      id: blatt.id,
+      status: blatt.status,
+      version: blatt.version,
+      favorit: blatt.favorit,
+      geaendertAm: blatt.geaendertAm,
+      geaendertVon: blatt.geaendertVon,
+    },
   }
 }
 
