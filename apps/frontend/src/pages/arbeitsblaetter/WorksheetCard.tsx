@@ -30,6 +30,8 @@ export function WorksheetCard({
   const opt = formatOption(w.format)
   const formatColors = FORMAT_BADGE_COLORS[w.format]
   const levels = niveausOf(w)
+  // FE-38: older sheets have no author – then no tooltip either
+  const geaendertVon = w.backend?.geaendertVon?.trim()
 
   return (
     <article
@@ -68,7 +70,9 @@ export function WorksheetCard({
             <span style={{ opacity: 0.4 }}>·</span>
             <span className="font-mono">{w.createdBy}</span>
             <span style={{ opacity: 0.4 }}>·</span>
-            <span className="font-mono">{w.date}</span>
+            <span className="font-mono" title={geaendertVon ? `Zuletzt geändert von ${geaendertVon}` : undefined}>
+              {w.date}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span className="text-xs font-mono px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: formatColors.bg, color: formatColors.color }}>
