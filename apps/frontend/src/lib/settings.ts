@@ -99,25 +99,38 @@ const STORAGE_KEY = 'bildungspark.einstellungen'
 const ALTE_STANDARDFARBEN = { accentColor: '#C4632A', primaryColor: '#1E3A5F' }
 
 /**
- * Einstellungen liegen im Prototyp nur im Browser (localStorage).
- * Ist der Speicher gesperrt oder leer, gelten die Standardwerte.
+ * Füllt fehlende Felder mit den Standardwerten auf. Für localStorage und für
+ * die Einstellungen aus dem Backend (FE-20) – dort fehlen Felder, wenn ein
+ * älterer Stand gespeichert wurde.
+ */
+export function mischeEinstellungen(gespeichert: Partial<AppSettings> | null | undefined): AppSettings {
+  if (!gespeichert || typeof gespeichert !== 'object') return DEFAULT_SETTINGS
+  const bereinigt: Partial<AppSettings> = { ...gespeichert }
+  // FE-21: whoever still has the old default colors of the mockup gets the corporate design
+  if (bereinigt.accentColor === ALTE_STANDARDFARBEN.accentColor && bereinigt.primaryColor === ALTE_STANDARDFARBEN.primaryColor) {
+    delete bereinigt.accentColor
+    delete bereinigt.primaryColor
+  }
+  return { ...DEFAULT_SETTINGS, ...bereinigt }
+}
+
+/**
+ * Einstellungen aus dem Browser (localStorage) – ausfallsichere Quelle, wenn
+ * das Backend nicht erreichbar ist. Beim Start lädt die App zusätzlich die
+ * Einstellungen des Kontos aus dem Backend (FE-20) und überschreibt damit die
+ * lokalen Werte. Ist der Speicher gesperrt oder leer, gelten die Standardwerte.
  */
 export function loadSettings(): AppSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
-    const gespeichert = JSON.parse(raw) as Partial<AppSettings>
-    // FE-21: whoever still has the old default colors of the mockup gets the corporate design
-    if (gespeichert.accentColor === ALTE_STANDARDFARBEN.accentColor && gespeichert.primaryColor === ALTE_STANDARDFARBEN.primaryColor) {
-      delete gespeichert.accentColor
-      delete gespeichert.primaryColor
-    }
-    return { ...DEFAULT_SETTINGS, ...gespeichert }
+    return mischeEinstellungen(JSON.parse(raw) as Partial<AppSettings>)
   } catch {
     return DEFAULT_SETTINGS
   }
 }
 
+/** Lokaler Cache der Einstellungen (damit das Theme ohne Backend sofort stimmt). */
 export function saveSettings(settings: AppSettings): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))

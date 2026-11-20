@@ -18,6 +18,7 @@ import { createArbeitsblaetterRouter } from './routes/arbeitsblaetter.js'
 import { createTeilnehmendeRouter } from './routes/teilnehmende.js'
 import { createBenutzerRouter } from './routes/benutzer.js'
 import { createAuthRouter } from './routes/auth.js'
+import { createEinstellungenRouter } from './routes/einstellungen.js'
 import { createZuordnungenRouter } from './routes/zuordnungen.js'
 import { authentifiziere } from './auth/anmeldung.js'
 import { createUploadsRouter } from './routes/uploads.js'
@@ -71,6 +72,8 @@ export function createApp() {
   app.use('/api/teilnehmende', createTeilnehmendeRouter())
   // Staff accounts (table users, BE-03) – admins only as soon as a token is sent (BE-01)
   app.use('/api/benutzer', createBenutzerRouter())
+  // Per-account UI settings (FE-20) – token user wins, otherwise ?konto=<email> in the prototype
+  app.use('/api/einstellungen', createEinstellungenRouter())
   // Uploaded worksheets (table uploads) – raw file body up to 20 MB, parsed inside the router
   app.use('/api/uploads', createUploadsRouter())
   // Kennzahlen und letzte Aktivitäten für FE-06 (BE-07)
