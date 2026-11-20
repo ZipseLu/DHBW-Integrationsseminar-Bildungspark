@@ -130,6 +130,42 @@ cd apps/frontend && npm ci && npm run dev   # http://localhost:5173 – leitet /
 
 ---
 
+## Testkonten
+
+`npm run db:seed` legt vier Beispielkonten an. Ihr Startpasswort steht in `SEED_PASSWORT`;
+die Vorlage `.env.example` enthält mit `bildungspark-demo` einen bewusst bekannten Wert,
+damit Abnahmetest (QS-05), Präsentation und Benutzerhandbuch damit arbeiten können.
+
+| E-Mail | Rolle |
+|---|---|
+| `c.hager@bildungspark.example` | Admin |
+| `a.mustajbegovic@bildungspark.example` | Dozent |
+| `t.neumann@bildungspark.example` | Dozent |
+| `s.oturucu@bildungspark.example` | Assistenz |
+
+**Startpasswort für alle vier Konten:** `bildungspark-demo`
+
+Konten anlegen (nach `cp .env.example .env`):
+
+```bash
+# Ohne Docker (Verbindung aus der .env)
+cd apps/backend && npm run db:seed -- --reset
+
+# Mit Docker (SEED_PASSWORT wird aus der .env in den Container übergeben)
+docker compose exec backend npm run db:seed -- --reset
+```
+
+Anmelden derzeit über `POST /api/auth/login` mit E-Mail und Startpasswort
+(eine Login-Maske im Frontend ist noch offen) – Beispiel siehe
+[docs/anmeldung-api.md, „Konten zum Ausprobieren“](docs/anmeldung-api.md#konten-zum-ausprobieren).
+
+> ⚠️ **Nur für lokale Entwicklung und Demos.** Die `.example`-Adressen und das bekannte
+> Passwort gehören nicht auf einen öffentlich erreichbaren Server. Wird `SEED_PASSWORT`
+> aus der `.env` entfernt, erzeugt der Seed ein zufälliges Passwort, das nicht im Log
+> steht – die Konten sind dann nicht mehr nachvollziehbar anmeldbar.
+
+---
+
 ## ⚠️ Befehle einzeln ausführen
 
 `docker compose up` **blockiert das Terminal** (läuft im Vordergrund). Mehrere
@@ -274,7 +310,7 @@ npm run dev:frontend
 
 # --- Datenbank (in apps/backend; Verbindung aus der .env) ---
 npm run db:migrate                 # Schema anlegen/aktualisieren (db/migrations/*.sql, laeuft auch beim Start)
-npm run db:seed                    # Beispiel-Arbeitsblaetter (24 mit Lehrplan-Import, sonst 16), nur in eine leere Tabelle
+npm run db:seed                    # Beispiel-Arbeitsblaetter (24 mit Lehrplan-Import, sonst 16) + Testkonten (SEED_PASSWORT), nur in eine leere Tabelle
 npm run db:seed -- --reset         # alles loeschen und neu befuellen
 ```
 
@@ -417,7 +453,7 @@ Echte Werte stehen nur in der lokalen `.env` (in `.gitignore`) oder in GitHub Se
 | `GEMINI_API_KEY` | lokale `.env` | Jede Person erzeugt ihren eigenen Key (Google AI Studio). Bei Leak: Key widerrufen, neu erzeugen. |
 | `JWT_SECRET` | lokale `.env`, in Produktion Pflicht | Bei `NODE_ENV=production` bricht das Backend ohne Wert ab. Erzeugen: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | lokale `.env` | Die Dev-Defaults (`root-dev`, `bildungspark-dev`) nur auf dem eigenen Rechner nutzen, nie auf erreichbaren Servern. |
-| `SEED_PASSWORT` | lokale `.env` (optional) | Ohne Wert erzeugt `npm run db:seed` ein Zufallspasswort und zeigt es einmalig im Log. |
+| `SEED_PASSWORT` | lokale `.env` (optional) | Startpasswort der Seed-Konten; `.env.example` setzt `bildungspark-demo` für Demo und Abnahme (siehe „Testkonten“). Ohne Wert: Zufallspasswort, nicht im Log. |
 | `AZURE_OPENAI_API_KEY`, `SERPAPI_API_KEY` | lokale `.env` | Bisher ungenutzt bzw. spätere Phase. |
 
 Es gibt aktuell keinen Server. Sobald eine Dev-Stage in GitHub Actions läuft, werden die Werte unter
