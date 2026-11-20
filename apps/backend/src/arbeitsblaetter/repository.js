@@ -278,8 +278,10 @@ export async function update(id, patch) {
       }
 
       if (!aktion) {
-        // Nur Markierung: Version und Listenspalten bleiben, wie sie sind
-        await connection.execute('UPDATE arbeitsblaetter SET favorit = ?, geaendert_von = ?, geaendert_am = ? WHERE id = ?', [favorit ? 1 : 0, patch.autor ?? null, jetzt, id])
+        // Nur Markierung (BE-15): Version, geaendert_von und der Verlauf bleiben, wie sie sind –
+        // auch wenn die Anmeldung einen anderen Namen oder gar keinen liefert. Nur der
+        // Zeitstempel zeigt, dass sich die Markierung geaendert hat.
+        await connection.execute('UPDATE arbeitsblaetter SET favorit = ?, geaendert_am = ? WHERE id = ?', [favorit ? 1 : 0, jetzt, id])
       } else {
         const version = aktuell.version + 1
         const kiMeta = patch.worksheet ? (patch.meta ?? null) : null
