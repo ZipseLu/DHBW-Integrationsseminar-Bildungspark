@@ -54,7 +54,9 @@ BE-06 („Schreibende Endpunkte absichern“) verlangt danach für jede Anfrage 
 ## Beispieldaten
 
 `npm run db:seed` legt die vier Konten aus dem Frontend an (Celine Hager als Admin, zwei Dozierende, eine Assistenz;
-Adressen auf `.example`). Startpasswort für alle: Umgebungsvariable `SEED_PASSWORT`, sonst ein zufälliges Passwort, das beim Seeden einmalig im Log steht –
+Adressen auf `.example`). Startpasswort für alle: Umgebungsvariable `SEED_PASSWORT` – die Vorlage `.env.example` setzt
+`bildungspark-demo` als bekanntes Startpasswort für Abnahme und Demo (siehe README „Testkonten“). Ohne Wert erzeugt der
+Seed ein zufälliges Passwort, das nicht protokolliert wird –
 **nur für lokale Entwicklung und Demos.**
 
 ## Zuordnung zum Frontend (für FE-09)
