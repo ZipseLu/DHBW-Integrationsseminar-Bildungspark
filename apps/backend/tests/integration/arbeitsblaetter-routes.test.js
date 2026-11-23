@@ -415,18 +415,40 @@ describe.skipIf(!hasDb)('Arbeitsblatt-Verwaltung (MySQL)', () => {
       expect(JSON.stringify(verlauf.body)).not.toContain('Gefälscht')
     })
 
-    it('setzt geaendertVon auch bei einer reinen Favoritenänderung ohne neue Version', async () => {
+    it('lässt geaendertVon bei einer reinen Favoritenänderung unverändert – mit Anmeldung (BE-15)', async () => {
       const angelegt = await api(app, 'dozent').post('/api/arbeitsblaetter').send(blatt())
       expect(angelegt.status).toBe(201)
       const { id } = angelegt.body.arbeitsblatt
+      expect(angelegt.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.dozent.name)
 
+      // Die Assistenz setzt den Stern – der Bearbeiter bleibt das Konto, das das Blatt angelegt hat
       const favorit = await api(app, 'assistent').patch(`/api/arbeitsblaetter/${id}`).send({ favorit: true, autor: 'Gefälscht' })
       expect(favorit.status).toBe(200)
+      expect(favorit.body.arbeitsblatt.favorit).toBe(true)
       expect(favorit.body.arbeitsblatt.version).toBe(1)
-      expect(favorit.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.assistent.name)
+      expect(favorit.body.arbeitsblatt.geaendertVon).toBe(TEST_KONTEN.dozent.name)
       const verlauf = await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)
       expect(verlauf.body.eintraege).toHaveLength(1)
+      expect(verlauf.body.eintraege[0]).toMatchObject({ aktion: 'erstellt', autor: TEST_KONTEN.dozent.name })
       expect(JSON.stringify(verlauf.body)).not.toContain('Gefälscht')
+    })
+
+    it('lässt geaendertVon bei einer reinen Favoritenänderung unverändert – ohne Anmeldung (BE-15)', async () => {
+      const { id } = await speichern(app, {}, { erstelltVon: 'C. Hager' })
+      expect((await request(app).get(`/api/arbeitsblaetter/${id}`)).body.arbeitsblatt.geaendertVon).toBe('C. Hager')
+
+      // Kein Token und kein autor im Body: der vorhandene Name darf nicht auf NULL gesetzt werden
+      const favorit = await request(app).patch(`/api/arbeitsblaetter/${id}`).send({ favorit: true })
+      expect(favorit.status).toBe(200)
+      expect(favorit.body.arbeitsblatt.favorit).toBe(true)
+      expect(favorit.body.arbeitsblatt.geaendertVon).toBe('C. Hager')
+
+      // Auch ein mitgeschickter Name überschreibt den Bearbeiter nicht
+      const zurueck = await request(app).patch(`/api/arbeitsblaetter/${id}`).send({ favorit: false, autor: 'Jemand Anderes' })
+      expect(zurueck.status).toBe(200)
+      expect(zurueck.body.arbeitsblatt.favorit).toBe(false)
+      expect(zurueck.body.arbeitsblatt.geaendertVon).toBe('C. Hager')
+      expect((await request(app).get(`/api/arbeitsblaetter/${id}/verlauf`)).body.eintraege.map((v) => v.autor)).toEqual(['C. Hager'])
     })
 
     it('lässt auch bei einem Token ohne name-Claim keinen Body-Namen zu', async () => {
