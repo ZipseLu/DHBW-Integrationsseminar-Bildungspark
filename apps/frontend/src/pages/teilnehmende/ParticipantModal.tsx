@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { stufeTextVar } from '@/lib/settings'
 import { Modal } from '@/components/Modal'
 import { ErrorNote, fieldLabelClass, inputStyle } from '@/components/Widgets'
-import { BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { useBerufsfelder } from '@/lib/berufsfelder'
 import { moveItem, pruefeKennung, type StationDraft } from '@/lib/participants'
 import type { Format, Participant } from '@/types'
 
@@ -28,6 +29,8 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
     editing ? editing.berufsbilder.map((b) => ({ berufsbild: b.berufsbild, level: b.level, format: b.format })) : [emptyStation],
   )
 
+  // FE-34: includes Berufsfelder of added curricula and those already in the learning path
+  const berufsfelder = useBerufsfelder([defaultBerufsbild, ...stations.map((s) => s.berufsbild)])
   const update = (index: number, patch: Partial<StationDraft>) => setStations((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)))
 
   async function handleSubmit(event: FormEvent) {
@@ -158,7 +161,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
                     className="w-full px-3 py-2 rounded text-sm outline-none"
                     style={{ ...inputStyle, backgroundColor: 'var(--card)' }}
                   >
-                    {BERUFSBILDER.map((b) => (
+                    {berufsfelder.map((b) => (
                       <option key={b}>{b}</option>
                     ))}
                   </select>

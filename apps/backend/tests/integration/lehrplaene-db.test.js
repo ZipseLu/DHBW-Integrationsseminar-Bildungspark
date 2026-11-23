@@ -6,7 +6,9 @@ import { join } from 'node:path'
 import { createApp } from '../../src/app.js'
 import { closePool, query } from '../../src/db.js'
 import { runMigrations } from '../../src/db/migrate.js'
-import { count, deleteAll, ersetzeAlle, LehrplanDatenError, listLernziele, stand } from '../../src/lehrplan/repository.js'
+import { count, deleteAll, ersetzeAlle, fuegeLehrplanHinzu, LehrplanDatenError, listLernziele, quelleVorhanden, stand } from '../../src/lehrplan/repository.js'
+import { leseLehrplanDatei } from '../../src/lehrplan/hochladen.js'
+import { lehrplanDocx } from '../helpers/lehrplanDocx.js'
 import { seedLehrplaene } from '../../src/lehrplan/seed.js'
 
 /**
@@ -145,6 +147,50 @@ describe.skipIf(!hasDb)('Lehrpläne in der Datenbank (MySQL)', () => {
       expect(await seedLehrplaene({ file: falsch, log: (zeile) => meldungen.push(zeile) })).toEqual({ angelegt: 0, uebersprungen: true })
       expect(meldungen.join('\n')).toContain('WARNUNG')
       expect(await count()).toBe(0)
+    })
+  })
+  describe('Lehrplan hinzufügen (FE-34)', () => {
+    const GALA = 'Lehrplan GaLa Baustein 1.docx'
+
+    it('fügt einen Lehrplan hinzu, die IDs der vorhandenen Lernziele bleiben gleich', async () => {
+      await ersetzeAlle(LERNZIELE)
+      const lehrplan = leseLehrplanDatei(await lehrplanDocx({ titel: 'Pflanzen pflegen', lernziele: [{ titel: 'Hecke schneiden' }] }), { dateiname: GALA, berufsfeld: 'Garten- und Landschaftsbau' })
+
+      expect(await quelleVorhanden(GALA)).toBe(false)
+      expect(await fuegeLehrplanHinzu(lehrplan)).toEqual({ lernziele: 1, ersetzt: false })
+
+      const alle = await listLernziele()
+      expect(alle.slice(0, 3)).toEqual(LERNZIELE)
+      expect(alle[3]).toMatchObject({ id: 4, berufsfeld: 'Garten- und Landschaftsbau', baustein: 1, ausbildungsbaustein: 'Pflanzen pflegen', titel: 'Hecke schneiden', quelle: GALA })
+      expect(alle[3].niveaus.B).toEqual({ kompetenz: 'Kompetenz B', beispiel: 'Beispiel B' })
+    })
+
+    it('ersetzt einen Lehrplan mit gleichem Dateinamen (neue Version)', async () => {
+      await ersetzeAlle(LERNZIELE)
+      const v1 = leseLehrplanDatei(await lehrplanDocx({ lernziele: [{ titel: 'Hecke schneiden' }] }), { dateiname: GALA, berufsfeld: 'Garten- und Landschaftsbau' })
+      const v2 = leseLehrplanDatei(await lehrplanDocx({ lernziele: [{ titel: 'Hecke schneiden' }, { titel: 'Rasen mähen' }] }), { dateiname: GALA, berufsfeld: 'Garten- und Landschaftsbau' })
+      await fuegeLehrplanHinzu(v1)
+
+      expect(await quelleVorhanden(GALA)).toBe(true)
+      expect(await fuegeLehrplanHinzu(v2)).toEqual({ lernziele: 2, ersetzt: true })
+      const gala = (await listLernziele()).filter((l) => l.quelle === GALA)
+      expect(gala.map((l) => l.titel)).toEqual(['Hecke schneiden', 'Rasen mähen'])
+      expect(await count()).toBe(5)
+    })
+
+    it('POST /api/lehrplaene speichert die Datei, GET liefert die neuen Lernziele', async () => {
+      await ersetzeAlle(LERNZIELE)
+      const response = await request(app)
+        .post('/api/lehrplaene?berufsfeld=Garten-%20und%20Landschaftsbau')
+        .set('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        .set('X-Dateiname', encodeURIComponent(GALA))
+        .send(await lehrplanDocx({ lernziele: [{ titel: 'Hecke schneiden' }] }))
+      expect(response.status).toBe(201)
+      expect(response.body).toMatchObject({ anzahl: 1, ersetzt: false })
+
+      const liste = await request(app).get('/api/lehrplaene')
+      expect(liste.body.herkunft).toBe('datenbank')
+      expect(liste.body.lernziele.map((l) => l.berufsfeld)).toContain('Garten- und Landschaftsbau')
     })
   })
 })

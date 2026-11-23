@@ -116,6 +116,50 @@ export async function ersetzeAlle(lernziele) {
   })
 }
 
+/** FE-34: true if a curriculum with this file name is already stored (it would be replaced) */
+export async function quelleVorhanden(quelle) {
+  const row = await queryOne('SELECT id FROM lehrplaene WHERE quelle = ?', [quelle])
+  return Boolean(row)
+}
+
+/**
+ * FE-34: adds one curriculum (result of leseLehrplanDatei) in one transaction.
+ * A curriculum with the same file name is replaced (new version); its learning
+ * goals are removed by ON DELETE CASCADE. New learning goals get the next free
+ * ids, so the ids of all other learning goals stay the same.
+ *
+ * @returns {Promise<{ lernziele: number, ersetzt: boolean }>}
+ */
+export async function fuegeLehrplanHinzu(lehrplan) {
+  return withConnection(async (connection) => {
+    await connection.beginTransaction()
+    try {
+      const [geloescht] = await connection.execute('DELETE FROM lehrplaene WHERE quelle = ?', [lehrplan.quelle])
+      const [result] = await connection.execute(
+        'INSERT INTO lehrplaene (berufsfeld, baustein, ausbildungsbaustein, tq, quelle, importiert_am) VALUES (?, ?, ?, ?, ?, ?)',
+        [lehrplan.berufsfeld, lehrplan.baustein, lehrplan.ausbildungsbaustein, lehrplan.tq, lehrplan.quelle, new Date()],
+      )
+      const lehrplanId = result.insertId
+      // Lock the id range so two uploads at the same time cannot pick the same ids
+      const [[{ naechste }]] = await connection.query('SELECT COALESCE(MAX(id), 0) + 1 AS naechste FROM lernziele FOR UPDATE')
+      let id = Number(naechste)
+      for (const ziel of lehrplan.lernziele) {
+        await connection.execute('INSERT INTO lernziele (id, lehrplan_id, abschnitt, titel) VALUES (?, ?, ?, ?)', [id, lehrplanId, ziel.abschnitt, ziel.titel])
+        await connection.execute(
+          `INSERT INTO lernziel_niveaus (lernziel_id, stufe, kompetenz, beispiel) VALUES ${STUFEN.map(() => '(?, ?, ?, ?)').join(', ')}`,
+          STUFEN.flatMap((stufe) => [id, stufe, ziel.niveaus[stufe].kompetenz, ziel.niveaus[stufe].beispiel]),
+        )
+        id += 1
+      }
+      await connection.commit()
+      return { lernziele: lehrplan.lernziele.length, ersetzt: geloescht.affectedRows > 0 }
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    }
+  })
+}
+
 /** Nur für Tests */
 export async function deleteAll() {
   await query('DELETE FROM lehrplaene')

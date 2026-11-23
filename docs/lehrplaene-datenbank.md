@@ -57,15 +57,48 @@ ausbildungsbaustein, abschnitt, titel, niveaus, quelle }`) und zusätzlich `herk
 Ist die Datenbank nicht erreichbar, merkt sich die Route das **30 Sekunden** lang: In dieser Zeit kommt die Antwort sofort aus der
 JSON-Datei, statt bei jedem Seitenaufruf erneut einen Verbindungsversuch zu starten (bei `ETIMEDOUT` sonst bis zu 10 s pro Aufruf).
 
+## Lehrplan in der Anwendung hinzufügen (FE-34)
+
+Admins und Dozierende können auf der Seite **Lehrpläne** über „+ Lehrplan hinzufügen“ eine Word-Datei eines
+binnendifferenzierten Lehrplans hochladen – ohne Import-Skript und ohne Kommandozeile.
+
+1. Datei (`.docx`) wählen und das Berufsfeld: eines der bekannten, „Anderes Berufsfeld …“ mit eigenem Namen oder
+   „Aus dem Dateinamen erkennen“ (wie das Import-Skript: `TQ Lager`, `TQ Metall`, `TQ Gastro`).
+2. **Prüfen** – das Backend liest die Datei mit demselben Parser wie `npm run import:lehrplaene` und zeigt
+   „12 Lernziele erkannt“ mit der Liste, den vorhandenen Stufen und Hinweisen (fehlende Stufe, fehlender Baustein).
+3. **Speichern** – das Backend liest die Datei erneut und speichert sie. Gibt es schon einen Lehrplan aus einer Datei
+   mit demselben Namen, wird er ersetzt (neue Version); der Dialog weist vorher darauf hin.
+
+Danach erscheinen die Lernziele sofort in der KI-Erstellung, auf der Seite Lehrpläne und – bei einem neuen Berufsfeld –
+in allen Auswahllisten (Arbeitsblätter-Filter, Lernweg der Teilnehmenden, Upload, Einstellungen; `useBerufsfelder()` in
+`apps/frontend/src/lib/berufsfelder.ts`).
+
+| Route | Zweck |
+| --- | --- |
+| `POST /api/lehrplaene/vorschau` | Datei lesen, nichts speichern → `{ lehrplan: { quelle, berufsfeld, tq, baustein, ausbildungsbaustein, lernziele, hinweise }, ersetzt }` |
+| `POST /api/lehrplaene` | Datei lesen und speichern → `201 { lehrplan, anzahl, ersetzt }`; mit Token nur `admin`/`dozent` (sonst 403) |
+
+Beide erwarten die Datei als Rohdaten im Body (wie `POST /api/uploads`), den Dateinamen URI-kodiert im Header
+`X-Dateiname` und optional `?berufsfeld=`. Fehler: `415` kein Word-Dokument, `400 berufsfeld_fehlt`,
+`422 keine_lernziele` (keine Lehrplan-Tabelle erkannt), `413` größer als 20 MB, `503` ohne Datenbank (nur beim Speichern).
+
+Neue Lernziele bekommen die nächsten freien IDs; die IDs der übrigen Lernziele bleiben gleich. Ist die Datenbank noch
+leer und kommen die Lernziele bisher aus `data/lehrplaene.json`, übernimmt das Backend die Datei vor dem ersten Speichern
+in die Datenbank – sonst würde der neue Lehrplan alle anderen verdecken.
+
+**Achtung:** `npm run import:lehrplaene` ersetzt weiterhin den kompletten Bestand – in der Anwendung hinzugefügte
+Lehrpläne sind danach weg, wenn ihre Datei nicht im Import-Ordner liegt.
+
 ## Code
 
 | Datei | Zweck |
 | --- | --- |
 | `apps/backend/db/migrations/005_lehrplaene.sql` | Tabellen |
-| `apps/backend/src/lehrplan/repository.js` | `listLernziele()`, `stand()`, `count()`, `ersetzeAlle(lernziele)` |
+| `apps/backend/src/lehrplan/repository.js` | `listLernziele()`, `stand()`, `count()`, `ersetzeAlle(lernziele)`, `quelleVorhanden()`, `fuegeLehrplanHinzu()` (FE-34) |
+| `apps/backend/src/lehrplan/hochladen.js` | FE-34: hochgeladene Word-Datei prüfen und lesen |
 | `apps/backend/src/lehrplan/schema.js` | prüft Importdaten vor dem Schreiben (Pflichtfelder, Längen, doppelte IDs) |
 | `apps/backend/src/lehrplan/seed.js` | Datei → Datenbank für `npm run db:seed` |
-| `apps/backend/src/routes/lehrplaene.js` | `GET /api/lehrplaene`: Datenbank, sonst Datei |
+| `apps/backend/src/routes/lehrplaene.js` | `GET /api/lehrplaene`: Datenbank, sonst Datei; FE-34: `POST /vorschau`, `POST /` |
 | `apps/backend/scripts/import-lehrplaene.js` | DOCX → Datei + Datenbank |
 
 ## Tests
@@ -73,3 +106,5 @@ JSON-Datei, statt bei jedem Seitenaufruf erneut einen Verbindungsversuch zu star
 - `tests/unit/lehrplaene.test.js` – Schema der Importdaten; Reihenfolge Datenbank → Datei → leer (Repository als Stub)
 - `tests/integration/lehrplaene-db.test.js` – Rundreise Import → Abfrage, Ersetzen, Abbruch ohne Datenverlust, Seed, `GET /api/lehrplaene`; gegen MySQL
 - `tests/integration/lehrplaene-routes.test.js` – Weg über die Datei (wie bisher)
+- `tests/unit/lehrplan-hochladen.test.js` – FE-34: Datei lesen, Fehlerfälle, beide Routen, Rollen (Repository als Stub)
+- `apps/frontend/tests/unit/LehrplanHinzufuegen.spec.tsx` – FE-34: Dialog Prüfen → Vorschau → Speichern, Ersetzen, Fehler, Rollen, Berufsfelder
