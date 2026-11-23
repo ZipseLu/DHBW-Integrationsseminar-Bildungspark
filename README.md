@@ -163,6 +163,12 @@ Anmelden derzeit über `POST /api/auth/login` mit E-Mail und Startpasswort
 > Passwort gehören nicht auf einen öffentlich erreichbaren Server. Wird `SEED_PASSWORT`
 > aus der `.env` entfernt, erzeugt der Seed ein zufälliges Passwort, das nicht im Log
 > steht – die Konten sind dann nicht mehr nachvollziehbar anmeldbar.
+>
+> **Auf dem Server des Bildungsparks (Übergabe, OPS-06):** In der `.env` die Zeile
+> `SEED_PASSWORT=bildungspark-demo` löschen oder durch ein eigenes Passwort ersetzen.
+> `docker-compose.yml` setzt bewusst keinen Standardwert (OPS-08): Fehlt der Eintrag,
+> bekommen die Konten nie das bekannte Demo-Passwort. Danach mit einem Admin-Konto echte
+> Konten anlegen und die Beispielkonten löschen.
 
 ---
 
@@ -457,7 +463,7 @@ Echte Werte stehen nur in der lokalen `.env` (in `.gitignore`) oder in GitHub Se
 | `GEMINI_API_KEY` | lokale `.env` | Jede Person erzeugt ihren eigenen Key (Google AI Studio). Bei Leak: Key widerrufen, neu erzeugen. |
 | `JWT_SECRET` | lokale `.env`, in Produktion Pflicht | Bei `NODE_ENV=production` bricht das Backend ohne Wert ab. Erzeugen: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | lokale `.env` | Die Dev-Defaults (`root-dev`, `bildungspark-dev`) nur auf dem eigenen Rechner nutzen, nie auf erreichbaren Servern. |
-| `SEED_PASSWORT` | lokale `.env` (optional) | Startpasswort der Seed-Konten; `.env.example` setzt `bildungspark-demo` für Demo und Abnahme (siehe „Testkonten“). Ohne Wert: Zufallspasswort, nicht im Log. |
+| `SEED_PASSWORT` | lokale `.env` (optional) | Startpasswort der Seed-Konten; `.env.example` setzt `bildungspark-demo` für Demo und Abnahme (siehe „Testkonten“). Ohne Wert: Zufallspasswort, nicht im Log – auch im Docker-Container, `docker-compose.yml` hat keinen Standardwert (OPS-08). Auf dem Server leer lassen oder eigenes Passwort. |
 | `AZURE_OPENAI_API_KEY`, `SERPAPI_API_KEY` | lokale `.env` | Bisher ungenutzt bzw. spätere Phase. |
 
 Es gibt aktuell keinen Server. Sobald eine Dev-Stage in GitHub Actions läuft, werden die Werte unter
