@@ -78,7 +78,7 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
         <form onSubmit={pruefen} className="flex flex-col gap-4">
           <div>
             <label htmlFor="lehrplan-datei" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-              LEHRPLAN-DATEI (.DOCX)
+              Lehrplan-Datei (.docx)
             </label>
             <input
               id="lehrplan-datei"
@@ -95,7 +95,7 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="lehrplan-berufsfeld" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                BERUFSFELD
+                Berufsfeld
               </label>
               <select
                 id="lehrplan-berufsfeld"
@@ -119,7 +119,7 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
             {auswahl === ANDERES && (
               <div>
                 <label htmlFor="lehrplan-berufsfeld-neu" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                  NAME DES BERUFSFELDS
+                  Name des Berufsfelds
                 </label>
                 <input
                   id="lehrplan-berufsfeld-neu"

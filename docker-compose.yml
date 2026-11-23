@@ -188,6 +188,10 @@ services:
       # 'localhost' – sonst laeuft der Proxy in den eigenen Container
       # zurueck und liefert 500.
       VITE_PROXY_TARGET: "http://backend:3000"
+      # Fussleiste (FE-32): Links zu Impressum und Datenschutz des Bildungsparks;
+      # ohne Wert erscheint der jeweilige Link nicht
+      VITE_IMPRESSUM_URL: "${VITE_IMPRESSUM_URL:-}"
+      VITE_DATENSCHUTZ_URL: "${VITE_DATENSCHUTZ_URL:-}"
       # Vite polling: noetig wegen Windows-Bind-Mounts (HMR-Dateiwatching)
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
@@ -216,6 +220,9 @@ services:
         # Absichtlich leer: Nginx uebernimmt den /api-Proxy.
         # Siehe Kommentar beim Dev-Service.
         VITE_API_URL: ""
+        # Fussleiste (FE-32): beim Build fest eingebaut, ohne Wert kein Link
+        VITE_IMPRESSUM_URL: "${VITE_IMPRESSUM_URL:-}"
+        VITE_DATENSCHUTZ_URL: "${VITE_DATENSCHUTZ_URL:-}"
     image: bp/frontend:prod
     container_name: bp-frontend-prod
     profiles: ["prod"]

@@ -26,7 +26,7 @@ async function download(doc: LehrplanDokument) {
 }
 
 /**
- * Lehrpläne (Figma-Mockup, Version 41): Curriculum-Bibliothek mit Filter nach
+ * Lehrpläne (Figma-Mockup, Version 41): Lehrplan-Übersicht mit Filter nach
  * Berufsfeld, Suche, Online-Vorschau, Word-Download und "Arbeitsblatt daraus erstellen".
  * Daten: importierte Lehrpläne (GET /api/lehrplaene), sonst die Beispiel-Lernziele.
  */
@@ -67,10 +67,10 @@ export function LehrplaenePage({ onCreateWorksheet, user }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }} aria-label="Curriculum-Bibliothek">
+      <section className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }} aria-label="Lehrplan-Übersicht">
         <div className="p-7 flex items-start justify-between gap-8">
           <div className="max-w-2xl">
-            <div className="text-xs font-mono uppercase tracking-widest mb-3 opacity-80">Curriculum-Bibliothek</div>
+            <div className="text-sm font-medium mb-3 opacity-80">Lehrplan-Übersicht</div>
             <h2 className="font-display text-3xl font-semibold leading-tight">Binnendifferenzierte Lehrpläne</h2>
             <p className="text-sm leading-relaxed mt-3 opacity-90">
               Greifen Sie auf die verbindlichen Lehrpläne für Lager, Metall und Gastronomie zu. Alle Inhalte bilden die Niveaustufen T, A, F und B mit konkreten
@@ -296,8 +296,8 @@ function LehrplanPreview({
     <SlideOver label={`Lehrplan ${doc.ausbildungsbaustein}`} width={680} onClose={onClose}>
       <div className="px-6 py-5 flex items-start justify-between gap-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <div className="text-xs font-mono mb-1" style={{ color: 'var(--accent-text)' }}>
-            ONLINE-VORSCHAU · LEHRPLAN
+          <div className="text-xs mb-1" style={{ color: 'var(--accent-text)' }}>
+            Online-Vorschau · Lehrplan
           </div>
           <h2 className="font-display text-xl font-semibold leading-snug">{doc.ausbildungsbaustein}</h2>
           <div className="text-xs mt-1.5" style={{ color: 'var(--muted-foreground)' }}>

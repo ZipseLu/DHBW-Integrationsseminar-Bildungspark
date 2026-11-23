@@ -107,8 +107,8 @@ describe('„✦ Anpassen“ (FE-23)', () => {
       />,
     )
     expect(screen.getByRole('note')).toHaveTextContent('Lernziel ist vorausgewählt')
-    expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Lieferschein prüfen')
-    expect((screen.getByLabelText(/ERWARTUNGEN/) as HTMLTextAreaElement).value).toContain('Prüfe einen Lieferschein.')
+    expect(screen.getByLabelText(/Thema \/ Titel/)).toHaveValue('Lieferschein prüfen')
+    expect((screen.getByLabelText(/Erwartungen/) as HTMLTextAreaElement).value).toContain('Prüfe einen Lieferschein.')
   })
 })
 

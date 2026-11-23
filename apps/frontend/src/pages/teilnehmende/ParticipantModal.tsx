@@ -62,7 +62,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
       <form onSubmit={handleSubmit} noValidate className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
         <div>
           <label htmlFor="tn-kennung" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ANONYME KENNUNG {!editing && <span className="font-normal">(IW3-Nummer, Pflichtfeld)</span>}
+            Anonyme Kennung {!editing && <span className="font-normal">(IW3-Nummer, Pflichtfeld)</span>}
           </label>
           <input
             id="tn-kennung"
@@ -94,7 +94,7 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono font-medium" style={{ color: 'var(--muted-foreground)' }}>
-              BERUFSBEREICHE <span className="font-normal">(Reihenfolge = Lernweg)</span>
+              Berufsbereiche <span className="font-normal">(Reihenfolge = Lernweg)</span>
             </span>
             <button
               type="button"
@@ -168,8 +168,8 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <div className="font-mono mb-1" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
-                        NIVEAUSTUFE
+                      <div className="mb-1" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
+                        Niveaustufe
                       </div>
                       <div className="grid grid-cols-4 gap-1" role="group" aria-label={`Niveaustufe Bereich ${i + 1}`}>
                         {LEVELS.map((l) => {
@@ -194,8 +194,8 @@ export function ParticipantModal({ editing, defaultBerufsbild, onSave, onClose }
                       </div>
                     </div>
                     <div>
-                      <div className="font-mono mb-1" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
-                        FORMAT
+                      <div className="mb-1" style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>
+                        Format
                       </div>
                       <select
                         aria-label={`Format Bereich ${i + 1}`}

@@ -43,8 +43,8 @@ export function LernstandListe({ lernstand, onStatus, onEntfernen }: Props) {
         const zeilen = [...feld.offen, ...feld.erledigt]
         return (
           <section key={feld.berufsfeld} aria-label={`Arbeitsblätter ${feld.berufsfeld}`}>
-            <div className="flex items-center gap-2 text-xs font-mono font-medium mb-1.5 flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
-              <span>ARBEITSBLÄTTER</span>
+            <div className="flex items-center gap-2 text-xs font-medium mb-1.5 flex-wrap" style={{ color: 'var(--muted-foreground)' }}>
+              <span>Arbeitsblätter</span>
               <span className="px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }}>
                 {feld.berufsfeld}
                 {feld.station ? ` · ${feld.station.stufe}` : ' · nicht im Lernweg'}

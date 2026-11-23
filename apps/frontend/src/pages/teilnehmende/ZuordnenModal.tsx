@@ -99,8 +99,8 @@ export function ZuordnenModal({ participant, zugeordnet, onZuordnen, onClose, on
     >
       {waehlbar.length > 1 && (
         <label className="mx-4 mt-3 flex items-center gap-2 text-xs">
-          <span className="font-mono" style={{ color: 'var(--muted-foreground)' }}>
-            BEREICH
+          <span className="" style={{ color: 'var(--muted-foreground)' }}>
+            Bereich
           </span>
           <select
             value={bereichIndex}

@@ -11,7 +11,7 @@ export function StatCard({ label, value, sub, accent }: { label: string; value: 
         border: accent ? 'none' : '1px solid var(--border)',
       }}
     >
-      <span className="text-xs font-medium tracking-wide uppercase opacity-80 font-mono">{label}</span>
+      <span className="text-xs font-medium opacity-80">{label}</span>
       <span className="text-3xl font-display font-semibold leading-none">{value}</span>
       {sub && <span className="text-xs opacity-80 mt-1">{sub}</span>}
     </div>
@@ -91,7 +91,7 @@ export function SettingRow({ label, desc, children }: { label: string; desc?: st
 }
 
 export const inputStyle = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
-export const fieldLabelClass = 'block text-xs font-mono font-medium mb-1.5'
+export const fieldLabelClass = 'block text-xs font-medium mb-1.5'
 
 export function ErrorNote({ children }: { children: ReactNode }) {
   return (

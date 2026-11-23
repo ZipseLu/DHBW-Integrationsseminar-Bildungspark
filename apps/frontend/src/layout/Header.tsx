@@ -17,9 +17,6 @@ export function Header({ title, onCreate }: Props) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <div className="text-xs px-3 py-1.5 rounded-full font-mono" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-          Prototyp
-        </div>
         <button
           type="button"
           className="text-sm px-4 py-2 rounded font-medium transition-opacity hover:opacity-90"

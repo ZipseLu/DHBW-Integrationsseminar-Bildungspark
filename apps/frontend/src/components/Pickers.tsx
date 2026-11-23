@@ -1,7 +1,7 @@
 import { FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
 import type { Format, Level, Sprache } from '@/types'
 
-const LABEL_CLASS = 'text-xs font-mono font-medium mb-2'
+const LABEL_CLASS = 'text-xs font-medium mb-2'
 
 export function FieldLabel({ children, hint }: { children: string; hint?: string }) {
   return (
@@ -70,6 +70,28 @@ export function LevelPicker({ selected, onToggle, size = 'large' }: LevelPickerP
         )
       })}
     </div>
+  )
+}
+
+/** FE-32: what the four levels mean, in short (from the competence formulas of the curricula) */
+export const STUFEN_KURZ: Record<Level, string> = {
+  T: 'ein Arbeitsschritt',
+  A: 'einige Arbeitsschritte',
+  F: 'bekannte Situationen',
+  B: 'neue Situationen',
+}
+
+/** One line below the level tiles that explains T, A, F and B */
+export function StufenHinweis() {
+  return (
+    <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+      {LEVELS.map((level, i) => (
+        <span key={level}>
+          {i > 0 && ' · '}
+          <span className="font-semibold">{level}</span> {STUFEN_KURZ[level]}
+        </span>
+      ))}
+    </p>
   )
 }
 

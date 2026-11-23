@@ -127,7 +127,7 @@ export function GeneratedWorksheetCard({ result, onVorschau, speicherZustand = {
           </span>
         </div>
         <span className="text-xs font-mono" style={{ color: s.text }}>
-          {meta.mocked ? 'Mock' : `${meta.provider}${meta.model ? ` · ${meta.model}` : ''}`} · {dauer}
+          {meta.mocked ? 'Beispiel ohne KI' : `${meta.provider}${meta.model ? ` · ${meta.model}` : ''}`} · {dauer}
           {ueberarbeitet && ' · ✎ bearbeitet'}
         </span>
       </div>

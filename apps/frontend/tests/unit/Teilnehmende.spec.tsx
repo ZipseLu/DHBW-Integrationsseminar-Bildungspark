@@ -76,7 +76,7 @@ describe('Teilnehmende aus dem Backend (FE-12)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     const dialog = screen.getByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'iw3-2000' } })
+    fireEvent.change(within(dialog).getByLabelText(/Anonyme Kennung/), { target: { value: 'iw3-2000' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
 
     expect(await screen.findByRole('article', { name: 'Teilnehmer IW3-2000' })).toBeInTheDocument()
@@ -101,7 +101,7 @@ describe('Teilnehmende aus dem Backend (FE-12)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     const dialog = screen.getByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'IW3-2000' } })
+    fireEvent.change(within(dialog).getByLabelText(/Anonyme Kennung/), { target: { value: 'IW3-2000' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(meldung)
@@ -120,7 +120,7 @@ describe('Teilnehmende aus dem Backend (FE-12)', () => {
     fireEvent.click(within(card).getByRole('button', { name: '✎ Bearbeiten' }))
 
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByLabelText(/ANONYME KENNUNG/)).toHaveAttribute('readonly')
+    expect(within(dialog).getByLabelText(/Anonyme Kennung/)).toHaveAttribute('readonly')
     fireEvent.click(within(dialog).getByRole('button', { name: 'F' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Änderungen speichern' }))
 

@@ -114,8 +114,8 @@ export function ParticipantCard({ participant: p, expanded, onToggleExpand, onAs
       {expanded && (
         <div className="px-4 py-4 flex flex-col gap-4" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--background)' }}>
           <div>
-            <div className="text-xs font-mono font-medium mb-3" style={{ color: 'var(--muted-foreground)' }}>
-              LERNWEG — BERUFSBILDER
+            <div className="text-xs font-medium mb-3" style={{ color: 'var(--muted-foreground)' }}>
+              Lernweg – Berufsbilder
             </div>
             <ol className="flex flex-col gap-2">
               {p.berufsbilder.map((b, i) => (
@@ -238,10 +238,10 @@ function ActiveWorksheets({ station, collapsed, onToggle }: { station: BerufStat
         type="button"
         aria-expanded={!collapsed}
         onClick={onToggle}
-        className="w-full px-4 pt-3 pb-2 text-xs font-mono font-medium flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
+        className="w-full px-4 pt-3 pb-2 text-xs font-medium flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
         style={{ color: 'var(--muted-foreground)' }}
       >
-        <span>ARBEITSBLÄTTER</span>
+        <span>Arbeitsblätter</span>
         <span className="px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }}>
           {station.berufsbild} · {station.level}
         </span>

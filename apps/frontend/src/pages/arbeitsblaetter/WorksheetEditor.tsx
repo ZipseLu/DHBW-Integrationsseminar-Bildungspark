@@ -18,7 +18,7 @@ type Zustand =
   | { art: 'bereit'; original: Arbeitsblatt; entwurf: Arbeitsblatt; version: number }
 
 const feldStil = { backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }
-const labelKlasse = 'text-xs font-mono font-medium mb-1 block'
+const labelKlasse = 'text-xs font-medium mb-1 block'
 
 /**
  * FE-10: edit the content of a saved worksheet.
@@ -114,7 +114,7 @@ export function WorksheetEditor({ backendId, autor, onSaved, onDirtyChange }: Pr
 
       <fieldset className="flex flex-col gap-3">
         <legend className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-          AUFGABEN
+          Aufgaben
         </legend>
         {entwurf.aufgaben.map((aufgabe, i) => (
           <div key={i} className="rounded-lg p-3 flex flex-col gap-2" style={{ border: '1px solid var(--border)' }}>
@@ -170,7 +170,7 @@ export function WorksheetEditor({ backendId, autor, onSaved, onDirtyChange }: Pr
       {entwurf.woerterbuch.length > 0 && (
         <fieldset className="flex flex-col gap-2">
           <legend className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-            WÖRTERBUCH
+            Wörterbuch
           </legend>
           {entwurf.woerterbuch.map((eintrag, i) => (
             <div key={i} className="grid gap-2" style={{ gridTemplateColumns: '1fr 2fr' }}>
@@ -257,7 +257,7 @@ export function WorksheetEditor({ backendId, autor, onSaved, onDirtyChange }: Pr
 function Feld({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={id} className={`${labelKlasse} uppercase`} style={{ color: 'var(--muted-foreground)' }}>
+      <label htmlFor={id} className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
         {label}
       </label>
       {children}

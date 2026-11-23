@@ -136,10 +136,10 @@ describe('Arbeitsblätter', () => {
     const alle = screen.getAllByRole('article').length
     expect(screen.queryByRole('group', { name: 'Niveau' })).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('NIVEAU'), { target: { value: 'T' } })
+    fireEvent.change(screen.getByLabelText('Niveau'), { target: { value: 'T' } })
     expect(screen.getAllByRole('article').length).toBeLessThan(alle)
     fireEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen (1)' }))
-    expect(screen.getByLabelText('NIVEAU')).toHaveValue('Alle')
+    expect(screen.getByLabelText('Niveau')).toHaveValue('Alle')
     expect(screen.getAllByRole('article')).toHaveLength(alle)
   })
 
@@ -204,7 +204,7 @@ describe('Arbeitsblätter', () => {
 
     expect(await screen.findByRole('heading', { name: 'KI-Erstellung', level: 1 })).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Güter entladen')
+    expect(screen.getByLabelText(/Thema \/ Titel/)).toHaveValue('Güter entladen')
   })
 })
 
@@ -215,7 +215,7 @@ describe('KI-Erstellung', () => {
     renderApp()
     navigate('KI-Erstellung')
 
-    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
+    fireEvent.change(screen.getByLabelText(/Thema \/ Titel/), { target: { value: 'Gabelstapler' } })
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
 
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
@@ -231,7 +231,7 @@ describe('KI-Erstellung', () => {
     renderApp()
     navigate('KI-Erstellung')
 
-    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
+    fireEvent.change(screen.getByLabelText(/Thema \/ Titel/), { target: { value: 'Gabelstapler' } })
     fireEvent.click(screen.getByRole('button', { name: '✦ 1 Variante generieren' }))
 
     const result = await screen.findByRole('region', { name: 'Erstellte Varianten' })
@@ -239,7 +239,7 @@ describe('KI-Erstellung', () => {
 
     fireEvent.click(within(result).getByRole('button', { name: /Vorschau/ }))
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText('BEISPIELAUFGABEN')).toBeInTheDocument()
+    expect(within(dialog).getByText('Beispielaufgaben')).toBeInTheDocument()
   })
 
   it('zeigt Suchtreffer vom Backend (Web-Suche)', async () => {

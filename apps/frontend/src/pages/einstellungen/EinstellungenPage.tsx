@@ -50,8 +50,8 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
           <SettingRow label="Kompakte Seitenleiste" desc="Zeigt nur Icons ohne Beschriftung in der Navigation">
             <Toggle label="Kompakte Seitenleiste" value={draft.sidebarCompact} onToggle={() => flip('sidebarCompact')} />
           </SettingRow>
-          <ColorChoice label="AKZENTFARBE" colors={ACCENT_COLORS} value={draft.accentColor} onChange={(c) => set('accentColor', c)} />
-          <ColorChoice label="NAVIGATIONSFARBE" colors={PRIMARY_COLORS} value={draft.primaryColor} onChange={(c) => set('primaryColor', c)} />
+          <ColorChoice label="Akzentfarbe" colors={ACCENT_COLORS} value={draft.accentColor} onChange={(c) => set('accentColor', c)} />
+          <ColorChoice label="Navigationsfarbe" colors={PRIMARY_COLORS} value={draft.primaryColor} onChange={(c) => set('primaryColor', c)} />
         </SectionCard>
 
         <SectionCard title="Teilnehmende" desc="Vorgaben beim Anlegen neuer Teilnehmerprofile.">
