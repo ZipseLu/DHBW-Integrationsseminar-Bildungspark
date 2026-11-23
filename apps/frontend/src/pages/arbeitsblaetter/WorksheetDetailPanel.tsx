@@ -35,6 +35,8 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
   const [ungespeichert, setUngespeichert] = useState(false)
   const [schliessenFragen, setSchliessenFragen] = useState(false)
   const [druckFehler, setDruckFehler] = useState<string | null>(null)
+  // FE-38: older sheets have no author – then no name and no empty placeholder is shown
+  const geaendertVon = w.backend?.geaendertVon?.trim()
 
   useEffect(() => {
     if (tab === 'bearbeiten') setEditorGeoeffnet(true)
@@ -63,7 +65,7 @@ export function WorksheetDetailPanel({ worksheet: w, tab, user, onTabChange, onC
             <div className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
               {w.ausbildungsbaustein}
               {w.backend
-                ? ` · Version ${w.backend.version}${w.backend.geaendertAm ? ` · zuletzt geändert ${formatZeitpunkt(w.backend.geaendertAm)}` : ''}`
+                ? ` · Version ${w.backend.version}${w.backend.geaendertAm ? ` · zuletzt geändert ${formatZeitpunkt(w.backend.geaendertAm)}` : ''}${geaendertVon ? ` von ${geaendertVon}` : ''}`
                 : ` · ${w.participants} Teilnehmer`}
             </div>
           </div>
