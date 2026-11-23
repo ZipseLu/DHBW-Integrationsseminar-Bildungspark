@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver'
-import type { Format, Level, Sprache, StaffRole, StationStatus, Worksheet } from '@/types'
+import type { AppSettings, Format, Level, Sprache, StaffRole, StationStatus, Worksheet } from '@/types'
 
 /**
  * Zugriff auf das Backend (Express, Port 3000).
@@ -632,4 +632,39 @@ export async function downloadUploadDatei(upload: Pick<Upload, 'id' | 'dateiname
   const fileName = fileNameFromDisposition(response.headers.get('Content-Disposition'), upload.dateiname)
   saveAs(blob, fileName)
   return fileName
+}
+
+// --- Einstellungen pro Konto: /api/einstellungen (FE-20) ----------------------
+// Vertrag: apps/backend/src/routes/einstellungen.js, Doku docs/einstellungen-api.md
+
+/**
+ * GET /api/einstellungen?konto=<email>
+ *
+ * `null` bedeutet: noch nichts gespeichert, Konto/Backend nicht erreichbar oder
+ * die Antwort enthält keine Einstellungen. Der Aufrufer behält dann seine
+ * aktuellen (lokalen) Werte. Ein Anmelde-Token wird von apiFetch automatisch
+ * mitgeschickt und hat auf dem Server Vorrang vor `konto`.
+ */
+export async function fetchEinstellungen(konto: string): Promise<Partial<AppSettings> | null> {
+  try {
+    const response = await apiFetch(`/api/einstellungen?konto=${encodeURIComponent(konto)}`)
+    const body = (await response.json()) as { einstellungen?: Partial<AppSettings> | null }
+    return body.einstellungen && typeof body.einstellungen === 'object' ? body.einstellungen : null
+  } catch {
+    return null
+  }
+}
+
+/** PUT /api/einstellungen?konto=<email> – `false`, wenn das Backend nicht erreichbar ist. */
+export async function saveEinstellungen(konto: string, einstellungen: AppSettings): Promise<boolean> {
+  try {
+    await apiFetch(`/api/einstellungen?konto=${encodeURIComponent(konto)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ einstellungen }),
+    })
+    return true
+  } catch {
+    return false
+  }
 }

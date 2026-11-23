@@ -40,6 +40,12 @@ export async function findById(id) {
   return row ? toApi(row) : null
 }
 
+/** For FE-20: resolve the account shown in the prototype by email (no password hash). */
+export async function findByEmail(email) {
+  const row = await queryOne(`SELECT ${SPALTEN} FROM users WHERE email = ?`, [String(email).trim().toLowerCase()])
+  return row ? toApi(row) : null
+}
+
 /** Only for the login (BE-01): account including the password hash */
 export async function findForLogin(email) {
   const row = await queryOne(`SELECT ${SPALTEN}, password_hash FROM users WHERE email = ?`, [String(email).trim().toLowerCase()])

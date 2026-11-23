@@ -221,6 +221,10 @@ Mitarbeiterkonten (Passwörter als scrypt-Hash; letztes Admin-Konto geschützt) 
 schickt das Token als `Authorization: Bearer …` mit (`lib/api.ts`). Ohne Token bleiben die Routen bis BE-06 offen –
 Details: **[docs/anmeldung-api.md](docs/anmeldung-api.md)**.
 
+**Einstellungen (FE-20):** `GET/PUT /api/einstellungen` speichert die Oberflächen-Einstellungen pro Konto in MySQL;
+das Frontend lädt sie beim Start und fällt ohne Backend auf den lokalen Stand zurück –
+Details: **[docs/einstellungen-api.md](docs/einstellungen-api.md)**.
+
 **Zuordnung & Lernstand (BE-04):** `GET/POST /api/teilnehmende/:kennung/zuordnungen`, `PATCH/DELETE …/zuordnungen/:id`
 ordnen gespeicherte Arbeitsblätter Teilnehmenden zu und haken sie ab; `GET /api/teilnehmende/:kennung/lernstand`
 (bzw. `/api/teilnehmende/lernstand` für alle) liefert erledigt/offen je Berufsfeld und das nächste Blatt –
