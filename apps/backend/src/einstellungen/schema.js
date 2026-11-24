@@ -7,6 +7,7 @@
  * typo like `darkmode` does not silently disappear.
  */
 import { z } from 'zod'
+import { FORMATE, SPRACHEN, STUFEN } from '../arbeitsblatt/schema.js'
 
 const hexFarbe = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'muss eine Hex-Farbe wie #009FE3 sein')
 
@@ -25,6 +26,11 @@ export const EinstellungenSchema = z
     emailNotifications: z.boolean().optional(),
     worksheetReminders: z.boolean().optional(),
     autoSave: z.boolean().optional(),
+    // FE-42: preselection of the KI-Erstellung and text size
+    kiStufen: z.array(z.enum(STUFEN)).min(1).max(4).optional(),
+    kiFormate: z.array(z.enum(FORMATE)).min(1).max(4).optional(),
+    kiSprache: z.enum(SPRACHEN).optional(),
+    schriftgroesse: z.enum(['normal', 'gross', 'sehr-gross']).optional(),
   })
   .refine((werte) => Object.keys(werte).length > 0, { message: 'Mindestens eine Einstellung angeben' })
 

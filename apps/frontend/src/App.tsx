@@ -144,7 +144,12 @@ export default function App() {
             />
           )}
           {activeNav === 'ki-erstellung' && (
-            <KiErstellungPage key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}-${kiVorauswahl.stufe ?? ''}-${kiVorauswahl.format ?? ''}` : 'neu'} vorauswahl={kiVorauswahl} onStand={meldeKiStand} />
+            <KiErstellungPage
+              key={kiVorauswahl ? `${kiVorauswahl.berufsfeld}-${kiVorauswahl.titel ?? ''}-${kiVorauswahl.vorlage?.name ?? ''}-${kiVorauswahl.stufe ?? ''}-${kiVorauswahl.format ?? ''}` : 'neu'}
+              vorauswahl={kiVorauswahl}
+              onStand={meldeKiStand}
+              vorgaben={{ stufen: settings.kiStufen, formate: settings.kiFormate, sprache: settings.kiSprache }}
+            />
           )}
           {activeNav === 'teilnehmer' && (
             <TeilnehmendePage teilnehmende={teilnehmende} defaultBerufsbild={settings.defaultBerufsbild} onErstellen={createFromLehrplan} />

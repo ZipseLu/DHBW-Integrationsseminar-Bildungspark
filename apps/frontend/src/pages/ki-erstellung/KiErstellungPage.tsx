@@ -83,9 +83,11 @@ type KiErstellungProps = {
   vorauswahl?: KiVorauswahl | null
   /** FE-27: reports unsaved variants, so the app can ask before the page is left */
   onStand?: (stand: KiStand) => void
+  /** FE-42: default levels, formats and language from the settings */
+  vorgaben?: { stufen: readonly Level[]; formate: readonly Format[]; sprache: Sprache }
 }
 
-export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungProps = {}) {
+export function KiErstellungPage({ vorauswahl = null, onStand, vorgaben }: KiErstellungProps = {}) {
   // FE-05: an uploaded worksheet arrives as topic and as "Erwartungen" (the template text)
   const vorlage = vorauswahl?.vorlage ? erwartungenAusVorlage(vorauswahl.vorlage.name, vorauswahl.vorlage.text) : null
   const [thema, setThema] = useState(vorauswahl?.thema ?? '')
@@ -94,10 +96,10 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
   const [lernzielKey, setLernzielKey] = useState<string | null>(null)
   const [katalog, setKatalog] = useState<LernzielOption[]>(LOKALE_LERNZIELE)
   const [katalogQuelle, setKatalogQuelle] = useState<'beispiele' | 'import'>('beispiele')
-  const [sprache, setSprache] = useState<Sprache>('Leichte Sprache')
-  // FE-33: from "Arbeitsblatt zuweisen" the level and format of the person are preselected
-  const [levels, setLevels] = useState<Level[]>([vorauswahl?.stufe ?? 'A'])
-  const [formats, setFormats] = useState<Format[]>([vorauswahl?.format ?? 'text'])
+  // FE-42: preselection from the settings; FE-33: "Arbeitsblatt zuweisen" sets level and format of the person
+  const [sprache, setSprache] = useState<Sprache>(vorgaben?.sprache ?? 'Leichte Sprache')
+  const [levels, setLevels] = useState<Level[]>(vorauswahl?.stufe ? [vorauswahl.stufe] : [...(vorgaben?.stufen ?? ['A'])])
+  const [formats, setFormats] = useState<Format[]>(vorauswahl?.format ? [vorauswahl.format] : [...(vorgaben?.formate ?? ['text'])])
 
   const [progress, setProgress] = useState<Progress | null>(null)
   const [results, setResults] = useState<ArbeitsblattResult[]>([])

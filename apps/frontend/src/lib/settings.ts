@@ -1,5 +1,5 @@
-import { BERUFSBILD_LAGER, LEVELS, LEVEL_STYLES } from '@/data/constants'
-import type { AppSettings } from '@/types'
+import { BERUFSBILD_LAGER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
+import type { AppSettings, Schriftgroesse } from '@/types'
 import { AA_TEXT, mitKontrast } from '@/lib/kontrast'
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -17,6 +17,18 @@ export const DEFAULT_SETTINGS: AppSettings = {
   emailNotifications: false,
   worksheetReminders: true,
   autoSave: true,
+  // FE-42: same preselection as the KI-Erstellung had before
+  kiStufen: ['A'],
+  kiFormate: ['text'],
+  kiSprache: 'Leichte Sprache',
+  schriftgroesse: 'normal',
+}
+
+/** FE-42: root font size per setting – Tailwind sizes are in rem, so everything scales */
+export const SCHRIFTGROESSEN: Record<Schriftgroesse, { label: string; px: number }> = {
+  normal: { label: 'Normal', px: 16 },
+  gross: { label: 'Groß', px: 18 },
+  'sehr-gross': { label: 'Sehr groß', px: 20 },
 }
 
 export const ACCENT_COLORS = ['#009FE3', '#C4632A', '#2A6B4B', '#7A2E9A', '#C4A020', '#C42A2A'] as const
@@ -91,6 +103,9 @@ export function applyTheme(settings: AppSettings, root: HTMLElement = document.d
     root.style.setProperty(name, value)
   }
   root.style.colorScheme = settings.darkMode ? 'dark' : 'light'
+  // FE-42: text size; 16px is the browser default and is not set explicitly
+  const groesse = SCHRIFTGROESSEN[settings.schriftgroesse] ?? SCHRIFTGROESSEN.normal
+  root.style.fontSize = groesse.px === 16 ? '' : `${groesse.px}px`
 }
 
 const STORAGE_KEY = 'bildungspark.einstellungen'
@@ -111,6 +126,12 @@ export function mischeEinstellungen(gespeichert: Partial<AppSettings> | null | u
     delete bereinigt.accentColor
     delete bereinigt.primaryColor
   }
+  // FE-42: stored values from an older or edited state must not break the KI-Erstellung
+  const formate = FORMAT_OPTIONS.map((o) => o.id)
+  if (!Array.isArray(bereinigt.kiStufen) || bereinigt.kiStufen.length === 0 || !bereinigt.kiStufen.every((l) => LEVELS.includes(l))) delete bereinigt.kiStufen
+  if (!Array.isArray(bereinigt.kiFormate) || bereinigt.kiFormate.length === 0 || !bereinigt.kiFormate.every((f) => formate.includes(f))) delete bereinigt.kiFormate
+  if (bereinigt.kiSprache !== undefined && !SPRACHEN.includes(bereinigt.kiSprache)) delete bereinigt.kiSprache
+  if (bereinigt.schriftgroesse !== undefined && !(bereinigt.schriftgroesse in SCHRIFTGROESSEN)) delete bereinigt.schriftgroesse
   return { ...DEFAULT_SETTINGS, ...bereinigt }
 }
 
