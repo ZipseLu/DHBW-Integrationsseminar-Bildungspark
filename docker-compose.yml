@@ -110,9 +110,11 @@ services:
       WEB_SEARCH_TOTAL_TIMEOUT_MS: "${WEB_SEARCH_TOTAL_TIMEOUT_MS:-20000}"
       WEB_SEARCH_RATE_LIMIT_MAX: "${WEB_SEARCH_RATE_LIMIT_MAX:-30}"
       WEB_SEARCH_RATE_LIMIT_WINDOW_MS: "${WEB_SEARCH_RATE_LIMIT_WINDOW_MS:-60000}"
-      # --- Seed/Testkonten (OPS-07): bekanntes Startpasswort auch im Container,
-      #     damit `docker compose exec backend npm run db:seed` dieselben Konten anlegt ---
-      SEED_PASSWORT: "${SEED_PASSWORT:-bildungspark-demo}"
+      # --- Seed/Testkonten (OPS-07, OPS-08): Startpasswort aus der .env auch im Container,
+      #     damit `docker compose exec backend npm run db:seed` dieselben Konten anlegt.
+      #     Bewusst KEIN Standardwert: ohne Eintrag in der .env (z. B. auf dem Server des
+      #     Bildungsparks) erzeugt der Seed ein zufälliges Passwort statt des bekannten Demo-Passworts ---
+      SEED_PASSWORT: "${SEED_PASSWORT:-}"
       # --- Sonstiges ---
       JWT_SECRET: "${JWT_SECRET:-dev-secret-bitte-aendern}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
