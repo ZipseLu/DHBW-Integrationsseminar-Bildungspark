@@ -39,6 +39,25 @@ export function niveausOf(worksheet: Worksheet): Level[] {
   return LEVELS.filter((l) => worksheet.niveaus.includes(l))
 }
 
+/**
+ * FE-43: persona letter per (level, format) – 4×4 grid from the team's project
+ * concept (not a requirement of the Bildungspark): T = A–D, A = E–H, F = I–L, B = M–P.
+ */
+export const PERSONA_MAP: Record<Level, Record<Format, string>> = {
+  T: { text: 'A', piktogramm: 'B', mathefrei: 'C', 'piktogramm-mathefrei': 'D' },
+  A: { text: 'E', piktogramm: 'F', mathefrei: 'G', 'piktogramm-mathefrei': 'H' },
+  F: { text: 'I', piktogramm: 'J', mathefrei: 'K', 'piktogramm-mathefrei': 'L' },
+  B: { text: 'M', piktogramm: 'N', mathefrei: 'O', 'piktogramm-mathefrei': 'P' },
+}
+
+/** FE-43: what a person with this accessibility format needs (persona overview) */
+export const FORMAT_BEDARF: Record<Format, string> = {
+  text: 'Liest selbstständig – keine zusätzlichen Symbole oder Anpassungen nötig.',
+  piktogramm: 'Versteht Aufgaben besser durch Bilder und Symbole statt reinem Text.',
+  mathefrei: 'Hat Schwierigkeiten mit Zahlen – Rechenaufgaben werden durch Verstehensaufgaben ersetzt.',
+  'piktogramm-mathefrei': 'Kombinierter Bedarf: Symbole und keine Rechenschritte für größtmögliche Barrierefreiheit.',
+}
+
 export const FORMAT_BADGE_COLORS: Record<Format, { bg: string; color: string }> = {
   text: { bg: '#DCEAF7', color: '#00487A' },
   piktogramm: { bg: '#F3E8FF', color: '#7A2E9A' },

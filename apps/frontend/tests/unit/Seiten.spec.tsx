@@ -29,7 +29,7 @@ function openPage(label: string) {
 }
 
 describe('Dashboard', () => {
-  it('zeigt Kennzahlen und den Lernstand der Teilnehmenden ohne Personas (FE-30)', async () => {
+  it('zeigt Kennzahlen, den Lernstand der Teilnehmenden und die Persona-Übersicht (FE-30, FE-43)', async () => {
     openPage('Dashboard')
     expect(screen.getByText('Aktive Teilnehmende')).toBeInTheDocument()
     // The fetch mock has no participant list, so the sample data are used (FE-12)
@@ -38,7 +38,8 @@ describe('Dashboard', () => {
     const bereich = screen.getByRole('region', { name: 'Lernstand der Teilnehmenden' })
     expect(within(bereich).getAllByRole('listitem')).toHaveLength(Math.min(PARTICIPANTS.length, 8))
     expect(within(bereich).getByRole('listitem', { name: `Lernstand ${PARTICIPANTS[0].id}` })).toBeInTheDocument()
-    expect(screen.queryByText(/Persona/)).not.toBeInTheDocument()
+    // FE-43: persona overview below, collapsed per level
+    expect(screen.getByRole('region', { name: 'Personas' })).toBeInTheDocument()
   })
 
   it('"Alle Teilnehmenden" wechselt zur Seite Teilnehmende', () => {

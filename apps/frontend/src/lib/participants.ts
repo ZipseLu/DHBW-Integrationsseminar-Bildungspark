@@ -1,3 +1,4 @@
+import { PERSONA_MAP } from '@/data/constants'
 import type { Lernstand } from '@/lib/api'
 import type { BerufStation, Format, Level, Participant, Worksheet } from '@/types'
 
@@ -100,6 +101,21 @@ export function oeffneStationWieder(p: Participant, index: number, today: string
 
 export function activeStation(p: Participant): BerufStation | undefined {
   return p.berufsbilder.find((b) => b.status === 'aktiv')
+}
+
+/**
+ * FE-43: number of participants per persona (level × format of the active area).
+ * Participants without an active area are not counted.
+ */
+export function teilnehmendeJePersona(participants: readonly Participant[]): Record<string, number> {
+  const anzahl: Record<string, number> = {}
+  for (const p of participants) {
+    const station = activeStation(p)
+    if (!station) continue
+    const buchstabe = PERSONA_MAP[station.level][station.format]
+    anzahl[buchstabe] = (anzahl[buchstabe] ?? 0) + 1
+  }
+  return anzahl
 }
 
 /** Eingabe im Teilnehmer-Dialog: ein Berufsfeld mit Niveau und Format */
