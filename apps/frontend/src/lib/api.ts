@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver'
+import { merkeBerufsfelder } from '@/lib/berufsfelder'
 import type { AppSettings, Format, Level, Sprache, StaffRole, StationStatus, Worksheet } from '@/types'
 
 /**
@@ -206,7 +207,43 @@ export type LehrplanLernziel = LernzielInput & { id: number; abschnitt: number |
 export async function fetchLehrplaene(): Promise<LehrplanLernziel[]> {
   const response = await apiFetch('/api/lehrplaene')
   const body = (await response.json()) as { lernziele?: unknown }
-  return Array.isArray(body.lernziele) ? (body.lernziele as LehrplanLernziel[]) : []
+  const lernziele = Array.isArray(body.lernziele) ? (body.lernziele as LehrplanLernziel[]) : []
+  // FE-34: Berufsfelder of added curricula appear in all selection lists
+  merkeBerufsfelder(lernziele.map((l) => l.berufsfeld))
+  return lernziele
+}
+
+/** FE-34: a curriculum read from an uploaded Word file (preview, nothing stored yet) */
+export type LehrplanVorschau = {
+  quelle: string
+  berufsfeld: string
+  tq: string | null
+  baustein: number | null
+  ausbildungsbaustein: string | null
+  abschnitt: number | null
+  lernziele: { abschnitt: number | null; titel: string; niveaus: Record<Level, { kompetenz: string; beispiel: string }> }[]
+  hinweise: string[]
+}
+
+function lehrplanUpload(pfad: string, datei: File, berufsfeld: string): Promise<Response> {
+  const query = berufsfeld.trim() ? `?berufsfeld=${encodeURIComponent(berufsfeld.trim())}` : ''
+  return apiFetch(`${pfad}${query}`, {
+    method: 'POST',
+    headers: { 'Content-Type': datei.type || 'application/octet-stream', 'X-Dateiname': encodeURIComponent(datei.name) },
+    body: datei,
+  })
+}
+
+/** POST /api/lehrplaene/vorschau – reads the Word file; `ersetzt`: a curriculum with this file name exists */
+export async function pruefeLehrplan(datei: File, berufsfeld: string): Promise<{ lehrplan: LehrplanVorschau; ersetzt: boolean }> {
+  const response = await lehrplanUpload('/api/lehrplaene/vorschau', datei, berufsfeld)
+  return (await response.json()) as { lehrplan: LehrplanVorschau; ersetzt: boolean }
+}
+
+/** POST /api/lehrplaene – stores the curriculum (admin and dozent only) */
+export async function speichereLehrplan(datei: File, berufsfeld: string): Promise<{ anzahl: number; ersetzt: boolean }> {
+  const response = await lehrplanUpload('/api/lehrplaene', datei, berufsfeld)
+  return (await response.json()) as { anzahl: number; ersetzt: boolean }
 }
 
 /** POST /api/ai/arbeitsblatt – erzeugt ein Arbeitsblatt (mit Gemini oder im Mock-Modus) */

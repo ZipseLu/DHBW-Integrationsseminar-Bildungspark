@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { SectionCard, SettingRow, Toggle, fieldLabelClass, inputStyle } from '@/components/Widgets'
-import { BERUFSBILDER, ROLE_LABELS } from '@/data/constants'
+import { ROLE_LABELS } from '@/data/constants'
+import { useBerufsfelder } from '@/lib/berufsfelder'
 import { ACCENT_COLORS, PRIMARY_COLORS } from '@/lib/settings'
 import type { AppSettings, StaffUser } from '@/types'
 
@@ -26,6 +27,8 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
     if (timer.current) clearTimeout(timer.current)
   }, [])
 
+  // FE-34: includes Berufsfelder of added curricula
+  const berufsfelder = useBerufsfelder([draft.defaultBerufsbild])
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setDraft((d) => ({ ...d, [key]: value }))
   const flip = (key: BoolKey) => setDraft((d) => ({ ...d, [key]: !d[key] }))
 
@@ -60,7 +63,7 @@ export function EinstellungenPage({ currentUser, settings, onSave }: Props) {
               className="px-3 py-1.5 rounded text-sm outline-none"
               style={inputStyle}
             >
-              {BERUFSBILDER.map((b) => (
+              {berufsfelder.map((b) => (
                 <option key={b}>{b}</option>
               ))}
             </select>

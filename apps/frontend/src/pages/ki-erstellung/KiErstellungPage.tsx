@@ -18,6 +18,7 @@ import {
   type ArbeitsblattResult,
   type LernzielInput,
 } from '@/lib/api'
+import { useBerufsfelder } from '@/lib/berufsfelder'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { toggleKeepOne, variantenLabel } from '@/lib/selection'
 import type { Format, Level, Sprache } from '@/types'
@@ -120,6 +121,8 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
     }
   }, [])
 
+  // FE-34: includes Berufsfelder of curricula added on the page Lehrpläne
+  const berufsfelder = useBerufsfelder([berufsbild])
   // Lernziele des gewaehlten Berufsbilds
   const lernziele = katalog.filter((l) => l.berufsfeld === berufsbild)
   // Ohne eigene Auswahl: Vorauswahl aus den Lehrplaenen (gleiches Lernziel, sonst gleicher Baustein)
@@ -220,7 +223,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
                 className="w-full px-3 py-2.5 rounded text-sm outline-none"
                 style={inputStyle}
               >
-                {BERUFSBILDER.map((b) => (
+                {berufsfelder.map((b) => (
                   <option key={b}>{b}</option>
                 ))}
               </select>

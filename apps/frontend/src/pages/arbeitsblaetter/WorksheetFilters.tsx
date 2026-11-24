@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { ALLE_BERUFSBILDER, BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
+import { ALLE_BERUFSBILDER, FORMAT_OPTIONS, LEVELS, LEVEL_STYLES, SPRACHEN } from '@/data/constants'
+import { useBerufsfelder } from '@/lib/berufsfelder'
 import { EMPTY_FILTER, type WorksheetFilter } from '@/lib/worksheetFilter'
 import type { Format, Level, Sprache } from '@/types'
 
@@ -29,6 +30,8 @@ function aktiveFilter(filter: WorksheetFilter): number {
 export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbausteine, onlyFavorites, onOnlyFavoritesChange, resultCount, aktionen }: Props) {
   const update = (patch: Partial<WorksheetFilter>) => onChange({ ...filter, ...patch })
   const anzahlAktiv = aktiveFilter(filter)
+  // FE-34: includes Berufsfelder of curricula added on the page Lehrpläne
+  const berufsfelder = useBerufsfelder([filter.berufsbild === ALLE_BERUFSBILDER ? null : filter.berufsbild])
 
   return (
     <div className="rounded-lg p-4 flex flex-col gap-3" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -60,7 +63,7 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
         <Auswahl id="filter-berufsbild" label="BERUFSBILD" value={filter.berufsbild} onChange={(berufsbild) => update({ berufsbild, ausbildungsbaustein: 'Alle' })}>
-          {[ALLE_BERUFSBILDER, ...BERUFSBILDER].map((b) => (
+          {[ALLE_BERUFSBILDER, ...berufsfelder].map((b) => (
             <option key={b} value={b}>
               {b}
             </option>

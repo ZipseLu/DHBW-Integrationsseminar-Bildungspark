@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
+import { SuccessNote } from '@/components/Widgets'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
 import { LEVELS, LEVEL_STYLES } from '@/data/constants'
 import { fetchLehrplaene, type LernzielInput } from '@/lib/api'
 import { downloadLehrplanDocx } from '@/lib/lehrplanDocx'
 import { bausteinLabel, beispielLernziele, fieldStyle, filterLehrplaene, groupLehrplaene, type KiVorauswahl, type LehrplanDokument, vorauswahlFor } from '@/lib/lehrplaene'
+import type { StaffUser } from '@/types'
+import { LehrplanHinzufuegen } from './LehrplanHinzufuegen'
 
 type Props = {
   /** Wechselt zur KI-Erstellung mit vorausgewähltem Lernziel */
   onCreateWorksheet: (vorauswahl: KiVorauswahl) => void
+  /** FE-34: admins and teachers may add curricula; without a user the button is hidden */
+  user?: Pick<StaffUser, 'role'>
 }
 
 async function download(doc: LehrplanDokument) {
@@ -25,28 +30,36 @@ async function download(doc: LehrplanDokument) {
  * Berufsfeld, Suche, Online-Vorschau, Word-Download und "Arbeitsblatt daraus erstellen".
  * Daten: importierte Lehrpläne (GET /api/lehrplaene), sonst die Beispiel-Lernziele.
  */
-export function LehrplaenePage({ onCreateWorksheet }: Props) {
+export function LehrplaenePage({ onCreateWorksheet, user }: Props) {
   const [docs, setDocs] = useState<LehrplanDokument[]>(() => groupLehrplaene(beispielLernziele()))
   const [quelle, setQuelle] = useState<'beispiele' | 'import'>('beispiele')
   const [filter, setFilter] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<LehrplanDokument | null>(null)
+  // FE-34: dialog "Lehrplan hinzufügen" and the confirmation after saving
+  const [hinzufuegenOffen, setHinzufuegenOffen] = useState(false)
+  const [meldung, setMeldung] = useState<string | null>(null)
+  const darfHinzufuegen = user?.role === 'admin' || user?.role === 'dozent'
 
-  useEffect(() => {
-    let active = true
+  const lade = useCallback((istAktiv: () => boolean = () => true) => {
     fetchLehrplaene()
       .then((liste) => {
-        if (!active || liste.length === 0) return
+        if (!istAktiv() || liste.length === 0) return
         setDocs(groupLehrplaene(liste))
         setQuelle('import')
       })
       .catch(() => {
         // Backend nicht erreichbar -> Beispiel-Lernziele bleiben
       })
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    lade(() => active)
     return () => {
       active = false
     }
-  }, [])
+  }, [lade])
 
   const fields = useMemo(() => [...new Set(docs.map((d) => d.berufsfeld))], [docs])
   const visible = filterLehrplaene(docs, filter, search)
@@ -94,21 +107,38 @@ export function LehrplaenePage({ onCreateWorksheet }: Props) {
             )
           })}
         </div>
-        <div className="relative w-72 flex-shrink-0">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--muted-foreground)' }} aria-hidden="true">
-            ⌕
-          </span>
-          <input
-            type="search"
-            aria-label="Lehrplan durchsuchen"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Lehrplan durchsuchen …"
-            className="w-full pl-9 pr-3 py-2 rounded text-sm outline-none"
-            style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-          />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {darfHinzufuegen && (
+            <button
+              type="button"
+              onClick={() => {
+                setMeldung(null)
+                setHinzufuegenOffen(true)
+              }}
+              className="px-3 py-2 rounded text-xs font-medium"
+              style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
+            >
+              + Lehrplan hinzufügen
+            </button>
+          )}
+          <div className="relative w-72 flex-shrink-0">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--muted-foreground)' }} aria-hidden="true">
+              ⌕
+            </span>
+            <input
+              type="search"
+              aria-label="Lehrplan durchsuchen"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Lehrplan durchsuchen …"
+              className="w-full pl-9 pr-3 py-2 rounded text-sm outline-none"
+              style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+            />
+          </div>
         </div>
       </div>
+
+      {meldung && <SuccessNote>{meldung}</SuccessNote>}
 
       <div className="text-xs font-mono -mt-3" style={{ color: 'var(--muted-foreground)' }}>
         {quelle === 'import'
@@ -135,6 +165,20 @@ export function LehrplaenePage({ onCreateWorksheet }: Props) {
             Passen Sie den Suchbegriff oder den Berufsbereich an.
           </p>
         </div>
+      )}
+
+      {hinzufuegenOffen && (
+        <LehrplanHinzufuegen
+          onClose={() => setHinzufuegenOffen(false)}
+          onGespeichert={({ anzahl, ersetzt, berufsfeld }) => {
+            setHinzufuegenOffen(false)
+            setMeldung(
+              `Lehrplan ${ersetzt ? 'ersetzt' : 'gespeichert'}: ${anzahl} ${anzahl === 1 ? 'Lernziel' : 'Lernziele'} für ${berufsfeld}. ` +
+                'Sie stehen jetzt auch in der KI-Erstellung zur Auswahl.',
+            )
+            lade()
+          }}
+        />
       )}
 
       {selected && (

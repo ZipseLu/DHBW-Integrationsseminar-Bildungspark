@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react'
 import { Spinner } from '@/components/VariantSummary'
 import { BERUFSBILDER } from '@/data/constants'
+import { useBerufsfelder } from '@/lib/berufsfelder'
 import { ApiError, saveEingefuegtenText, updateUpload, uploadArbeitsblatt, type UploadAntwort, type UploadMitText } from '@/lib/api'
 import type { KiVorauswahl } from '@/lib/lehrplaene'
 import { formatGroesse, themaAusDateiname } from '@/lib/vorlage'
@@ -53,6 +54,8 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = fa
   const [modus, setModus] = useState<'datei' | 'text'>('datei')
   const [dragging, setDragging] = useState(false)
   const [berufsfeld, setBerufsfeld] = useState('')
+  // FE-34: includes Berufsfelder of curricula added on the page Lehrpläne
+  const berufsfelder = useBerufsfelder()
   const [thema, setThema] = useState('')
   const [eingefuegt, setEingefuegt] = useState('')
   const [phase, setPhase] = useState<Phase>({ art: 'bereit' })
@@ -166,7 +169,7 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = fa
                 </label>
                 <select id="upload-berufsfeld" value={berufsfeld} onChange={(e) => setBerufsfeld(e.target.value)} className="w-full px-3 py-2 rounded text-sm" style={feldStil}>
                   <option value="">– nicht zugeordnet –</option>
-                  {BERUFSBILDER.map((b) => (
+                  {berufsfelder.map((b) => (
                     <option key={b} value={b}>
                       {b}
                     </option>

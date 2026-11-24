@@ -133,7 +133,7 @@ export default function App() {
 
         <main id="inhalt" tabIndex={-1} className="flex-1 p-8 overflow-auto focus:outline-none" data-page={activeNav}>
           {activeNav === 'dashboard' && <DashboardPage participants={teilnehmende.participants} onNavigate={navigate} lernstandAktiv={teilnehmende.quelle.art === 'backend'} />}
-          {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} />}
+          {activeNav === 'lehrplaene' && <LehrplaenePage onCreateWorksheet={createFromLehrplan} user={user} />}
           {activeNav === 'arbeitsblaetter' && (
             <ArbeitsblaetterPage
               user={user}
