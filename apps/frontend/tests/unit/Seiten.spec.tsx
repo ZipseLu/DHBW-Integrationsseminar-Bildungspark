@@ -60,13 +60,13 @@ describe('Teilnehmende', () => {
     await screen.findByRole('article', { name: 'Teilnehmer IW3-4421' })
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     let dialog = screen.getByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'IW3-9999' } })
+    fireEvent.change(within(dialog).getByLabelText(/Anonyme Kennung/), { target: { value: 'IW3-9999' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
     expect(await screen.findByRole('article', { name: 'Teilnehmer IW3-9999' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     dialog = screen.getByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText(/ANONYME KENNUNG/), { target: { value: 'IW3-9999' } })
+    fireEvent.change(within(dialog).getByLabelText(/Anonyme Kennung/), { target: { value: 'IW3-9999' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Die Kennung IW3-9999 gibt es bereits.')
   })
@@ -77,7 +77,7 @@ describe('Teilnehmende', () => {
     const anzahl = screen.getAllByRole('article').length
     fireEvent.click(screen.getByRole('button', { name: '+ Teilnehmer hinzufügen' }))
     const dialog = screen.getByRole('dialog')
-    const feld = within(dialog).getByLabelText(/ANONYME KENNUNG/)
+    const feld = within(dialog).getByLabelText(/Anonyme Kennung/)
     expect(feld).toBeRequired()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Teilnehmer anlegen' }))
@@ -124,13 +124,13 @@ describe('Benutzerverwaltung', () => {
     await screen.findByText(`${STAFF_USERS.length} Konten · nur für Administratoren sichtbar`)
     fireEvent.click(screen.getByRole('button', { name: '+ Mitarbeiter anlegen' }))
     const dialog = screen.getByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText('NAME *'), { target: { value: 'Max Beispiel' } })
-    fireEvent.change(within(dialog).getByLabelText('E-MAIL-ADRESSE *'), { target: { value: 'm.beispiel@bildungspark.example' } })
-    fireEvent.change(within(dialog).getByLabelText('PASSWORT *'), { target: { value: 'kurz' } })
+    fireEvent.change(within(dialog).getByLabelText('Name *'), { target: { value: 'Max Beispiel' } })
+    fireEvent.change(within(dialog).getByLabelText('E-Mail-Adresse *'), { target: { value: 'm.beispiel@bildungspark.example' } })
+    fireEvent.change(within(dialog).getByLabelText('Passwort *'), { target: { value: 'kurz' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Konto anlegen' }))
     expect(within(dialog).getByRole('alert')).toHaveTextContent('mindestens 8 Zeichen')
 
-    fireEvent.change(within(dialog).getByLabelText('PASSWORT *'), { target: { value: 'langespasswort' } })
+    fireEvent.change(within(dialog).getByLabelText('Passwort *'), { target: { value: 'langespasswort' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Konto anlegen' }))
     expect(await screen.findByText('Max Beispiel')).toBeInTheDocument()
     expect(screen.getByText(`${STAFF_USERS.length + 1} Konten · nur für Administratoren sichtbar`)).toBeInTheDocument()
@@ -235,7 +235,7 @@ describe('Lehrpläne', () => {
     const card = screen.getAllByRole('article')[0]
     fireEvent.click(within(card).getByRole('button', { name: 'Online ansehen' }))
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText('ONLINE-VORSCHAU · LEHRPLAN')).toBeInTheDocument()
+    expect(within(dialog).getByText('Online-Vorschau · Lehrplan')).toBeInTheDocument()
     expect(within(dialog).getAllByText('Binnendifferenzierung').length).toBeGreaterThan(0)
   })
 
@@ -246,7 +246,7 @@ describe('Lehrpläne', () => {
     fireEvent.click(within(card).getByRole('button', { name: '✦ Arbeitsblatt daraus erstellen' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'KI-Erstellung' })).toBeInTheDocument()
-    expect(screen.getByLabelText('BERUFSBILD')).toHaveValue('Gastronomie & Hauswirtschaft')
+    expect(screen.getByLabelText('Berufsbild')).toHaveValue('Gastronomie & Hauswirtschaft')
   })
 })
 

@@ -103,7 +103,7 @@ afterEach(() => {
 describe('KI-Erstellung – Formular', () => {
   it('bietet die Lernziele des gewaehlten Berufsbilds aus dem Lehrplan an', () => {
     openKiErstellung()
-    const select = screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN') as HTMLSelectElement
+    const select = screen.getByLabelText('Lernziel aus dem Lehrplan') as HTMLSelectElement
     expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
       'Baustein 1 · Begleitpapiere prüfen',
       'Baustein 1 · Güter entladen',
@@ -111,7 +111,7 @@ describe('KI-Erstellung – Formular', () => {
       'Baustein 3 · Güter auszeichnen und sortieren',
     ])
 
-    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Metalltechnik & Montage' } })
+    fireEvent.change(screen.getByLabelText('Berufsbild'), { target: { value: 'Metalltechnik & Montage' } })
     expect(within(select).getAllByRole('option')).toHaveLength(3)
   })
 
@@ -121,13 +121,13 @@ describe('KI-Erstellung – Formular', () => {
     openKiErstellung()
 
     // Der Import enthaelt nur Metall – erst dort wird die Quelle sichtbar
-    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Metalltechnik & Montage' } })
+    fireEvent.change(screen.getByLabelText('Berufsbild'), { target: { value: 'Metalltechnik & Montage' } })
     expect(await screen.findByText(/Quelle: 2 importierte Lernziele/)).toBeInTheDocument()
-    const options = within(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN')).getAllByRole('option').map((o) => o.textContent)
+    const options = within(screen.getByLabelText('Lernziel aus dem Lehrplan')).getAllByRole('option').map((o) => o.textContent)
     expect(options[0]).toBe('Baustein 2 · Teile nach Montageplan heraussuchen')
     expect(options[1]).toMatch(/^Baustein 2 · Ein sehr langer Lernzieltitel.*…$/)
     // Lager hat im Import nichts -> gesperrt, obwohl lokale Beispiele existieren wuerden
-    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
+    fireEvent.change(screen.getByLabelText('Berufsbild'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
     expect(screen.getByRole('button', { name: /Generieren nicht möglich/ })).toBeDisabled()
   })
 
@@ -136,7 +136,7 @@ describe('KI-Erstellung – Formular', () => {
     const suche = screen.getByLabelText('Suchbegriff für die Internetsuche') as HTMLInputElement
     expect(suche.value).toBe('Begleitpapiere prüfen')
 
-    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: 'lokal-2' } })
+    fireEvent.change(screen.getByLabelText('Lernziel aus dem Lehrplan'), { target: { value: 'lokal-2' } })
     expect(suche.value).toBe('Güter entladen')
 
     // Der Suchbegriff bleibt änderbar und darf auch ganz gelöscht werden
@@ -164,7 +164,7 @@ describe('KI-Erstellung – Formular', () => {
 
   it('sperrt das Generieren fuer Berufsfelder ohne Lehrplan', () => {
     openKiErstellung()
-    fireEvent.change(screen.getByLabelText('BERUFSBILD'), { target: { value: 'Garten- und Landschaftsbau' } })
+    fireEvent.change(screen.getByLabelText('Berufsbild'), { target: { value: 'Garten- und Landschaftsbau' } })
 
     expect(screen.getByRole('note')).toHaveTextContent('noch keine Lehrpläne hinterlegt')
     expect(screen.getByRole('button', { name: /Generieren nicht möglich/ })).toBeDisabled()
@@ -179,8 +179,8 @@ describe('KI-Erstellung – Generierung', () => {
     })
     openKiErstellung()
 
-    fireEvent.change(screen.getByLabelText('LERNZIEL AUS DEM LEHRPLAN'), { target: { value: 'lokal-2' } })
-    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'LKW am Tor' } })
+    fireEvent.change(screen.getByLabelText('Lernziel aus dem Lehrplan'), { target: { value: 'lokal-2' } })
+    fireEvent.change(screen.getByLabelText(/Thema \/ Titel/), { target: { value: 'LKW am Tor' } })
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
 
@@ -233,7 +233,7 @@ describe('KI-Erstellung – Generierung', () => {
     mockBackend({ generate: () => jsonResponse({ error: 'llm_rate_limit', message: 'Rate-Limit des KI-Anbieters erreicht.' }, 502) })
     openKiErstellung()
 
-    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'Gabelstapler' } })
+    fireEvent.change(screen.getByLabelText(/Thema \/ Titel/), { target: { value: 'Gabelstapler' } })
     fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
     fireEvent.click(screen.getByRole('button', { name: '✦ 2 Varianten generieren' }))
 
@@ -243,7 +243,7 @@ describe('KI-Erstellung – Generierung', () => {
     expect(alert).toHaveTextContent('Die übrigen Varianten wurden nicht erstellt.')
     expect(generateCalls()).toHaveLength(1)
 
-    expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Gabelstapler')
+    expect(screen.getByLabelText(/Thema \/ Titel/)).toHaveValue('Gabelstapler')
     expect(screen.getByRole('button', { name: '✦ 2 Varianten generieren' })).toBeEnabled()
   })
 
@@ -284,7 +284,7 @@ describe('KI-Erstellung – Speichern (FE-02)', () => {
   async function generiere(varianten: 1 | 2 = 1) {
     mockBackendForSave()
     openKiErstellung()
-    fireEvent.change(screen.getByLabelText(/THEMA \/ TITEL/), { target: { value: 'LKW am Tor' } })
+    fireEvent.change(screen.getByLabelText(/Thema \/ Titel/), { target: { value: 'LKW am Tor' } })
     if (varianten === 2) fireEvent.click(screen.getByRole('button', { name: /^T\s*Tätigkeit$/ }))
     fireEvent.click(screen.getByRole('button', { name: varianten === 2 ? '✦ 2 Varianten generieren' : '✦ 1 Variante generieren' }))
     return screen.findByRole('region', { name: 'Erstellte Varianten' })

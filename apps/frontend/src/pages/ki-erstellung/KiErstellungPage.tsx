@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 're
 import { erwartungenAusVorlage } from '@/lib/vorlage'
 import { stufeTextVar } from '@/lib/settings'
 import { CloseButton, SlideOver } from '@/components/SlideOver'
-import { FormatPicker, LevelPicker, SpracheToggle } from '@/components/Pickers'
+import { FormatPicker, LevelPicker, SpracheToggle, StufenHinweis } from '@/components/Pickers'
 import { GenerateButton, VariantSummary } from '@/components/VariantSummary'
 import { BERUFSBILDER, LEVEL_STYLES, formatOption } from '@/data/constants'
 import { TRANSFORM_PREVIEWS } from '@/data/previews'
@@ -27,7 +27,7 @@ import { WebSearchSection, type WebVorlage } from './WebSearchSection'
 import { WorksheetEditor } from '../arbeitsblaetter/WorksheetEditor'
 import type { KiStand } from '@/components/VerlassenDialog'
 
-const labelClass = 'block text-xs font-mono font-medium mb-1.5'
+const labelClass = 'block text-xs font-medium mb-1.5'
 const inputStyle = { border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }
 
 /** Ein waehlbares Lernziel: aus dem Lehrplan-Import oder aus den lokalen Beispieldaten */
@@ -211,7 +211,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="ki-berufsbild" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-                BERUFSBILD
+                Berufsbild
               </label>
               <select
                 id="ki-berufsbild"
@@ -230,7 +230,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
             </div>
             <div>
               <label htmlFor="ki-lernziel" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-                LERNZIEL AUS DEM LEHRPLAN
+                Lernziel aus dem Lehrplan
               </label>
               <select
                 id="ki-lernziel"
@@ -266,7 +266,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
 
           <div>
             <label htmlFor="ki-thema" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-              THEMA / TITEL <span className="font-normal">(optional)</span>
+              Thema / Titel <span className="font-normal">(optional)</span>
             </label>
             <input
               id="ki-thema"
@@ -281,7 +281,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
 
           <div>
             <label htmlFor="ki-erwartungen" className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-              ERWARTUNGEN AN DAS ARBEITSBLATT <span className="font-normal">(optional)</span>
+              Erwartungen an das Arbeitsblatt <span className="font-normal">(optional)</span>
             </label>
             <textarea
               id="ki-erwartungen"
@@ -307,13 +307,14 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-                NIVEAUSTUFEN <span className="font-normal">(mehrere möglich)</span>
+                Niveaustufen <span className="font-normal">(mehrere möglich)</span>
               </div>
               <LevelPicker size="compact" selected={levels} onToggle={(l) => setLevels((prev) => toggleKeepOne(prev, l))} />
+              <StufenHinweis />
             </div>
             <div>
               <div className={labelClass} style={{ color: 'var(--muted-foreground)' }}>
-                SPRACHFORMAT
+                Sprachformat
               </div>
               <SpracheToggle value={sprache} onChange={setSprache} />
             </div>
@@ -321,7 +322,7 @@ export function KiErstellungPage({ vorauswahl = null, onStand }: KiErstellungPro
 
           <div>
             <div className={`${labelClass} mb-2`} style={{ color: 'var(--muted-foreground)' }}>
-              BARRIEREFREIHEITS-FORMATE <span className="font-normal">(mehrere möglich)</span>
+              Barrierefreiheits-Formate <span className="font-normal">(mehrere möglich)</span>
             </div>
             <FormatPicker selected={formats} onToggle={(f) => setFormats((prev) => toggleKeepOne(prev, f))} />
           </div>
@@ -694,8 +695,8 @@ function VariantPreview({ generated, target, onClose }: { generated: Generated; 
           {hinweise.hinweis}
         </div>
         <div>
-          <div className="text-xs font-mono font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
-            BEISPIELAUFGABEN
+          <div className="text-xs font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>
+            Beispielaufgaben
           </div>
           <ol className="flex flex-col gap-2 pl-5 text-sm list-decimal">
             {hinweise.aufgaben.map((aufgabe) => (

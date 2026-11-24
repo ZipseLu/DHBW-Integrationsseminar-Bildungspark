@@ -23,7 +23,7 @@ type Props = {
 type Phase = { art: 'bereit' } | { art: 'laeuft'; name: string } | { art: 'fertig'; antwort: UploadAntwort }
 
 const feldStil = { backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }
-const labelKlasse = 'text-xs font-mono font-medium mb-1 block'
+const labelKlasse = 'text-xs font-medium mb-1 block'
 
 /** Readable message for upload errors, with the backend's own text where there is one */
 export function uploadFehlertext(error: unknown): string {
@@ -165,7 +165,7 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = fa
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="upload-berufsfeld" className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-                  BERUFSFELD <span className="font-normal">(optional)</span>
+                  Berufsfeld <span className="font-normal">(optional)</span>
                 </label>
                 <select id="upload-berufsfeld" value={berufsfeld} onChange={(e) => setBerufsfeld(e.target.value)} className="w-full px-3 py-2 rounded text-sm" style={feldStil}>
                   <option value="">– nicht zugeordnet –</option>
@@ -178,7 +178,7 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = fa
               </div>
               <div>
                 <label htmlFor="upload-thema" className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-                  THEMA <span className="font-normal">({modus === 'datei' ? 'sonst aus dem Dateinamen' : 'optional'})</span>
+                  Thema <span className="font-normal">({modus === 'datei' ? 'sonst aus dem Dateinamen' : 'optional'})</span>
                 </label>
                 <input
                   id="upload-thema"
@@ -230,7 +230,7 @@ export function UploadSection({ savedBy, onUploaded, onKiAnpassen, imDialog = fa
             ) : (
               <form onSubmit={handleTextSubmit} className="flex flex-col gap-2">
                 <label htmlFor="upload-text" className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-                  TEXT DES ARBEITSBLATTS
+                  Text des Arbeitsblatts
                 </label>
                 <textarea
                   id="upload-text"
@@ -333,7 +333,7 @@ function UploadErgebnis({
       {!hatText && (
         <div className="flex flex-col gap-2">
           <label htmlFor="upload-text-nachtragen" className={labelKlasse} style={{ color: 'var(--muted-foreground)' }}>
-            TEXT ERGÄNZEN <span className="font-normal">(damit die KI das Blatt anpassen kann)</span>
+            Text ergänzen <span className="font-normal">(damit die KI das Blatt anpassen kann)</span>
           </label>
           <textarea
             id="upload-text-nachtragen"

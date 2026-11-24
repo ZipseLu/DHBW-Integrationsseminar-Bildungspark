@@ -28,6 +28,7 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
   const [vorschau, setVorschau] = useState<{ lehrplan: LehrplanVorschau; ersetzt: boolean } | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState<'pruefen' | 'speichern' | null>(null)
+  const [ziehen, setZiehen] = useState(false)
 
   const berufsfeld = auswahl === ANDERES ? eigenesFeld.trim() : auswahl
 
@@ -35,6 +36,16 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
   function zuruecksetzen() {
     setVorschau(null)
     setFehler(null)
+  }
+
+  function waehleDatei(neu: File | null) {
+    zuruecksetzen()
+    if (neu && !/\.docx$/i.test(neu.name)) {
+      setDatei(null)
+      setFehler('Bitte eine Word-Datei (.docx) wählen.')
+      return
+    }
+    setDatei(neu)
   }
 
   async function pruefen(event: FormEvent) {
@@ -77,25 +88,65 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
       <div className="px-6 py-5 overflow-y-auto">
         <form onSubmit={pruefen} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="lehrplan-datei" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-              LEHRPLAN-DATEI (.DOCX)
-            </label>
-            <input
-              id="lehrplan-datei"
-              type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={(e) => {
-                setDatei(e.target.files?.[0] ?? null)
-                zuruecksetzen()
+            <div className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
+              Lehrplan-Datei
+            </div>
+            {/* Drop zone like the worksheet upload: the whole area opens the file dialog */}
+            <label
+              className="flex flex-col items-center justify-center gap-2 rounded-lg cursor-pointer transition-colors select-none text-center focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+              style={{
+                border: `2px dashed ${ziehen ? 'var(--accent)' : datei ? 'var(--success)' : 'var(--border)'}`,
+                backgroundColor: ziehen ? 'var(--muted)' : 'var(--background)',
+                padding: '1.5rem 1rem',
+                outlineColor: 'var(--accent)',
               }}
-              className="w-full text-sm"
-            />
+              onDragOver={(e) => {
+                e.preventDefault()
+                setZiehen(true)
+              }}
+              onDragLeave={() => setZiehen(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setZiehen(false)
+                waehleDatei(e.dataTransfer.files?.[0] ?? null)
+              }}
+            >
+              <input
+                id="lehrplan-datei"
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                aria-label="Lehrplan-Datei (.docx)"
+                className="sr-only"
+                onChange={(e) => waehleDatei(e.target.files?.[0] ?? null)}
+              />
+              <div className="text-3xl" aria-hidden="true">
+                {datei ? '✅' : '📘'}
+              </div>
+              {datei ? (
+                <>
+                  <div className="text-sm font-medium break-all">{datei.name}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    Klicken, um eine andere Datei zu wählen
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-medium">Word-Datei hierher ziehen oder klicken</div>
+                  <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    Binnendifferenzierter Lehrplan als .docx · max. 20 MB
+                  </div>
+                  <div className="text-xs px-3 py-1.5 rounded font-medium mt-1" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+                    Datei auswählen
+                  </div>
+                </>
+              )}
+            </label>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="lehrplan-berufsfeld" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                BERUFSFELD
+                Berufsfeld
               </label>
               <select
                 id="lehrplan-berufsfeld"
@@ -119,7 +170,7 @@ export function LehrplanHinzufuegen({ onClose, onGespeichert }: Props) {
             {auswahl === ANDERES && (
               <div>
                 <label htmlFor="lehrplan-berufsfeld-neu" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-                  NAME DES BERUFSFELDS
+                  Name des Berufsfelds
                 </label>
                 <input
                   id="lehrplan-berufsfeld-neu"

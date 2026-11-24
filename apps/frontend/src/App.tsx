@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { KEIN_KI_STAND, VerlassenDialog, hatUngesichertes, type KiStand } from '@/components/VerlassenDialog'
 import { NAV_ITEMS } from '@/data/constants'
 import { CURRENT_USER, STAFF_USERS } from '@/data/users'
+import { Fussleiste } from '@/layout/Fussleiste'
 import { Header } from '@/layout/Header'
 import { Sidebar } from '@/layout/Sidebar'
 import { fetchEinstellungen, saveEinstellungen } from '@/lib/api'
@@ -152,6 +153,7 @@ export default function App() {
             <BenutzerverwaltungPage currentUser={user} users={staffUsers} onChange={setStaffUsers} />
           )}
           {activeNav === 'einstellungen' && <EinstellungenPage currentUser={user} settings={settings} onSave={handleSaveSettings} />}
+          <Fussleiste />
         </main>
       </div>
       {wartendesZiel && (

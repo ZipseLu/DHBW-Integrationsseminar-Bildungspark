@@ -44,9 +44,9 @@ const aufrufe = (fetchMock: ReturnType<typeof vi.fn>, method: string) =>
 
 function dialogAusfuellen(felder: { name?: string; email?: string; passwort?: string }) {
   const dialog = screen.getByRole('dialog')
-  if (felder.name !== undefined) fireEvent.change(within(dialog).getByLabelText('NAME *'), { target: { value: felder.name } })
-  if (felder.email !== undefined) fireEvent.change(within(dialog).getByLabelText('E-MAIL-ADRESSE *'), { target: { value: felder.email } })
-  if (felder.passwort !== undefined) fireEvent.change(within(dialog).getByLabelText(/PASSWORT/), { target: { value: felder.passwort } })
+  if (felder.name !== undefined) fireEvent.change(within(dialog).getByLabelText('Name *'), { target: { value: felder.name } })
+  if (felder.email !== undefined) fireEvent.change(within(dialog).getByLabelText('E-Mail-Adresse *'), { target: { value: felder.email } })
+  if (felder.passwort !== undefined) fireEvent.change(within(dialog).getByLabelText(/Passwort/), { target: { value: felder.passwort } })
   return dialog
 }
 
@@ -105,8 +105,8 @@ describe('Benutzerverwaltung mit Backend (FE-09)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Konto von T. Neumann bearbeiten' }))
 
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByLabelText('NAME *')).toHaveValue('T. Neumann')
-    expect(within(dialog).getByLabelText('NEUES PASSWORT')).toHaveValue('')
+    expect(within(dialog).getByLabelText('Name *')).toHaveValue('T. Neumann')
+    expect(within(dialog).getByLabelText('Neues Passwort')).toHaveValue('')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Administrator' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Änderungen speichern' }))
 

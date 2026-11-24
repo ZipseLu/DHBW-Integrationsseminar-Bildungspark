@@ -452,6 +452,7 @@ was noch manuell zu testen ist stehen in **[docs/barrierefreiheit.md](docs/barri
 | `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash-lite` | Wird einmalig versucht, wenn das Modell mit 503 (überlastet) antwortet |
 | `AI_TIMEOUT_MS` | `180000` | Zeitlimit je Generierungsauftrag |
 | `VITE_ALLOWED_HOSTS` | `true` | Erlaubt Zugriff über LAN-IP im Team |
+| `VITE_IMPRESSUM_URL`, `VITE_DATENSCHUTZ_URL` | leer | Links in der Fußleiste zu Impressum und Datenschutz des Bildungsparks (FE-32); ohne Wert kein Link. Werden beim Build eingebaut. |
 
 ### Secrets
 

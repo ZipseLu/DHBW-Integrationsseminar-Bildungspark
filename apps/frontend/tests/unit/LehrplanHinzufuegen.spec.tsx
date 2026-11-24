@@ -85,9 +85,9 @@ describe('Lehrplan hinzufügen (FE-34)', () => {
 
     const pruefen = within(dialog).getByRole('button', { name: 'Prüfen' })
     expect(pruefen).toBeDisabled()
-    fireEvent.change(within(dialog).getByLabelText('LEHRPLAN-DATEI (.DOCX)'), { target: { files: [DATEI] } })
-    fireEvent.change(within(dialog).getByLabelText('BERUFSFELD'), { target: { value: '__anderes__' } })
-    fireEvent.change(within(dialog).getByLabelText('NAME DES BERUFSFELDS'), { target: { value: GALA } })
+    fireEvent.change(within(dialog).getByLabelText('Lehrplan-Datei (.docx)'), { target: { files: [DATEI] } })
+    fireEvent.change(within(dialog).getByLabelText('Berufsfeld'), { target: { value: '__anderes__' } })
+    fireEvent.change(within(dialog).getByLabelText('Name des Berufsfelds'), { target: { value: GALA } })
     fireEvent.click(pruefen)
 
     expect(await within(dialog).findByText('2 Lernziele erkannt')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('Lehrplan hinzufügen (FE-34)', () => {
     backend({ ersetzt: true })
     render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
     const dialog = await oeffneDialog()
-    fireEvent.change(within(dialog).getByLabelText('LEHRPLAN-DATEI (.DOCX)'), { target: { files: [DATEI] } })
+    fireEvent.change(within(dialog).getByLabelText('Lehrplan-Datei (.docx)'), { target: { files: [DATEI] } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Prüfen' }))
 
     expect(await within(dialog).findByText(/Beim Speichern wird er durch diese Version ersetzt/)).toBeInTheDocument()
@@ -130,11 +130,38 @@ describe('Lehrplan hinzufügen (FE-34)', () => {
     backend({ vorschauFehler: { status: 422, message: 'In der Datei wurden keine Lernziele erkannt.' } })
     render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
     const dialog = await oeffneDialog()
-    fireEvent.change(within(dialog).getByLabelText('LEHRPLAN-DATEI (.DOCX)'), { target: { files: [DATEI] } })
+    fireEvent.change(within(dialog).getByLabelText('Lehrplan-Datei (.docx)'), { target: { files: [DATEI] } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Prüfen' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('In der Datei wurden keine Lernziele erkannt.')
     expect(within(dialog).queryByRole('button', { name: 'Lehrplan speichern' })).not.toBeInTheDocument()
+  })
+
+  it('zeigt eine Ablagefläche und danach den Namen der gewählten Datei', async () => {
+    backend()
+    render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
+    const dialog = await oeffneDialog()
+    expect(within(dialog).getByText('Word-Datei hierher ziehen oder klicken')).toBeInTheDocument()
+
+    fireEvent.change(within(dialog).getByLabelText('Lehrplan-Datei (.docx)'), { target: { files: [DATEI] } })
+    expect(within(dialog).getByText('gala.docx')).toBeInTheDocument()
+    expect(within(dialog).getByText('Klicken, um eine andere Datei zu wählen')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Prüfen' })).toBeEnabled()
+  })
+
+  it('nimmt per Ziehen nur Word-Dateien an', async () => {
+    backend()
+    render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
+    const dialog = await oeffneDialog()
+    const flaeche = within(dialog).getByText('Word-Datei hierher ziehen oder klicken').closest('label')!
+
+    fireEvent.drop(flaeche, { dataTransfer: { files: [new File(['%PDF'], 'lehrplan.pdf', { type: 'application/pdf' })] } })
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Bitte eine Word-Datei (.docx) wählen.')
+    expect(within(dialog).getByRole('button', { name: 'Prüfen' })).toBeDisabled()
+
+    fireEvent.drop(flaeche, { dataTransfer: { files: [DATEI] } })
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('gala.docx')).toBeInTheDocument()
   })
 
   it('zeigt Assistenzen keinen Knopf zum Hinzufügen', async () => {

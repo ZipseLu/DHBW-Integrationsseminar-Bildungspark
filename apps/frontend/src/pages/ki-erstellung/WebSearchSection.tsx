@@ -94,8 +94,8 @@ export function WebSearchSection({ thema, vorschlag = '', onAnpassen, generierun
     <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
       <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
         <span aria-hidden="true">🌐</span>
-        <span className="text-xs font-mono font-medium" style={{ color: 'var(--muted-foreground)' }}>
-          ARBEITSBLÄTTER IM INTERNET SUCHEN
+        <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+          Arbeitsblätter im Internet suchen
         </span>
         <span className="text-xs ml-1" style={{ color: 'var(--muted-foreground)' }}>
           – optional als Vorlage oder Inspiration
@@ -165,7 +165,7 @@ export function WebSearchSection({ thema, vorschlag = '', onAnpassen, generierun
           <div className="flex flex-col gap-2">
             {mockMode && (
               <div className="text-xs px-3 py-2 rounded" style={{ backgroundColor: '#FFF3CD', color: '#7A5C00' }}>
-                ⚠ Simulierte Treffer (Mock-Modus). Die echte Websuche ist
+                ⚠ Simulierte Beispieltreffer. Die echte Websuche ist
                 derzeit nicht erreichbar. Prüfen Sie die Internetverbindung des Backends.
               </div>
             )}
@@ -248,8 +248,8 @@ export function WebSearchSection({ thema, vorschlag = '', onAnpassen, generierun
                           ✦ Dieses Dokument anpassen
                         </div>
                         <div>
-                          <div className="text-xs font-mono mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                            ZIELNIVEAUS <span className="font-normal">(mehrere möglich)</span>
+                          <div className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Zielniveaus <span className="font-normal">(mehrere möglich)</span>
                           </div>
                           <LevelPicker
                             size="compact"
@@ -260,8 +260,8 @@ export function WebSearchSection({ thema, vorschlag = '', onAnpassen, generierun
                           />
                         </div>
                         <div>
-                          <div className="text-xs font-mono mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                            BARRIEREFREIHEITS-FORMAT
+                          <div className="text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Barrierefreiheits-Format
                           </div>
                           <FormatPicker
                             layout="compact"

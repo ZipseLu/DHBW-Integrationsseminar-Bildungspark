@@ -62,14 +62,14 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
-        <Auswahl id="filter-berufsbild" label="BERUFSBILD" value={filter.berufsbild} onChange={(berufsbild) => update({ berufsbild, ausbildungsbaustein: 'Alle' })}>
+        <Auswahl id="filter-berufsbild" label="Berufsbild" value={filter.berufsbild} onChange={(berufsbild) => update({ berufsbild, ausbildungsbaustein: 'Alle' })}>
           {[ALLE_BERUFSBILDER, ...berufsfelder].map((b) => (
             <option key={b} value={b}>
               {b}
             </option>
           ))}
         </Auswahl>
-        <Auswahl id="filter-baustein" label="BAUSTEIN" value={String(filter.baustein)} onChange={(b) => update({ baustein: b === 'Alle' ? 'Alle' : Number(b) })}>
+        <Auswahl id="filter-baustein" label="Baustein" value={String(filter.baustein)} onChange={(b) => update({ baustein: b === 'Alle' ? 'Alle' : Number(b) })}>
           <option value="Alle">Alle</option>
           {bausteine.map((b) => (
             <option key={b} value={b}>
@@ -77,14 +77,14 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
             </option>
           ))}
         </Auswahl>
-        <Auswahl id="filter-ausbildungsbaustein" label="AUSBILDUNGSBAUSTEIN" value={filter.ausbildungsbaustein} onChange={(ausbildungsbaustein) => update({ ausbildungsbaustein })}>
+        <Auswahl id="filter-ausbildungsbaustein" label="Ausbildungsbaustein" value={filter.ausbildungsbaustein} onChange={(ausbildungsbaustein) => update({ ausbildungsbaustein })}>
           {['Alle', ...ausbildungsbausteine].map((ab) => (
             <option key={ab} value={ab}>
               {ab}
             </option>
           ))}
         </Auswahl>
-        <Auswahl id="filter-niveau" label="NIVEAU" value={filter.niveau} onChange={(niveau) => update({ niveau: niveau as Level | 'Alle' })}>
+        <Auswahl id="filter-niveau" label="Niveau" value={filter.niveau} onChange={(niveau) => update({ niveau: niveau as Level | 'Alle' })}>
           <option value="Alle">Alle</option>
           {LEVELS.map((l) => (
             <option key={l} value={l}>
@@ -92,7 +92,7 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
             </option>
           ))}
         </Auswahl>
-        <Auswahl id="filter-sprache" label="SPRACHE" value={filter.sprache} onChange={(sprache) => update({ sprache: sprache as Sprache | 'Alle' })}>
+        <Auswahl id="filter-sprache" label="Sprache" value={filter.sprache} onChange={(sprache) => update({ sprache: sprache as Sprache | 'Alle' })}>
           <option value="Alle">Alle</option>
           {SPRACHEN.map((s) => (
             <option key={s} value={s}>
@@ -100,7 +100,7 @@ export function WorksheetFilters({ filter, onChange, bausteine, ausbildungsbaust
             </option>
           ))}
         </Auswahl>
-        <Auswahl id="filter-format" label="FORMAT" value={filter.format} onChange={(format) => update({ format: format as Format | 'Alle' })}>
+        <Auswahl id="filter-format" label="Format" value={filter.format} onChange={(format) => update({ format: format as Format | 'Alle' })}>
           <option value="Alle">Alle</option>
           {FORMAT_OPTIONS.map((o) => (
             <option key={o.id} value={o.id}>
@@ -134,7 +134,7 @@ function Auswahl({ id, label, value, onChange, children }: { id: string; label: 
   const gesetzt = value !== 'Alle' && value !== ALLE_BERUFSBILDER
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="block text-xs font-mono mb-1" style={{ color: 'var(--muted-foreground)' }}>
+      <label htmlFor={id} className="block text-xs font-medium mb-1" style={{ color: 'var(--muted-foreground)' }}>
         {label}
       </label>
       <select

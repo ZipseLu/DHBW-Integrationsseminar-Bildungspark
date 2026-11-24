@@ -155,7 +155,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
     renderArbeitsblaetter()
     oeffneUpload()
 
-    fireEvent.change(screen.getByLabelText('BERUFSFELD (optional)'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
+    fireEvent.change(screen.getByLabelText('Berufsfeld (optional)'), { target: { value: 'Lagerlogistik, Handel & Versand' } })
     waehleDatei(docx())
 
     expect(await screen.findByText('✓ „Gabelstapler_Sicherheit.docx“ gespeichert')).toBeInTheDocument()
@@ -198,7 +198,7 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
     const ki = screen.getByRole('button', { name: '✦ Mit KI an Niveaustufen anpassen' })
     expect(ki).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText(/TEXT ERGÄNZEN/), { target: { value: 'Prüfe den Lieferschein.' } })
+    fireEvent.change(screen.getByLabelText(/Text ergänzen/), { target: { value: 'Prüfe den Lieferschein.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Text speichern' }))
     await waitFor(() => expect(ki).toBeEnabled())
     expect(anfragen.find((a) => a.method === 'PATCH')?.body).toEqual({ text: 'Prüfe den Lieferschein.' })
@@ -210,8 +210,8 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
     fireEvent.click(ki)
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('KI-Erstellung')
     expect(screen.getByText(/Vorlage „Lieferschein.pdf“ übernommen/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/THEMA \/ TITEL/)).toHaveValue('Lieferschein')
-    expect((screen.getByLabelText(/ERWARTUNGEN AN DAS ARBEITSBLATT/) as HTMLTextAreaElement).value).toContain('Prüfe den Lieferschein.')
+    expect(screen.getByLabelText(/Thema \/ Titel/)).toHaveValue('Lieferschein')
+    expect((screen.getByLabelText(/Erwartungen an das Arbeitsblatt/) as HTMLTextAreaElement).value).toContain('Prüfe den Lieferschein.')
   })
 
   it('speichert eingefügten Text', async () => {
@@ -219,8 +219,8 @@ describe('Upload auf der Seite Arbeitsblätter (FE-05)', () => {
     renderArbeitsblaetter()
     oeffneUpload()
     fireEvent.click(screen.getByRole('tab', { name: '📋 Text einfügen' }))
-    fireEvent.change(screen.getByLabelText(/^THEMA/), { target: { value: 'Hygiene' } })
-    fireEvent.change(screen.getByLabelText('TEXT DES ARBEITSBLATTS'), { target: { value: 'Wasche die Hände.' } })
+    fireEvent.change(screen.getByLabelText(/^Thema/), { target: { value: 'Hygiene' } })
+    fireEvent.change(screen.getByLabelText('Text des Arbeitsblatts'), { target: { value: 'Wasche die Hände.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Text speichern' }))
 
     expect(await screen.findByText('✓ „Hygiene.txt“ gespeichert')).toBeInTheDocument()
@@ -252,6 +252,6 @@ describe('Liste der hochgeladenen Dokumente (FE-05)', () => {
 
     fireEvent.click(within(liste).getByRole('button', { name: 'Hygiene.docx mit KI anpassen' }))
     expect(await screen.findByText(/Vorlage „Hygiene.docx“ übernommen/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/BERUFSBILD/)).toHaveValue('Gastronomie & Hauswirtschaft')
+    expect(screen.getByLabelText(/Berufsbild/)).toHaveValue('Gastronomie & Hauswirtschaft')
   })
 })

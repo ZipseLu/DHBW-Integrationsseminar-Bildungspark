@@ -258,7 +258,7 @@ function KontoDialog({ editing, users, lokal, onSave, onClose }: DialogProps) {
       <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4" noValidate>
         <div>
           <label htmlFor="ma-name" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            NAME *
+            Name *
           </label>
           <input
             id="ma-name"
@@ -272,7 +272,7 @@ function KontoDialog({ editing, users, lokal, onSave, onClose }: DialogProps) {
         </div>
         <div>
           <label htmlFor="ma-email" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            E-MAIL-ADRESSE *
+            E-Mail-Adresse *
           </label>
           <input
             id="ma-email"
@@ -286,7 +286,7 @@ function KontoDialog({ editing, users, lokal, onSave, onClose }: DialogProps) {
         </div>
         <div>
           <div className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            ROLLE *
+            Rolle *
           </div>
           <div className="grid grid-cols-3 gap-2" role="group" aria-label="Rolle">
             {ROLES.map((r) => {
@@ -311,7 +311,7 @@ function KontoDialog({ editing, users, lokal, onSave, onClose }: DialogProps) {
         </div>
         <div>
           <label htmlFor="ma-passwort" className={fieldLabelClass} style={{ color: 'var(--muted-foreground)' }}>
-            {editing ? 'NEUES PASSWORT' : 'PASSWORT *'}
+            {editing ? 'Neues Passwort' : 'Passwort *'}
           </label>
           <input
             id="ma-passwort"
