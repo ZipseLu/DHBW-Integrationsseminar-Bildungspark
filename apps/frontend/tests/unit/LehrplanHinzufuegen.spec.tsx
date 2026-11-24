@@ -137,6 +137,33 @@ describe('Lehrplan hinzufügen (FE-34)', () => {
     expect(within(dialog).queryByRole('button', { name: 'Lehrplan speichern' })).not.toBeInTheDocument()
   })
 
+  it('zeigt eine Ablagefläche und danach den Namen der gewählten Datei', async () => {
+    backend()
+    render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
+    const dialog = await oeffneDialog()
+    expect(within(dialog).getByText('Word-Datei hierher ziehen oder klicken')).toBeInTheDocument()
+
+    fireEvent.change(within(dialog).getByLabelText('Lehrplan-Datei (.docx)'), { target: { files: [DATEI] } })
+    expect(within(dialog).getByText('gala.docx')).toBeInTheDocument()
+    expect(within(dialog).getByText('Klicken, um eine andere Datei zu wählen')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Prüfen' })).toBeEnabled()
+  })
+
+  it('nimmt per Ziehen nur Word-Dateien an', async () => {
+    backend()
+    render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'admin' }} />)
+    const dialog = await oeffneDialog()
+    const flaeche = within(dialog).getByText('Word-Datei hierher ziehen oder klicken').closest('label')!
+
+    fireEvent.drop(flaeche, { dataTransfer: { files: [new File(['%PDF'], 'lehrplan.pdf', { type: 'application/pdf' })] } })
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Bitte eine Word-Datei (.docx) wählen.')
+    expect(within(dialog).getByRole('button', { name: 'Prüfen' })).toBeDisabled()
+
+    fireEvent.drop(flaeche, { dataTransfer: { files: [DATEI] } })
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('gala.docx')).toBeInTheDocument()
+  })
+
   it('zeigt Assistenzen keinen Knopf zum Hinzufügen', async () => {
     backend()
     render(<LehrplaenePage onCreateWorksheet={() => {}} user={{ role: 'assistent' }} />)
