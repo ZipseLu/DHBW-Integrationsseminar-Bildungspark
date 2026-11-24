@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { LevelBadge } from '@/components/LevelBadge'
 import { ProgressBar, StatCard } from '@/components/Widgets'
-import { LEVELS, LEVEL_STYLES, formatOption } from '@/data/constants'
+import { LEVELS, LEVEL_STYLES, PERSONA_MAP, formatOption } from '@/data/constants'
 import { WORKSHEETS } from '@/data/worksheets'
 import { dashboardAusBeispielen, dashboardAusGespeicherten, type DashboardDaten } from '@/lib/dashboardDaten'
 import { fehlertext, loadSavedWorksheets } from '@/lib/gespeicherteArbeitsblaetter'
 import { useLernstand } from '@/lib/lernstand'
 import { activeStation, stationsStand } from '@/lib/participants'
+import { PersonaUebersicht } from './PersonaUebersicht'
 import type { NavItem, Participant } from '@/types'
 
 type Props = {
@@ -119,6 +120,8 @@ export function DashboardPage({ participants, onNavigate, lernstandAktiv = false
       </section>
 
       <LernstandUebersicht participants={participants} lernstand={lernstand} onNavigate={onNavigate} />
+
+      <PersonaUebersicht participants={participants} />
 
       <section className="rounded-lg" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }} aria-label="Zuletzt bearbeitet">
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -275,9 +278,21 @@ function LernstandZeile({ zeile: z, ausBackend, letzte }: { zeile: ZeileDaten; a
   const zahlen = z.gesamt === null ? `${z.erledigt} AB erledigt` : z.gesamt === 0 ? 'noch keine AB zugeordnet' : `${z.erledigt} von ${z.gesamt} erledigt`
   return (
     <li className="px-6 py-3 flex items-center gap-4" style={{ borderBottom: letzte ? 'none' : '1px solid var(--border)' }} aria-label={`Lernstand ${z.p.id}`}>
-      <div className="w-28 flex-shrink-0">
+      <div className="w-40 flex-shrink-0">
         <div className="text-sm font-mono font-medium">{z.p.id}</div>
-        {station && <LevelBadge level={station.level} />}
+        {station && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <LevelBadge level={station.level} />
+            {/* FE-43: persona letter, explained in the section "Personas A–P" below */}
+            <span
+              className="text-xs px-1.5 rounded font-medium"
+              style={{ border: `1px solid ${LEVEL_STYLES[station.level].text}`, color: LEVEL_STYLES[station.level].text }}
+              title={`Persona ${PERSONA_MAP[station.level][station.format]}: ${station.level} · ${formatOption(station.format).label}`}
+            >
+              Persona {PERSONA_MAP[station.level][station.format]}
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm truncate">
