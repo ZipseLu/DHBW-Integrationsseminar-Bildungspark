@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
-import { DEFAULT_SETTINGS, loadSettings } from '@/lib/settings'
+import { DEFAULT_SETTINGS, loadSettings, mischeEinstellungen } from '@/lib/settings'
 
 /**
  * FE-20: Einstellungen kommen aus dem Backend (pro Konto), localStorage bleibt
@@ -82,5 +82,73 @@ describe('Einstellungen pro Konto (FE-20)', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled())
 
     expect(loadSettings().accentColor).toBe('#C42A2A')
+  })
+})
+
+describe('Weitere Einstellungen (FE-42)', () => {
+  function kiErstellungOeffnen() {
+    const nav = screen.getByRole('navigation', { name: 'Hauptnavigation' })
+    fireEvent.click(within(nav).getByRole('button', { name: /KI-Erstellung/ }))
+  }
+
+  const gedrueckt = (gruppe: string) =>
+    within(screen.getByRole('group', { name: gruppe }))
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-pressed') === 'true')
+      .map((b) => b.textContent)
+
+  it('füllt die KI-Erstellung mit den gespeicherten Vorgaben vor', () => {
+    stubBackend({ einstellungen: null })
+    einstellungenOeffnen()
+    const ki = screen.getByRole('region', { name: 'KI-Erstellung' })
+
+    // Level T on, A off; format Piktogramm on, Text off; Standardsprache
+    fireEvent.click(within(within(ki).getByRole('group', { name: 'Niveaustufen' })).getByRole('button', { name: /^T/ }))
+    fireEvent.click(within(within(ki).getByRole('group', { name: 'Niveaustufen' })).getByRole('button', { name: /^A/ }))
+    fireEvent.click(within(within(ki).getByRole('group', { name: 'Barrierefreiheits-Formate' })).getByRole('button', { name: /Mit Piktogrammen/ }))
+    fireEvent.click(within(within(ki).getByRole('group', { name: 'Barrierefreiheits-Formate' })).getByRole('button', { name: /Standard-Text/ }))
+    fireEvent.click(within(within(ki).getByRole('group', { name: 'Sprachformat' })).getByRole('button', { name: /Standardsprache/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }))
+    expect(loadSettings()).toMatchObject({ kiStufen: ['T'], kiFormate: ['piktogramm'], kiSprache: 'Standardsprache' })
+
+    kiErstellungOeffnen()
+    expect(gedrueckt('Niveaustufen').map((t) => t?.charAt(0))).toEqual(['T'])
+    expect(gedrueckt('Barrierefreiheits-Formate')).toHaveLength(1)
+    expect(gedrueckt('Barrierefreiheits-Formate')[0]).toMatch(/Mit Piktogrammen/)
+    expect(gedrueckt('Sprachformat')[0]).toMatch(/Standardsprache/)
+  })
+
+  it('vergrößert die Schrift der ganzen Oberfläche', () => {
+    stubBackend({ einstellungen: null })
+    einstellungenOeffnen()
+    fireEvent.click(within(screen.getByRole('group', { name: 'Schriftgröße' })).getByRole('button', { name: 'Sehr groß' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }))
+
+    expect(document.documentElement.style.fontSize).toBe('20px')
+    expect(loadSettings().schriftgroesse).toBe('sehr-gross')
+  })
+
+  it('setzt nach Rückfrage alles auf Standard zurück', () => {
+    window.localStorage.setItem('bildungspark.einstellungen', JSON.stringify({ ...DEFAULT_SETTINGS, darkMode: true, schriftgroesse: 'gross' }))
+    stubBackend({ einstellungen: null })
+    einstellungenOeffnen()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auf Standard zurücksetzen' }))
+    const frage = screen.getByRole('alertdialog', { name: 'Einstellungen zurücksetzen' })
+    fireEvent.click(within(frage).getByRole('button', { name: 'Abbrechen' }))
+    expect(loadSettings().darkMode).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auf Standard zurücksetzen' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Zurücksetzen' }))
+
+    expect(screen.getByText('✓ Auf Standard zurückgesetzt')).toBeInTheDocument()
+    expect(loadSettings()).toEqual(DEFAULT_SETTINGS)
+    expect(document.documentElement.style.fontSize).toBe('')
+    expect(screen.getByRole('switch', { name: 'Dunkelmodus' })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('ersetzt ungültige gespeicherte Vorgaben durch die Standardwerte', () => {
+    const kaputt = { kiStufen: ['X'], kiFormate: [], kiSprache: 'Englisch', schriftgroesse: 'riesig' }
+    expect(mischeEinstellungen(kaputt as never)).toMatchObject({ kiStufen: ['A'], kiFormate: ['text'], kiSprache: 'Leichte Sprache', schriftgroesse: 'normal' })
   })
 })

@@ -128,4 +128,13 @@ export type AppSettings = {
   emailNotifications: boolean
   worksheetReminders: boolean
   autoSave: boolean
+  /** FE-42: preselection of the KI-Erstellung */
+  kiStufen: Level[]
+  kiFormate: Format[]
+  kiSprache: Sprache
+  /** FE-42: text size of the whole interface */
+  schriftgroesse: Schriftgroesse
 }
+
+export type Schriftgroesse = 'normal' | 'gross' | 'sehr-gross'
+
